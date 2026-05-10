@@ -1,0 +1,19 @@
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.next/
+coverage/
+.env
+.env.*
+!.env.example
+Thumbs.db
+.DS_Store
+*.log
+
+# Secrets locales (Railway usa variables de entorno)
+apps/api/smtp-config.json
+
+# DB y uploads locales (Railway usa persistent volumes)
+apps/api/db.json
+apps/api/uploads/

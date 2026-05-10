@@ -1,0 +1,93 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-dropit-100 text-dropit-950 antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold text-dropit-950;
+  }
+}
+
+@layer components {
+  .surface {
+    @apply rounded-lg border border-dropit-300 bg-white shadow-base transition-shadow hover:shadow-md;
+  }
+
+  .surface-dark {
+    @apply rounded-lg border border-dropit-800 bg-dropit-950 shadow-lg;
+  }
+
+  .input-base {
+    @apply w-full rounded-md border border-dropit-400 bg-white px-3.5 py-2.5 text-sm text-dropit-950 outline-none transition-all focus:border-dropit-accent focus:ring-2 focus:ring-dropit-accent/20 disabled:bg-dropit-200 disabled:cursor-not-allowed;
+  }
+
+  .input-base::placeholder {
+    @apply text-dropit-600;
+  }
+
+  .label-base {
+    @apply mb-2 block text-xs font-semibold uppercase tracking-wider text-dropit-700;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md bg-dropit-accent px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-dropit-accent/90 active:shadow-sm disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-md border border-dropit-400 bg-white px-4 py-2.5 text-sm font-semibold text-dropit-950 transition-all hover:bg-dropit-200 active:bg-dropit-300 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-md bg-dropit-error px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-dropit-error/90 active:shadow-sm disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-dropit-700 transition-colors hover:bg-dropit-200;
+  }
+
+  .table-head {
+    @apply bg-dropit-200 text-left text-xs font-semibold uppercase tracking-wider text-dropit-700;
+  }
+
+  .status-pill {
+    @apply inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .card {
+    @apply surface p-5;
+  }
+
+  .card-header {
+    @apply mb-4 border-b border-dropit-300 pb-4;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-dropit-400 bg-dropit-200/30 px-6 py-12;
+  }
+
+  .empty-state-icon {
+    @apply mb-3 text-dropit-500;
+  }
+
+  .empty-state-title {
+    @apply text-lg font-semibold text-dropit-950;
+  }
+
+  .empty-state-description {
+    @apply mt-1 text-sm text-dropit-700;
+  }
+}

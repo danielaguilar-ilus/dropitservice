@@ -1,0 +1,17 @@
+{
+  "name": "dropit-platform",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Sistema de gestion de fletes y ultima milla para Dropit",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @dropit/web run dev",
+    "dev:api": "npm --workspace @dropit/api run dev",
+    "build:web": "npm --workspace @dropit/web run build",
+    "start:api": "npm --workspace @dropit/api run start",
+    "lint": "echo Configurar linting en la siguiente iteracion"
+  }
+}

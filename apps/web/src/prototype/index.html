@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dropit Service | Plataforma de Transporte</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  </head>
+  <body>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <header class="public-header" id="publicHeader">
+      <div class="brand">
+        <img src="./assets/dropit-logo.jpeg" alt="Dropit Service" />
+        <div>
+          <strong>Dropit Service</strong>
+          <span>Transporte y ultima milla</span>
+        </div>
+      </div>
+      <nav class="public-nav">
+        <button class="nav-link is-active" data-public-view="quote">Solicitar cotizacion</button>
+        <button class="nav-link" data-public-view="tracking">Seguimiento</button>
+        <button class="btn btn-primary" id="openLoginButton">Acceso admin</button>
+      </nav>
+    </header>
+
+    <main id="publicApp" class="public-app"></main>
+
+    <main id="adminApp" class="admin-app hidden"></main>
+
+    <dialog class="login-dialog" id="loginDialog">
+      <form class="login-card" id="loginForm" method="dialog">
+        <div class="login-head">
+          <img src="./assets/dropit-logo.jpeg" alt="Dropit Service" />
+          <div>
+            <p>Acceso administrador</p>
+            <h2>Panel Dropit</h2>
+          </div>
+        </div>
+        <label class="field">
+          <span>Correo</span>
+          <input id="loginEmail" type="email" autocomplete="username" required />
+        </label>
+        <label class="field">
+          <span>Contrasena</span>
+          <input id="loginPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <p class="form-message" id="loginMessage"></p>
+        <div class="dialog-actions">
+          <button class="btn btn-muted" type="button" id="closeLoginButton">Cancelar</button>
+          <button class="btn btn-primary" type="submit">Entrar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
