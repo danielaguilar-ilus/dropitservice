@@ -499,8 +499,8 @@ export default function PublicQuotePage() {
   const [routeInfo, setRouteInfo] = useState(null); // {distanceKm, price, isRM, geometry}
   const [geocoding, setGeocoding] = useState(false);
   const [routeError, setRouteError] = useState("");
-  // Image uploads (3 slots)
-  const [images, setImages] = useState([null, null, null]);
+  // Image uploads (6 slots)
+  const [images, setImages] = useState([null, null, null, null, null, null]);
 
   const routeMapRef = useRef(null);
   const routeMapInstanceRef = useRef(null);
@@ -861,7 +861,7 @@ export default function PublicQuotePage() {
       setRouteInfo(null);
       setPickupCoords(null);
       setDeliveryCoords(null);
-      setImages([null, null, null]);
+      setImages([null, null, null, null, null, null]);
       setTimeout(() => setCreated(null), 3000);
 
     } catch (err) {
@@ -902,9 +902,9 @@ export default function PublicQuotePage() {
             </button>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <a
-              href={`https://wa.me/${(() => { try { const c = JSON.parse(localStorage.getItem("dropit-whatsapp-config") || "{}"); return (c.businessNumber || "").replace(/\D/g, ""); } catch { return ""; } })()}`}
+              href="https://api.whatsapp.com/send?phone=56950979687&text=Hola%2C%20%F0%9F%91%8B%20%0AQuisiera%20informaci%C3%B3n%20sobre%20sus%20servicios...%0AGracias!!%20%F0%9F%98%80"
               target="_blank"
               rel="noopener noreferrer"
               className="hidden md:inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
@@ -914,7 +914,7 @@ export default function PublicQuotePage() {
             </a>
             <a
               href="/"
-              className="rounded-lg border border-dropit-300 px-4 py-2 text-sm font-semibold text-dropit-950 hover:bg-dropit-100 transition-colors"
+              className="hidden sm:inline-flex rounded-lg border border-dropit-300 px-4 py-2 text-sm font-semibold text-dropit-950 hover:bg-dropit-100 transition-colors"
             >
               Acceso operadores
             </a>
@@ -1024,27 +1024,27 @@ export default function PublicQuotePage() {
             Cotización en menos de 1 hora
           </div>
 
-          <h1 className="text-5xl font-black leading-tight tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)] md:text-7xl">
+          <h1 className="text-3xl sm:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)] md:text-7xl">
             Entregamos donde<br />
             <span className="text-dropit-accent">nadie más llega.</span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] md:text-xl">
+          <p className="mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] md:text-xl">
             Fletes, última milla y distribución urbana con tecnología de primer nivel.
             Tracking en tiempo real, rutas optimizadas y atención inmediata.
           </p>
 
-          <div className="mt-10 flex flex-wrap gap-4">
+          <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:gap-4">
             <button
               onClick={scrollToForm}
-              className="inline-flex items-center gap-2 rounded-xl bg-dropit-accent px-8 py-4 text-base font-bold text-white shadow-xl shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all hover:scale-105"
+              className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-xl bg-dropit-accent px-8 py-4 text-base font-bold text-white shadow-xl shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all hover:scale-105"
             >
               Solicitar cotización gratis
               <ArrowRight size={18} />
             </button>
             <a
               href="#como-funciona"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-8 py-4 text-base font-semibold text-white hover:bg-white/8 transition-colors"
+              className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-xl border border-white/20 px-8 py-4 text-base font-semibold text-white hover:bg-white/8 transition-colors"
             >
               ¿Cómo funciona?
               <ChevronRight size={18} />
@@ -1052,7 +1052,7 @@ export default function PublicQuotePage() {
           </div>
 
           {/* Social proof */}
-          <div className="mt-12 flex flex-wrap items-center gap-6 border-t border-white/10 pt-10">
+          <div className="mt-8 flex flex-col items-center gap-4 border-t border-white/10 pt-8 sm:mt-12 sm:flex-row sm:items-center sm:gap-6 sm:pt-10">
             <div className="flex -space-x-2">
               {["C", "M", "A", "R"].map((l, i) => (
                 <div
@@ -1088,13 +1088,13 @@ export default function PublicQuotePage() {
       </section>
 
       {/* ─── FEATURES ─── */}
-      <section className="bg-dropit-100 px-4 py-20">
+      <section className="bg-dropit-100 px-4 py-12 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12 text-center">
             <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">Por qué DropIt Service</p>
-            <h2 className="mt-2 text-4xl font-black text-dropit-950">Tecnología que trabaja por ti</h2>
+            <h2 className="mt-2 text-2xl sm:text-4xl font-black text-dropit-950">Tecnología que trabaja por ti</h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
             {features.map(({ icon: Icon, title, desc }) => (
               <div key={title} className="group rounded-2xl border border-dropit-300 bg-white p-6 shadow-sm transition-all hover:border-dropit-accent/40 hover:shadow-lg">
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-dropit-accent/10 transition-colors group-hover:bg-dropit-accent">
@@ -1109,13 +1109,13 @@ export default function PublicQuotePage() {
       </section>
 
       {/* ─── CÓMO FUNCIONA ─── */}
-      <section id="como-funciona" className="px-4 py-20">
+      <section id="como-funciona" className="px-4 py-12 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12 text-center">
             <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">Proceso simple</p>
-            <h2 className="mt-2 text-4xl font-black text-dropit-950">4 pasos para tu entrega</h2>
+            <h2 className="mt-2 text-2xl sm:text-4xl font-black text-dropit-950">4 pasos para tu entrega</h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
             {steps.map(({ num, title, desc }) => (
               <div key={num} className="relative">
                 <div className="mb-4 text-5xl font-black text-dropit-accent/20">{num}</div>
@@ -1128,11 +1128,11 @@ export default function PublicQuotePage() {
       </section>
 
       {/* ─── FORMULARIO ─── */}
-      <section id="formulario" ref={formRef} className="px-4 py-20">
+      <section id="formulario" ref={formRef} className="px-4 py-12 sm:py-20">
         <div className="mx-auto max-w-4xl">
           <div className="mb-10 text-center">
             <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">Cotización gratuita</p>
-            <h2 className="mt-2 text-4xl font-black text-dropit-950">Cuéntanos tu necesidad</h2>
+            <h2 className="mt-2 text-2xl sm:text-4xl font-black text-dropit-950">Cuéntanos tu necesidad</h2>
             <p className="mt-3 text-dropit-700">
               Completa el formulario y recibirás tu cotización en menos de 1 hora hábil
             </p>
@@ -1291,7 +1291,7 @@ export default function PublicQuotePage() {
                     return (
                     <div className="mt-3 overflow-hidden rounded-xl border border-dropit-300 shadow-sm">
                       {/* Price banner */}
-                      <div className={`flex flex-wrap items-center justify-between gap-3 px-5 py-4 ${routeInfo.isRM ? "border-b border-dropit-accent/20 bg-gradient-to-r from-dropit-accent/10 to-orange-50" : "border-b border-slate-200 bg-slate-50"}`}>
+                      <div className={`flex flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5 ${routeInfo.isRM ? "border-b border-dropit-accent/20 bg-gradient-to-r from-dropit-accent/10 to-orange-50" : "border-b border-slate-200 bg-slate-50"}`}>
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-dropit-accent/20">
                             <RouteIcon size={17} className="text-dropit-accent" />
@@ -1466,10 +1466,10 @@ export default function PublicQuotePage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-dropit-950">Fotos de la carga</h3>
-                    <p className="text-xs text-dropit-600">Opcional — adjunta hasta 3 imágenes para mejorar la cotización</p>
+                    <p className="text-xs text-dropit-600">Opcional — adjunta hasta 6 imágenes para mejorar la cotización</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {images.map((img, idx) => (
                     <div key={idx}>
                       {img ? (
@@ -1549,11 +1549,11 @@ export default function PublicQuotePage() {
       </section>
 
       {/* ─── MAPA ─── */}
-      <section id="mapa" className="bg-dropit-950 px-4 py-20" style={{ isolation: "isolate" }}>
+      <section id="mapa" className="bg-dropit-950 px-4 py-12 sm:py-20" style={{ isolation: "isolate" }}>
         <div className="mx-auto max-w-5xl">
           <div className="mb-8 text-center">
             <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">Cobertura nacional</p>
-            <h2 className="mt-2 text-4xl font-black text-white">De Arica a Punta Arenas</h2>
+            <h2 className="mt-2 text-2xl sm:text-4xl font-black text-white">De Arica a Punta Arenas</h2>
             <p className="mt-3 text-dropit-400">Una red de despacho que cubre los 4.300 km de Chile — sin excepciones</p>
           </div>
 
@@ -1611,19 +1611,19 @@ export default function PublicQuotePage() {
               <p className="text-xs font-bold uppercase tracking-widest text-dropit-400">Síguenos</p>
               <div className="flex items-center gap-3">
                 {/* Instagram */}
-                <a href="https://instagram.com/dropitservice" target="_blank" rel="noopener noreferrer"
+                <a href="https://www.instagram.com/dropit.service?igsh=MThpdnhmOG1zOGc4eg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer"
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-gradient-to-br hover:from-purple-500 hover:to-pink-500 transition-all"
                   title="Instagram">
                   <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
                 </a>
-                {/* TikTok */}
-                <a href="https://tiktok.com/@dropitservice" target="_blank" rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-black transition-all"
-                  title="TikTok">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 0010.86 4.48V12.5a8.32 8.32 0 005.58 2.13V11.2a4.85 4.85 0 01-3.77-1.73V6.69h3.77z"/></svg>
+                {/* Facebook */}
+                <a href="https://www.facebook.com/share/18QJHs8tKm/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-blue-600 transition-all"
+                  title="Facebook">
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                 </a>
                 {/* WhatsApp */}
-                <a href={`https://wa.me/${(() => { try { const c = JSON.parse(localStorage.getItem("dropit-whatsapp-config") || "{}"); return (c.businessNumber || "").replace(/\D/g, ""); } catch { return ""; } })()}`}
+                <a href="https://api.whatsapp.com/send?phone=56950979687&text=Hola%2C%20%F0%9F%91%8B%20%0AQuisiera%20informaci%C3%B3n%20sobre%20sus%20servicios...%0AGracias!!%20%F0%9F%98%80"
                   target="_blank" rel="noopener noreferrer"
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-emerald-500 transition-all"
                   title="WhatsApp">
@@ -1632,7 +1632,7 @@ export default function PublicQuotePage() {
               </div>
               {/* WhatsApp CTA */}
               <a
-                href={`https://wa.me/${(() => { try { const c = JSON.parse(localStorage.getItem("dropit-whatsapp-config") || "{}"); return (c.businessNumber || "").replace(/\D/g, ""); } catch { return ""; } })()}?text=${encodeURIComponent("Hola DropIt Service, me gustaría cotizar un flete")}`}
+                href="https://api.whatsapp.com/send?phone=56950979687&text=Hola%2C%20%F0%9F%91%8B%20%0AQuisiera%20informaci%C3%B3n%20sobre%20sus%20servicios...%0AGracias!!%20%F0%9F%98%80"
                 target="_blank" rel="noopener noreferrer"
                 className="mt-1 inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
               >

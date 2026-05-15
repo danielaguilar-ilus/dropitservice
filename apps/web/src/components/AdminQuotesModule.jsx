@@ -958,7 +958,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
 
                   {/* Photo upload */}
                   <div className="md:col-span-2">
-                    <label className="label-base">Fotos adjuntas (máx. 3)</label>
+                    <label className="label-base">Fotos adjuntas (máx. 6)</label>
                     <div className="flex flex-wrap gap-3 mt-1">
                       {photos.map((src, idx) => (
                         <div key={idx} className="relative group">
@@ -969,7 +969,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                           </button>
                         </div>
                       ))}
-                      {photos.length < 3 && (
+                      {photos.length < 6 && (
                         <button type="button" onClick={() => photoInputRef.current?.click()}
                           className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 text-slate-400 hover:border-dropit-accent/40 hover:text-dropit-accent transition-colors">
                           <span className="text-2xl">+</span>
