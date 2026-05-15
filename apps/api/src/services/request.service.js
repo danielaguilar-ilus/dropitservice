@@ -81,6 +81,7 @@ export function createQuoteRequest(payload) {
     avionetaCount: Number(payload.avionetaCount || 0),
     photos: photoUrls,
     bultosDetail: Array.isArray(payload.bultosDetail) ? payload.bultosDetail : [],
+    urgent: payload.urgent || false,
     observations: payload.observations || "",
     emailSent: false,
     whatsappSent: false,

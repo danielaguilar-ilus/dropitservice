@@ -65,27 +65,33 @@ const RM_COMUNAS = new Set([
 // ─── Image compression — resize + JPEG re-encode ──────────────────────────────
 // Reduces large camera photos (5–15 MB) to ~200–500 KB so the JSON payload stays
 // manageable and the API can save them reliably to db.json.
-async function compressImage(file, maxSide = 1280, quality = 0.82) {
+async function compressImage(file, maxSide = 900, quality = 0.7) {
+  // Fast path: OffscreenCanvas + createImageBitmap (Chrome/Edge/Firefox)
+  if (typeof OffscreenCanvas !== "undefined" && typeof createImageBitmap !== "undefined") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      let { width: w, height: h } = bitmap;
+      if (w > maxSide || h > maxSide) {
+        const r = Math.min(maxSide / w, maxSide / h);
+        w = Math.round(w * r); h = Math.round(h * r);
+      }
+      const canvas = new OffscreenCanvas(w, h);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
+      bitmap.close();
+      const blob = await canvas.convertToBlob({ type: "image/jpeg", quality });
+      return await new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(blob); });
+    } catch { /* fall through to legacy path */ }
+  }
+  // Legacy fallback (Safari/older iOS)
   const dataUrl = await new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = e => resolve(e.target.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
+    const r = new FileReader(); r.onload = e => resolve(e.target.result); r.onerror = reject; r.readAsDataURL(file);
   });
   const img = await new Promise((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = dataUrl;
+    const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = dataUrl;
   });
   let { width: w, height: h } = img;
-  if (w > maxSide || h > maxSide) {
-    const r = Math.min(maxSide / w, maxSide / h);
-    w = Math.round(w * r);
-    h = Math.round(h * r);
-  }
-  const canvas = document.createElement("canvas");
-  canvas.width = w; canvas.height = h;
+  if (w > maxSide || h > maxSide) { const r = Math.min(maxSide / w, maxSide / h); w = Math.round(w * r); h = Math.round(h * r); }
+  const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
   canvas.getContext("2d").drawImage(img, 0, 0, w, h);
   return canvas.toDataURL("image/jpeg", quality);
 }
@@ -558,6 +564,7 @@ function getInitialForm() {
     requiredDate: `${yyyy}-${mm}-${dd}`,
     requiredTime: "10:00",
     avionetaCount: 0,
+    urgent: false,
     observations: "Favor tocar timbre, preguntar por Valeria",
   };
 }
@@ -866,7 +873,8 @@ export default function PublicQuotePage() {
         estimatedPrice: routeInfo?.price != null ? routeInfo.price + (form.avionetaCount * 50000) : null,
         avionetaCount: form.avionetaCount,
         avioneta: form.avionetaCount > 0,
-        observations: `RUT: ${form.rut}\n${form.observations}`,
+        urgent: form.urgent || false,
+        observations: `${form.urgent ? "⚡ URGENTE\n" : ""}RUT: ${form.rut}\n${form.observations}`,
         photos: images.filter(Boolean),
         bultosDetail: bultos.filter(b => b.largo || b.ancho || b.alto || b.peso),
       };
@@ -878,100 +886,7 @@ export default function PublicQuotePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error al enviar solicitud");
 
-      // ─── Read config ──────────────────────────────────────────────────────
-      let companyEmail = "";
-      let waConfig = null;
-      try {
-        const sc = JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}");
-        // Company email = the SMTP sender account configured in the app
-        companyEmail = sc.email || "";
-      } catch { /* ignore */ }
-      try {
-        waConfig = JSON.parse(localStorage.getItem("dropit-whatsapp-config") || "null");
-      } catch { /* ignore */ }
-
-      const trackingCode  = data.request?.trackingCode || "N/A";
-      const logoUrl       = getLogoUrl();
-      const companyName   = getCompanyName();
-      const imagesSent    = images.filter(Boolean).length;
-
-      // ─── Email to client ──────────────────────────────────────────────────
-      try {
-        await fetch(`${API_URL}/mail/send`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: form.contactEmail,
-            subject: `Solicitud de cotización recibida — ${companyName}`,
-            html: tplClienteNuevaCotizacion({
-              customerName: form.customerName, rut: form.rut, trackingCode,
-              pickupAddress: form.pickupAddress, pickupCommune: form.pickupCommune,
-              deliveryAddress: form.deliveryAddress, deliveryCommune: form.deliveryCommune,
-              packages: form.packages, estimatedWeightKg: form.estimatedWeightKg,
-              requiredDate: form.requiredDate, requiredTime: form.requiredTime,
-              supportEmail: companyEmail || "soporte@dropit.cl", logoUrl, companyName,
-            }),
-            text: `Hola ${form.customerName}, recibimos tu solicitud. Código: ${trackingCode}`,
-          }),
-        });
-      } catch { /* silent */ }
-
-      // ─── Email to company (only the configured SMTP email) ────────────────
-      if (companyEmail) {
-        try {
-          await fetch(`${API_URL}/mail/send`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: companyEmail,
-              subject: `🚛 Nueva cotización — ${form.rut} | ${form.customerName}`,
-              html: tplEmpresaNuevaCotizacion({
-                customerName: form.customerName, rut: form.rut,
-                contactPhone: form.contactPhone, contactEmail: form.contactEmail,
-                pickupAddress: form.pickupAddress, pickupCommune: form.pickupCommune,
-                deliveryAddress: form.deliveryAddress, deliveryCommune: form.deliveryCommune,
-                packages: form.packages, estimatedWeightKg: form.estimatedWeightKg,
-                cargoDescription: form.cargoDescription, requiredDate: form.requiredDate,
-                requiredTime: form.requiredTime,
-                observations: form.observations, trackingCode, logoUrl, companyName,
-                distanceKm: routeInfo?.distanceKm,
-                estimatedPrice: routeInfo?.price,
-                imageCount: imagesSent,
-              }),
-              text: `Nueva cotización de ${form.customerName} (${form.rut}). Código: ${trackingCode}`,
-            }),
-          });
-        } catch { /* silent */ }
-      }
-
-      // ─── WhatsApp to company number ───────────────────────────────────────
-      if (waConfig?.authToken && waConfig?.accountSid && waConfig?.businessNumber) {
-        try {
-          await fetch(`${API_URL}/whatsapp/send`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              accountSid: waConfig.accountSid,
-              authToken:  waConfig.authToken,
-              from: waConfig.fromNumber || "whatsapp:+14155238886",
-              to:   waConfig.businessNumber,
-              body:
-                `🚛 *Nueva cotización — ${companyName}*\n\n` +
-                `📋 *Código:* ${trackingCode}\n` +
-                `👤 *Cliente:* ${form.customerName}\n` +
-                `🪪 *RUT:* ${form.rut}\n` +
-                `📞 *Teléfono:* ${form.contactPhone || "—"}\n` +
-                `📧 *Email:* ${form.contactEmail || "—"}\n` +
-                `📦 *Bultos:* ${form.packages || "—"} · ${form.estimatedWeightKg || "—"} kg\n` +
-                `📍 *Retiro:* ${form.pickupAddress}${form.pickupCommune ? `, ${form.pickupCommune}` : ""}\n` +
-                `🏁 *Entrega:* ${form.deliveryAddress}${form.deliveryCommune ? `, ${form.deliveryCommune}` : ""}\n` +
-                `📅 *Fecha:* ${form.requiredDate || "—"}${form.requiredTime ? ` a las ${form.requiredTime}` : ""}\n` +
-                `📏 *Distancia:* ${routeInfo ? `${routeInfo.distanceKm} km` : "—"}\n` +
-                `💰 *Precio est.:* ${routeInfo?.price ? `$${routeInfo.price.toLocaleString("es-CL")}` : "—"}\n` +
-                `📸 *Fotos:* ${imagesSent}`,
-            }),
-          });
-        } catch { /* silent */ }
-      }
-
-      // ─── Show success, auto-return to form after 3 seconds ───────────────
+      // ─── Show success IMMEDIATELY — emails/WA fire in background ────────
       setCreated(data.request);
       setForm(getInitialForm());
       setRouteInfo(null);
@@ -979,6 +894,104 @@ export default function PublicQuotePage() {
       setDeliveryCoords(null);
       setImages([null, null, null, null, null, null]);
       setTimeout(() => setCreated(null), 3000);
+
+      // ─── Background: send notifications in parallel (non-blocking) ─────
+      const savedForm = { ...form };
+      const savedRouteInfo = routeInfo;
+      const savedImages = images;
+      (async () => {
+        try {
+          let companyEmail = "";
+          let waConfig = null;
+          try { companyEmail = JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").email || ""; } catch {}
+          try { waConfig = JSON.parse(localStorage.getItem("dropit-whatsapp-config") || "null"); } catch {}
+
+          const trackingCode = data.request?.trackingCode || "N/A";
+          const logoUrl = getLogoUrl();
+          const companyName = getCompanyName();
+          const imagesSent = savedImages.filter(Boolean).length;
+
+          const promises = [];
+
+          // Email to client
+          promises.push(
+            fetch(`${API_URL}/mail/send`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: savedForm.contactEmail,
+                subject: `Solicitud de cotización recibida — ${companyName}`,
+                html: tplClienteNuevaCotizacion({
+                  customerName: savedForm.customerName, rut: savedForm.rut, trackingCode,
+                  pickupAddress: savedForm.pickupAddress, pickupCommune: savedForm.pickupCommune,
+                  deliveryAddress: savedForm.deliveryAddress, deliveryCommune: savedForm.deliveryCommune,
+                  packages: savedForm.packages, estimatedWeightKg: savedForm.estimatedWeightKg,
+                  requiredDate: savedForm.requiredDate, requiredTime: savedForm.requiredTime,
+                  supportEmail: companyEmail || "soporte@dropit.cl", logoUrl, companyName,
+                }),
+                text: `Hola ${savedForm.customerName}, recibimos tu solicitud. Código: ${trackingCode}`,
+              }),
+            }).catch(() => {})
+          );
+
+          // Email to company
+          if (companyEmail) {
+            promises.push(
+              fetch(`${API_URL}/mail/send`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  to: companyEmail,
+                  subject: `🚛 Nueva cotización — ${savedForm.rut} | ${savedForm.customerName}`,
+                  html: tplEmpresaNuevaCotizacion({
+                    customerName: savedForm.customerName, rut: savedForm.rut,
+                    contactPhone: savedForm.contactPhone, contactEmail: savedForm.contactEmail,
+                    pickupAddress: savedForm.pickupAddress, pickupCommune: savedForm.pickupCommune,
+                    deliveryAddress: savedForm.deliveryAddress, deliveryCommune: savedForm.deliveryCommune,
+                    packages: savedForm.packages, estimatedWeightKg: savedForm.estimatedWeightKg,
+                    cargoDescription: savedForm.cargoDescription, requiredDate: savedForm.requiredDate,
+                    requiredTime: savedForm.requiredTime,
+                    observations: savedForm.observations, trackingCode, logoUrl, companyName,
+                    distanceKm: savedRouteInfo?.distanceKm,
+                    estimatedPrice: savedRouteInfo?.price,
+                    imageCount: imagesSent,
+                  }),
+                  text: `Nueva cotización de ${savedForm.customerName} (${savedForm.rut}). Código: ${trackingCode}`,
+                }),
+              }).catch(() => {})
+            );
+          }
+
+          // WhatsApp to company
+          if (waConfig?.authToken && waConfig?.accountSid && waConfig?.businessNumber) {
+            promises.push(
+              fetch(`${API_URL}/whatsapp/send`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  accountSid: waConfig.accountSid,
+                  authToken: waConfig.authToken,
+                  from: waConfig.fromNumber || "whatsapp:+14155238886",
+                  to: waConfig.businessNumber,
+                  body:
+                    `🚛 *Nueva cotización — ${companyName}*\n\n` +
+                    `📋 *Código:* ${trackingCode}\n` +
+                    `👤 *Cliente:* ${savedForm.customerName}\n` +
+                    `🪪 *RUT:* ${savedForm.rut}\n` +
+                    `📞 *Teléfono:* ${savedForm.contactPhone || "—"}\n` +
+                    `📧 *Email:* ${savedForm.contactEmail || "—"}\n` +
+                    `📦 *Bultos:* ${savedForm.packages || "—"} · ${savedForm.estimatedWeightKg || "—"} kg\n` +
+                    `📍 *Retiro:* ${savedForm.pickupAddress}${savedForm.pickupCommune ? `, ${savedForm.pickupCommune}` : ""}\n` +
+                    `🏁 *Entrega:* ${savedForm.deliveryAddress}${savedForm.deliveryCommune ? `, ${savedForm.deliveryCommune}` : ""}\n` +
+                    `📅 *Fecha:* ${savedForm.requiredDate || "—"}${savedForm.requiredTime ? ` a las ${savedForm.requiredTime}` : ""}\n` +
+                    `📏 *Distancia:* ${savedRouteInfo ? `${savedRouteInfo.distanceKm} km` : "—"}\n` +
+                    `💰 *Precio est.:* ${savedRouteInfo?.price ? `$${savedRouteInfo.price.toLocaleString("es-CL")}` : "—"}\n` +
+                    `📸 *Fotos:* ${imagesSent}`,
+                }),
+              }).catch(() => {})
+            );
+          }
+
+          await Promise.allSettled(promises);
+        } catch { /* all notifications are best-effort */ }
+      })();
 
     } catch (err) {
       setError(err.message);
@@ -997,7 +1010,7 @@ export default function PublicQuotePage() {
       <header className="sticky top-0 z-50 border-b border-dropit-200 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 overflow-hidden rounded-lg bg-white border border-slate-300 shadow-sm">
+            <div className="h-9 w-9 overflow-hidden rounded-lg bg-white border border-black shadow-sm">
               <img src="/dropit-logo.jpeg" alt="DropIt Service" className="h-full w-full object-cover" />
             </div>
             <span className="text-lg font-black text-dropit-950">
@@ -1030,7 +1043,7 @@ export default function PublicQuotePage() {
             </a>
             <a
               href="/"
-              className="hidden sm:inline-flex rounded-lg border border-dropit-300 px-4 py-2 text-sm font-semibold text-dropit-950 hover:bg-dropit-100 transition-colors"
+              className="inline-flex rounded-lg border border-dropit-300 px-2.5 py-1.5 text-xs font-semibold text-dropit-950 hover:bg-dropit-100 transition-colors sm:px-4 sm:py-2 sm:text-sm"
             >
               Acceso operadores
             </a>
@@ -1510,6 +1523,23 @@ export default function PublicQuotePage() {
                         placeholder="Ej: Debe ingresar por portón lateral, preguntar por Jorge..."
                       />
                     </div>
+
+                    {/* Urgente toggle */}
+                    <div className="md:col-span-2">
+                      <label className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition-all select-none ${form.urgent ? 'border-red-400 bg-red-50' : 'border-dropit-200 bg-white hover:border-dropit-300'}`}>
+                        <div className={`flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${form.urgent ? 'bg-red-500' : 'bg-slate-200'}`}>
+                          <div className={`h-5 w-5 rounded-full bg-white shadow transform transition-transform ${form.urgent ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
+                        </div>
+                        <div>
+                          <span className="text-sm font-bold text-dropit-950 flex items-center gap-1.5">
+                            <Zap size={14} className={form.urgent ? "text-red-500" : "text-dropit-400"} />
+                            Cotización urgente
+                          </span>
+                          <p className="text-xs text-dropit-500 mt-0.5">Prioridad inmediata — respuesta en menos de 30 minutos</p>
+                        </div>
+                        <input type="checkbox" className="sr-only" checked={form.urgent} onChange={e => update("urgent", e.target.checked)} />
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -1708,7 +1738,7 @@ export default function PublicQuotePage() {
             {/* Brand */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 overflow-hidden rounded-lg bg-white border border-slate-500 shadow-sm">
+                <div className="h-9 w-9 overflow-hidden rounded-lg bg-white border border-black shadow-sm">
                   <img src="/dropit-logo.jpeg" alt="DropIt Service" className="h-full w-full object-cover" />
                 </div>
                 <span className="text-lg font-black text-white">
@@ -1729,37 +1759,37 @@ export default function PublicQuotePage() {
               <a href="/privacidad" className="text-sm text-dropit-500 hover:text-white transition-colors">Política de privacidad</a>
             </div>
 
-            {/* Social + contact */}
-            <div className="flex flex-col gap-3">
+            {/* Social + contact — centered */}
+            <div className="flex flex-col items-center gap-4">
               <p className="text-xs font-bold uppercase tracking-widest text-dropit-400">Síguenos</p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center gap-4">
                 {/* Instagram */}
                 <a href="https://www.instagram.com/dropit.service?igsh=MThpdnhmOG1zOGc4eg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-gradient-to-br hover:from-purple-500 hover:to-pink-500 transition-all"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-gradient-to-br hover:from-purple-500 hover:to-pink-500 transition-all"
                   title="Instagram">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
                 </a>
                 {/* Facebook */}
                 <a href="https://www.facebook.com/share/18QJHs8tKm/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-blue-600 transition-all"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-blue-600 transition-all"
                   title="Facebook">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                 </a>
                 {/* WhatsApp */}
                 <a href="https://api.whatsapp.com/send?phone=56950979687&text=Hola%2C%20%F0%9F%91%8B%20%0AQuisiera%20informaci%C3%B3n%20sobre%20sus%20servicios...%0AGracias!!%20%F0%9F%98%80"
                   target="_blank" rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-emerald-500 transition-all"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-emerald-500 transition-all"
                   title="WhatsApp">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 </a>
               </div>
-              {/* WhatsApp CTA */}
+              {/* WhatsApp CTA — centered */}
               <a
                 href="https://api.whatsapp.com/send?phone=56950979687&text=Hola%2C%20%F0%9F%91%8B%20%0AQuisiera%20informaci%C3%B3n%20sobre%20sus%20servicios...%0AGracias!!%20%F0%9F%98%80"
                 target="_blank" rel="noopener noreferrer"
-                className="mt-1 inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
               >
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 Escríbenos por WhatsApp
               </a>
             </div>

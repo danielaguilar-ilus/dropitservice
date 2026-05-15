@@ -332,9 +332,9 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
 
   function handlePhotoUpload(e) {
     const files = Array.from(e.target.files || []);
-    files.slice(0, 3 - photos.length).forEach(file => {
+    files.slice(0, 6 - photos.length).forEach(file => {
       const reader = new FileReader();
-      reader.onload = ev => setPhotos(prev => prev.length < 3 ? [...prev, ev.target.result] : prev);
+      reader.onload = ev => setPhotos(prev => prev.length < 6 ? [...prev, ev.target.result] : prev);
       reader.readAsDataURL(file);
     });
     e.target.value = "";
@@ -345,7 +345,12 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
   }
 
   const pending = requests.filter(r => r.status === "Pendiente de cotizacion")
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // oldest first
+    .sort((a, b) => {
+      // Urgent first, then oldest first
+      if (a.urgent && !b.urgent) return -1;
+      if (!a.urgent && b.urgent) return 1;
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    });
   const quoted  = requests.filter(r => r.status === "Cotizado");
   const shown   = filter === "pending" ? pending : filter === "quoted" ? quoted : [...pending, ...quoted];
 
@@ -633,6 +638,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                     )}
                     {req.emailSent && <span className="flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-600"><Mail size={9} />Email</span>}
                     {req.whatsappSent && <span className="flex items-center gap-1 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[10px] font-bold text-green-600"><MessageSquare size={9} />WA</span>}
+                    {req.urgent && <span className="flex items-center gap-1 rounded-full bg-red-50 border border-red-300 px-2 py-0.5 text-[10px] font-bold text-red-600 animate-pulse">⚡ Urgente</span>}
                     {(req.avionetaCount > 0 || req.avioneta) && <span className="flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-600">🧑‍🏭 {req.avionetaCount > 1 ? `${req.avionetaCount}× ` : ""}Peoneta</span>}
                     {req.distanceKm && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{req.distanceKm} km</span>}
                   </div>
@@ -684,7 +690,10 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
                 <div>
-                  <h3 className="text-xl font-black text-slate-950">{selected.customerName}</h3>
+                  <h3 className="text-xl font-black text-slate-950 flex items-center gap-2">
+                    {selected.customerName}
+                    {selected.urgent && <span className="inline-flex items-center gap-1 rounded-full bg-red-100 border border-red-300 px-2.5 py-0.5 text-xs font-bold text-red-600 animate-pulse">⚡ Urgente</span>}
+                  </h3>
                   <p className="text-sm text-slate-500 mt-0.5">{selected.id} · {selected.trackingCode}</p>
                 </div>
                 <div className="flex items-center gap-2">
