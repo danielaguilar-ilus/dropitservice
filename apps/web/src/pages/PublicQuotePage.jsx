@@ -154,7 +154,8 @@ function validateRut(rut) {
 
 async function photonSearch(q) {
   // Bias toward Santiago RM (-33.45, -70.65) for better local results
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ", Chile")}&limit=6&lang=es&lat=-33.45&lon=-70.65`;
+  // NOTE: Photon only supports lang=default|de|en|fr — do NOT pass lang=es
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ", Chile")}&limit=6&lat=-33.45&lon=-70.65`;
   const res = await fetch(url);
   const data = await res.json();
   return (data.features || []).map(f => {
@@ -427,11 +428,46 @@ function ComunaSelect({ value, onChange, placeholder = "Seleccionar comuna…" }
   );
 }
 
+// ─── Reverse geocode coords → address string ────────────────────────────────
+async function reverseGeocode(lat, lng) {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=es`;
+  const res = await fetch(url, { headers: { "Accept-Language": "es" } });
+  const data = await res.json();
+  if (!data.address) return null;
+  const a = data.address;
+  const street = [a.road || a.pedestrian || "", a.house_number || ""].filter(Boolean).join(" ");
+  const rawCity = a.city_district || a.suburb || a.city || a.town || a.village || a.municipality || "";
+  const commune = COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase()) || rawCity;
+  return { street: street || data.display_name.split(",")[0], commune, lat, lng };
+}
+
 // ─── Address pair — Google Maps-style vertical stack ──────────────────────────
 function AddressPair({
   pickupValue, onPickupChange, onPickupCommune, onPickupCoords,
   deliveryValue, onDeliveryChange, onDeliveryCommune, onDeliveryCoords,
 }) {
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  function useMyLocation() {
+    if (!navigator.geolocation) { alert("Tu navegador no soporta geolocalización"); return; }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const result = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+          if (result) {
+            onPickupChange(result.street + (result.commune ? `, ${result.commune}` : ""));
+            onPickupCommune?.(result.commune);
+            onPickupCoords?.({ lat: result.lat, lng: result.lng });
+          }
+        } catch { alert("No se pudo obtener la dirección"); }
+        setGeoLoading(false);
+      },
+      () => { alert("Permiso de ubicación denegado. Actívalo en tu navegador."); setGeoLoading(false); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
       {/* ── Origin ── */}
@@ -441,7 +477,21 @@ function AddressPair({
           <div className="w-px bg-slate-200" style={{ height: 20 }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-600">Origen</p>
+          <div className="mb-1.5 flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Origen</p>
+            <button
+              type="button"
+              onClick={useMyLocation}
+              disabled={geoLoading}
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+            >
+              {geoLoading
+                ? <Loader2 size={10} className="animate-spin" />
+                : <Navigation size={10} />
+              }
+              Mi ubicación
+            </button>
+          </div>
           <StreetAutocomplete
             value={pickupValue}
             onChange={onPickupChange}
