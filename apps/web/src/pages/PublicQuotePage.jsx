@@ -119,11 +119,32 @@ function validateRut(rut) {
   return dv === expected;
 }
 
-// ─── Commune searchable selector ─────────────────────────────────────────────
-// ─── Nominatim search ─────────────────────────────────────────────────────────
+// ─── Multi-provider address search ───────────────────────────────────────────
+// 1. Photon (Komoot) — fast, fuzzy, biased toward Santiago
+// 2. Nominatim — structured fallback
+// Both are free and OSM-based.
+
+async function photonSearch(q) {
+  // Bias toward Santiago RM (-33.45, -70.65) for better local results
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ", Chile")}&limit=6&lang=es&lat=-33.45&lon=-70.65`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return (data.features || []).map(f => {
+    const p = f.properties || {};
+    const [lng, lat] = f.geometry?.coordinates || [0, 0];
+    const street = [p.street, p.housenumber].filter(Boolean).join(" ") || p.name || "";
+    const rawCity = p.city || p.district || p.locality || p.county || "";
+    const commune = COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase())
+                 || COMUNAS.find(c => rawCity.toLowerCase().includes(c.toLowerCase()))
+                 || rawCity;
+    const subtext = [rawCity, p.state, "Chile"].filter(Boolean).slice(0, 2).join(", ");
+    return { street, commune, subtext, raw: rawCity, lat, lng };
+  });
+}
+
 async function nominatimSearch(q) {
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=cl&addressdetails=1&limit=7&accept-language=es`;
-  const res  = await fetch(url, { headers: { "Accept-Language": "es" } });
+  const res = await fetch(url, { headers: { "Accept-Language": "es" } });
   return res.json();
 }
 
@@ -132,16 +153,37 @@ function parseNominatim(result) {
   const num     = a.house_number || "";
   const road    = a.road || a.pedestrian || a.footway || a.cycleway || a.path || "";
   const rawCity = a.city_district || a.suburb || a.quarter || a.city || a.town || a.village || a.municipality || "";
-  // Try to match commune from our list
   const commune = COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase())
                || COMUNAS.find(c => rawCity.toLowerCase().includes(c.toLowerCase()))
                || rawCity;
   const street  = road ? [road, num].filter(Boolean).join(" ") : result.display_name.split(",")[0].trim();
   const subtext = [rawCity, a.county, a.state].filter(Boolean).slice(0, 2).join(", ");
-  // Keep coordinates for route calculation
   const lat = parseFloat(result.lat);
   const lng = parseFloat(result.lon);
   return { street, commune, subtext, raw: rawCity, lat, lng };
+}
+
+// Combined search: Photon first, Nominatim fallback. Deduplicates results.
+async function multiSearch(q) {
+  let results = [];
+  try {
+    results = await photonSearch(q);
+  } catch { /* ignore */ }
+  if (results.length < 2) {
+    try {
+      const nomData = await nominatimSearch(q);
+      const nomParsed = nomData.map(parseNominatim);
+      results = [...results, ...nomParsed];
+    } catch { /* ignore */ }
+  }
+  // Deduplicate by street+commune
+  const seen = new Set();
+  return results.filter(r => {
+    const k = `${r.street}|${r.commune}`.toLowerCase();
+    if (seen.has(k) || !r.street) return false;
+    seen.add(k);
+    return true;
+  }).slice(0, 6);
 }
 
 // ─── Extract commune from Google address_components ───────────────────────────
@@ -216,13 +258,9 @@ function StreetAutocomplete({ value, onChange, onComunaChange, onCoordsChange, p
           }
         );
       } else {
-        // ── Nominatim fallback ─────────────────────────────────────────────
-        nominatimSearch(val).then(data => {
-          const seen = new Set();
-          const items = data.map(parseNominatim).filter(p => {
-            const k = `${p.street}|${p.commune}`;
-            if (seen.has(k)) return false; seen.add(k); return true;
-          }).slice(0, 5).map(p => ({
+        // ── Photon + Nominatim multi-search ───────────────────────────────
+        multiSearch(val).then(parsed => {
+          const items = parsed.map(p => ({
             label:    p.street,
             sublabel: [p.commune, "Chile"].filter(Boolean).join(", "),
             commune:  p.commune,
