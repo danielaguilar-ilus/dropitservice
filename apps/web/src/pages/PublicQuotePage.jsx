@@ -630,12 +630,17 @@ export default function PublicQuotePage() {
   const routeLayersRef = useRef([]);
   const formRef = useRef(null);
 
-  // Load marketing carousel images
+  // Load marketing carousel from API (Cloudinary), fallback localStorage
   useEffect(() => {
-    try {
-      const imgs = JSON.parse(localStorage.getItem("dropit-marketing-carousel") || "[]");
-      setCarouselImages(Array.isArray(imgs) ? imgs : []);
-    } catch { setCarouselImages([]); }
+    fetch(`${API_URL}/media/carousels`)
+      .then(r => r.json())
+      .then(data => {
+        const imgs = data.marketing || [];
+        setCarouselImages(imgs.length > 0 ? imgs : JSON.parse(localStorage.getItem("dropit-marketing-carousel") || "[]"));
+      })
+      .catch(() => {
+        try { setCarouselImages(JSON.parse(localStorage.getItem("dropit-marketing-carousel") || "[]")); } catch { setCarouselImages([]); }
+      });
   }, []);
 
   useEffect(() => {

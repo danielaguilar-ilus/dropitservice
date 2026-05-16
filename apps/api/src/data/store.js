@@ -138,6 +138,7 @@ const trucks        = [...DEFAULT_TRUCKS];
 const requests      = [...DEFAULT_REQUESTS];
 const routes        = [];
 const notifications = [];
+const media         = { loginCarousel: [], marketingCarousel: [], logoUrl: "/dropit-logo.jpeg", companyName: "DropIt Service" };
 
 const pricing = {
   baseFare: 12000,
@@ -161,6 +162,9 @@ if (existsSync(DB_PATH)) {
       routes.length = 0;
       routes.push(...json.routes);
     }
+    if (json.media && typeof json.media === "object") {
+      Object.assign(media, json.media);
+    }
     console.log(`✅ db.json cargado: ${requests.length} solicitudes, ${routes.length} rutas`);
   } catch (e) {
     console.warn("⚠ No se pudo cargar db.json:", e.message);
@@ -176,6 +180,7 @@ export const store = {
   requests,
   routes,
   notifications,
+  media,
 };
 
 // ─── Persist current state to db.json ─────────────────────────────────────────
@@ -183,7 +188,7 @@ export function saveStore() {
   try {
     writeFileSync(
       DB_PATH,
-      JSON.stringify({ requests: store.requests, trucks: store.trucks, routes: store.routes }, null, 2),
+      JSON.stringify({ requests: store.requests, trucks: store.trucks, routes: store.routes, media: store.media }, null, 2),
       "utf8"
     );
   } catch (e) {

@@ -9,31 +9,35 @@ router.get("/", (_req, res) => {
   res.json({ requests: store.requests });
 });
 
-router.post("/", (req, res) => {
-  const requiredFields = [
-    "customerName",
-    "contactPerson",
-    "contactPhone",
-    "contactEmail",
-    "pickupAddress",
-    "deliveryAddress",
-    "destinationCity",
-    "packages",
-    "estimatedWeightKg",
-    "cargoDescription",
-    // requiredDate, requiredTime, distanceKm, estimatedPrice, avioneta are optional
-  ];
+router.post("/", async (req, res) => {
+  try {
+    const requiredFields = [
+      "customerName",
+      "contactPerson",
+      "contactPhone",
+      "contactEmail",
+      "pickupAddress",
+      "deliveryAddress",
+      "destinationCity",
+      "packages",
+      "estimatedWeightKg",
+      "cargoDescription",
+    ];
 
-  const missingFields = requiredFields.filter((field) => !req.body[field]);
-  if (missingFields.length > 0) {
-    return res.status(422).json({
-      message: "Faltan campos obligatorios",
-      errors: missingFields.map((field) => ({ field, message: `Falta ${field}` })),
-    });
+    const missingFields = requiredFields.filter((field) => !req.body[field]);
+    if (missingFields.length > 0) {
+      return res.status(422).json({
+        message: "Faltan campos obligatorios",
+        errors: missingFields.map((field) => ({ field, message: `Falta ${field}` })),
+      });
+    }
+
+    const request = await createQuoteRequest(req.body);
+    res.status(201).json({ request, ...buildDashboardPayload() });
+  } catch (err) {
+    console.error("Error creating quote request:", err);
+    res.status(500).json({ message: err.message || "Error al crear solicitud" });
   }
-
-  const request = createQuoteRequest(req.body);
-  res.status(201).json({ request, ...buildDashboardPayload() });
 });
 
 // Mark WhatsApp reminder sent

@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
 import { MapPin, Clock, Zap, Shield, ChevronRight, Truck } from "lucide-react";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+
 function useCarousel() {
   const [images, setImages] = useState([]);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("dropit-login-carousel") || "[]");
-      setImages(Array.isArray(stored) ? stored : []);
-    } catch {
-      setImages([]);
-    }
+    // Try API first (Cloudinary URLs), fallback to localStorage
+    fetch(`${API_URL}/media/carousels`)
+      .then(r => r.json())
+      .then(data => {
+        const imgs = data.login || [];
+        setImages(imgs.length > 0 ? imgs : JSON.parse(localStorage.getItem("dropit-login-carousel") || "[]"));
+      })
+      .catch(() => {
+        try { setImages(JSON.parse(localStorage.getItem("dropit-login-carousel") || "[]")); } catch { setImages([]); }
+      });
   }, []);
 
   useEffect(() => {

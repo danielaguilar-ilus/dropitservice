@@ -10,12 +10,10 @@ import {
   store,
 } from "../data/store.js";
 import { notify } from "./notification.service.js";
+import { uploadImage, isCloudinaryConfigured } from "./cloudinary.service.js";
 
 // ─── Photo persistence helpers ────────────────────────────────────────────────
-// Saves base64 data-URL photos as actual files in apps/api/uploads/ and returns
-// a relative URL ("/uploads/quote-SOL-1003-1.jpg") that the API serves via the
-// static middleware in app.js. Photos remain on disk until the user manually
-// cleans the uploads folder.
+// Uploads photos to Cloudinary if configured, otherwise saves locally.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 const UPLOADS_DIR = join(__dirname, "../../uploads");
@@ -24,23 +22,38 @@ function ensureUploadsDir() {
   if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
-function persistPhoto(dataUrl, requestId, idx) {
-  // dataUrl example: "data:image/jpeg;base64,/9j/4AAQSk..."
+async function persistPhoto(dataUrl, requestId, idx) {
   if (typeof dataUrl !== "string") return null;
   if (!dataUrl.startsWith("data:")) return dataUrl; // already a URL — keep as-is
-  const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-  if (!match) return null;
-  const ext  = match[1] === "jpeg" ? "jpg" : match[1];
-  const buf  = Buffer.from(match[2], "base64");
-  const name = `quote-${requestId}-${idx + 1}.${ext}`;
-  ensureUploadsDir();
-  writeFileSync(join(UPLOADS_DIR, name), buf);
-  return `/uploads/${name}`;
+
+  try {
+    const result = await uploadImage(dataUrl, {
+      folder: "dropit/quotes",
+      publicId: `quote-${requestId}-${idx + 1}`,
+    });
+    return result.url;
+  } catch (err) {
+    console.warn(`⚠️ Photo upload failed for ${requestId}-${idx}:`, err.message);
+    // Local fallback
+    const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!match) return null;
+    const ext  = match[1] === "jpeg" ? "jpg" : match[1];
+    const buf  = Buffer.from(match[2], "base64");
+    const name = `quote-${requestId}-${idx + 1}.${ext}`;
+    ensureUploadsDir();
+    writeFileSync(join(UPLOADS_DIR, name), buf);
+    return `/uploads/${name}`;
+  }
 }
 
-function persistPhotos(photos, requestId) {
-  if (!Array.isArray(photos)) return [];
-  return photos.map((p, i) => persistPhoto(p, requestId, i)).filter(Boolean);
+async function persistPhotos(photos, requestId) {
+  if (!Array.isArray(photos) || photos.length === 0) return [];
+  const results = await Promise.allSettled(
+    photos.map((p, i) => persistPhoto(p, requestId, i))
+  );
+  return results
+    .filter(r => r.status === "fulfilled" && r.value)
+    .map(r => r.value);
 }
 
 const requiredImportFields = [
@@ -54,11 +67,11 @@ const requiredImportFields = [
   "weight",
 ];
 
-export function createQuoteRequest(payload) {
+export async function createQuoteRequest(payload) {
   const now = new Date().toISOString();
   const requestId = nextReference();
-  // Convert any base64 photos to actual files on disk before storing in db.json
-  const photoUrls = persistPhotos(payload.photos, requestId);
+  // Upload photos to Cloudinary (or local fallback) before storing in db.json
+  const photoUrls = await persistPhotos(payload.photos, requestId);
   const request = {
     id: requestId,
     trackingCode: nextTrackingCode(),

@@ -3,6 +3,7 @@ import authRoutes from "./auth.routes.js";
 import dashboardRoutes from "./dashboard.routes.js";
 import importsRoutes from "./imports.routes.js";
 import mailRoutes from "./mail.routes.js";
+import mediaRoutes from "./media.routes.js";
 import whatsappRoutes from "./whatsapp.routes.js";
 import ordersRoutes from "./orders.routes.js";
 import planningRoutes from "./planning.routes.js";
@@ -23,6 +24,7 @@ router.use("/planning", planningRoutes);
 router.use("/trucks", trucksRoutes);
 router.use("/tracking", trackingRoutes);
 router.use("/mail", mailRoutes);
+router.use("/media", mediaRoutes);
 router.use("/whatsapp", whatsappRoutes);
 
 export default router;
