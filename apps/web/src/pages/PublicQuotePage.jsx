@@ -649,12 +649,29 @@ export default function PublicQuotePage() {
     return () => clearInterval(id);
   }, [carouselImages.length]);
 
-  function searchTracking(e) {
+  async function searchTracking(e) {
     e.preventDefault();
     const code = trackingCode.trim().toUpperCase();
-    const result = MOCK_TRACKING[code];
-    if (result) { setTrackingResult(result); setTrackingError(""); }
-    else { setTrackingResult(null); setTrackingError(`No se encontró el envío "${code}". Verifica el código.`); }
+    if (!code) return;
+    setTrackingError("");
+    setTrackingResult(null);
+    try {
+      const res = await fetch(`${API_URL}/tracking/${code}`);
+      const data = await res.json();
+      if (res.ok && data.tracking) {
+        setTrackingResult(data.tracking);
+      } else {
+        // Fallback to mock for demo
+        const mock = MOCK_TRACKING[code];
+        if (mock) { setTrackingResult(mock); }
+        else { setTrackingError(`No se encontró el envío "${code}". Verifica el código.`); }
+      }
+    } catch {
+      // Offline fallback
+      const mock = MOCK_TRACKING[code];
+      if (mock) { setTrackingResult(mock); }
+      else { setTrackingError(`No se encontró el envío "${code}". Verifica el código.`); }
+    }
   }
 
   function addBulto() {
@@ -875,7 +892,7 @@ export default function PublicQuotePage() {
         requiredDate: form.requiredDate,
         requiredTime: form.requiredTime,
         distanceKm: routeInfo?.distanceKm,
-        estimatedPrice: routeInfo?.price != null ? routeInfo.price + (form.avionetaCount * 50000) : null,
+        estimatedPrice: routeInfo?.price != null ? routeInfo.price : null,
         avionetaCount: form.avionetaCount,
         avioneta: form.avionetaCount > 0,
         urgent: form.urgent || false,
@@ -898,7 +915,7 @@ export default function PublicQuotePage() {
       setPickupCoords(null);
       setDeliveryCoords(null);
       setImages([null, null, null, null, null, null]);
-      setTimeout(() => setCreated(null), 3000);
+      setTimeout(() => setCreated(null), 10000);
 
       // ─── Background: send notifications in parallel (non-blocking) ─────
       const savedForm = { ...form };

@@ -100,6 +100,7 @@ async function sendEmailReminder(req, type, adminEmail, smtpConfig) {
 // ─── Hook principal ───────────────────────────────────────────────────────────
 export default function useAutoReminders(requests = []) {
   const sentRef     = useRef(new Set());   // "requestId-type" sent this session
+  const retriesRef  = useRef({});          // "requestId-type" → retry count (max 3)
   const requestsRef = useRef(requests);    // always up-to-date without re-creating interval
   const [toast, setToast] = useState(null);
 
@@ -167,8 +168,14 @@ export default function useAutoReminders(requests = []) {
             setTimeout(() => setToast(null), 7000);
             console.log(`[AutoReminder] ✅ ${type} OK → ${req.customerName} (${channels})`);
           } else {
-            console.warn(`[AutoReminder] ❌ ${type} FALLÓ → ${req.customerName} — reintentará en próximo ciclo`);
-            sentRef.current.delete(key); // allow retry
+            const retries = (retriesRef.current[key] || 0) + 1;
+            retriesRef.current[key] = retries;
+            if (retries < 3) {
+              console.warn(`[AutoReminder] ❌ ${type} FALLÓ → ${req.customerName} — reintento ${retries}/3`);
+              sentRef.current.delete(key); // allow retry (max 3)
+            } else {
+              console.warn(`[AutoReminder] ❌ ${type} FALLÓ 3 veces → ${req.customerName} — abandonado`);
+            }
           }
         });
       });

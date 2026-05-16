@@ -266,9 +266,10 @@ export function createRoutePlan(payload) {
     throw new Error("Selecciona al menos un pedido");
   }
 
+  const routeId = nextRouteCode();
   const route = {
-    id: nextRouteCode(),
-    name: payload.name || `Ruta ${nextRouteCode()}`,
+    id: routeId,
+    name: payload.name || `Ruta ${routeId}`,
     requestIds: selected.map((item) => item.id),
     orderedRequestIds: payload.orderedRequestIds?.length ? payload.orderedRequestIds : selected.map((item) => item.id),
     truckId: truck.id,
@@ -283,15 +284,18 @@ export function createRoutePlan(payload) {
 
   store.routes.unshift(route);
   truck.status = payload.startRoute ? "En ruta" : "Disponible";
-  saveStore();
 
+  // Update all selected requests without saving each time (batch save at end)
   selected.forEach((request) => {
     request.routeId = route.id;
     request.truckId = truck.id;
     request.truckName = truck.name;
     request.driverName = route.driverName;
-    updateRequestStatus(request.id, payload.startRoute ? "En ruta" : "Agendado");
+    request.status = payload.startRoute ? "En ruta" : "Agendado";
+    request.updatedAt = new Date().toISOString();
+    request.approximateLocation = payload.startRoute ? "En ruta" : "Agendado";
   });
+  saveStore(); // Single write for entire operation
 
   return route;
 }
