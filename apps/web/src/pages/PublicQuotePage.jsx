@@ -475,7 +475,7 @@ function AddressPair({
         setGeoLoading(false);
       },
       () => { alert("Permiso de ubicación denegado. Actívalo en tu navegador."); setGeoLoading(false); },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
     );
   }
 
@@ -627,8 +627,11 @@ export default function PublicQuotePage() {
   const [routeInfo, setRouteInfo] = useState(null); // {distanceKm, price, isRM, geometry}
   const [geocoding, setGeocoding] = useState(false);
   const [routeError, setRouteError] = useState("");
-  // Image uploads (6 slots)
-  const [images, setImages] = useState([null, null, null, null, null, null]);
+  // Image uploads — dynamic array, max 6
+  const MAX_PHOTOS = 6;
+  const [images, setImages] = useState([]);   // Array of base64 strings
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef(null);
 
   const routeMapRef = useRef(null);
   const routeMapInstanceRef = useRef(null);
@@ -902,7 +905,7 @@ export default function PublicQuotePage() {
         avioneta: form.avionetaCount > 0,
         urgent: form.urgent || false,
         observations: `${form.urgent ? "⚡ URGENTE\n" : ""}RUT: ${form.rut}\n${form.observations}`,
-        photos: images.filter(Boolean),
+        photos: [],  // Photos sent separately in background (faster first response)
         bultosDetail: bultos.filter(b => b.largo || b.ancho || b.alto || b.peso),
       };
       const res = await fetch(`${API_URL}/quote-requests`, {
@@ -913,21 +916,31 @@ export default function PublicQuotePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error al enviar solicitud");
 
-      // ─── Show success IMMEDIATELY — emails/WA fire in background ────────
+      // ─── Show success IMMEDIATELY — tracking code ready ──────────────────
       setCreated(data.request);
       setForm(getInitialForm());
       setRouteInfo(null);
       setPickupCoords(null);
       setDeliveryCoords(null);
-      setImages([null, null, null, null, null, null]);
+      const capturedImages = [...images];
+      setImages([]);
       setTimeout(() => setCreated(null), 10000);
 
-      // ─── Background: send notifications in parallel (non-blocking) ─────
+      // ─── Background: upload photos + send notifications (non-blocking) ───
       const savedForm = { ...form };
       const savedRouteInfo = routeInfo;
-      const savedImages = images;
+      const savedImages = capturedImages;
       (async () => {
         try {
+          // Upload photos first (deferred for fast first response)
+          if (savedImages.length > 0 && data.request?.id) {
+            fetch(`${API_URL}/quote-requests/${data.request.id}/photos`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ photos: savedImages }),
+            }).catch(() => {});
+          }
+
           let companyEmail = "";
           let waConfig = null;
           try { companyEmail = JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").email || ""; } catch {}
@@ -1489,10 +1502,10 @@ export default function PublicQuotePage() {
                             <div>
                               <p className="text-sm font-bold text-slate-800">¿Necesitas ayuda con la carga?</p>
                               <p className="mt-0.5 text-xs text-slate-500">Sumamos cargadores profesionales para objetos pesados, voluminosos o frágiles</p>
-                              <p className="mt-1 text-xs font-semibold text-blue-600">+$50.000 por cada ayudante</p>
+                              <p className="mt-1 text-xs text-slate-400">El valor se cotiza según el trabajo y metodología requerida</p>
                               {form.avionetaCount > 0 && (
                                 <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
-                                  {form.avionetaCount} ayudante{form.avionetaCount > 1 ? "s" : ""} · ${(form.avionetaCount * 50000).toLocaleString("es-CL")}
+                                  {form.avionetaCount} ayudante{form.avionetaCount > 1 ? "s" : ""}
                                 </p>
                               )}
                             </div>
@@ -1640,53 +1653,90 @@ export default function PublicQuotePage() {
 
               {/* Fotos de la carga */}
               <div className="border-t border-dropit-200 p-6 md:p-8">
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-dropit-accent/10">
-                    <Camera size={18} className="text-dropit-accent" />
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-dropit-accent/10">
+                      <Camera size={18} className="text-dropit-accent" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-dropit-950">Fotos de la carga <span className="text-xs font-normal text-dropit-500">(opcional)</span></h3>
+                      <p className="text-xs text-dropit-500">Capacidad máxima: {MAX_PHOTOS} fotos de envío</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-dropit-950">Fotos de la carga</h3>
-                    <p className="text-xs text-dropit-600">Opcional — adjunta hasta 6 imágenes para mejorar la cotización</p>
-                  </div>
+                  {images.length > 0 && (
+                    <span className="rounded-full bg-dropit-accent/10 px-2.5 py-1 text-xs font-bold text-dropit-accent">
+                      {images.length}/{MAX_PHOTOS}
+                    </span>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {images.map((img, idx) => (
-                    <div key={idx}>
-                      {img ? (
-                        <div className="relative aspect-square overflow-hidden rounded-xl border-2 border-dropit-accent/30">
-                          <img src={img} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
+
+                {/* Thumbnails row — fotos ya agregadas */}
+                {images.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-dropit-200 shadow-sm">
+                        <img src={img} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/30">
                           <button
                             type="button"
-                            onClick={() => setImages(prev => prev.map((x, i) => i === idx ? null : x))}
-                            className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
-                          ><X size={11} /></button>
+                            onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
+                            className="scale-0 rounded-full bg-red-500 p-1 text-white shadow transition-transform group-hover:scale-100"
+                          ><X size={10} /></button>
                         </div>
-                      ) : (
-                        <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-dropit-300 bg-dropit-100/40 transition hover:border-dropit-accent hover:bg-dropit-accent/5">
-                          <Camera size={22} className="mb-1 text-dropit-400" />
-                          <span className="text-[11px] font-semibold text-dropit-600">Foto {idx + 1}</span>
-                          <span className="text-[10px] text-dropit-400">JPG, PNG</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              if (file.size > 15 * 1024 * 1024) { alert("La imagen no puede superar 15 MB"); return; }
-                              try {
-                                const compressed = await compressImage(file, 1280, 0.82);
-                                setImages(prev => prev.map((x, i) => i === idx ? compressed : x));
-                              } catch (err) {
-                                alert("No se pudo procesar la imagen. Intenta con otra.");
-                              }
-                            }}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        <div className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[8px] font-bold text-white">{idx + 1}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload zone — solo si hay espacio */}
+                {images.length < MAX_PHOTOS && (
+                  <label
+                    className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition-all ${
+                      photoUploading
+                        ? "border-dropit-accent/40 bg-dropit-accent/5"
+                        : "border-dropit-300 bg-dropit-50 hover:border-dropit-accent hover:bg-dropit-accent/5"
+                    }`}
+                  >
+                    {photoUploading ? (
+                      <>
+                        <Loader2 size={22} className="text-dropit-accent animate-spin" />
+                        <p className="text-sm font-semibold text-dropit-600">Procesando imagen...</p>
+                      </>
+                    ) : (
+                      <>
+                        <Camera size={22} className="text-dropit-400" />
+                        <p className="text-sm font-semibold text-dropit-600">
+                          {images.length === 0 ? "Agregar fotos de la carga" : `Agregar más · ${MAX_PHOTOS - images.length} disponible${MAX_PHOTOS - images.length !== 1 ? "s" : ""}`}
+                        </p>
+                        <p className="text-xs text-dropit-400">JPG, PNG — toca para seleccionar o arrastra aquí</p>
+                      </>
+                    )}
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={async (e) => {
+                        const files = [...(e.target.files || [])].slice(0, MAX_PHOTOS - images.length);
+                        if (!files.length) return;
+                        setPhotoUploading(true);
+                        try {
+                          const compressed = await Promise.all(
+                            files.map(async (f) => {
+                              if (f.size > 15 * 1024 * 1024) return null;
+                              try { return await compressImage(f, 1280, 0.82); } catch { return null; }
+                            })
+                          );
+                          setImages(prev => [...prev, ...compressed.filter(Boolean)].slice(0, MAX_PHOTOS));
+                        } catch { /* silent */ }
+                        setPhotoUploading(false);
+                        if (photoInputRef.current) photoInputRef.current.value = "";
+                      }}
+                    />
+                  </label>
+                )}
               </div>
 
               {/* Submit */}
