@@ -198,27 +198,32 @@ function parseNominatim(result) {
   return { street, commune, subtext, raw: rawCity, lat, lng };
 }
 
-// Combined search: Photon first, Nominatim fallback. Deduplicates results.
+// Timeout wrapper
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+}
+
+// Combined search: Photon + Nominatim in parallel for speed. Deduplicates results.
 async function multiSearch(q) {
-  let results = [];
-  try {
-    results = await photonSearch(q);
-  } catch { /* ignore */ }
-  if (results.length < 2) {
-    try {
-      const nomData = await nominatimSearch(q);
-      const nomParsed = nomData.map(parseNominatim);
-      results = [...results, ...nomParsed];
-    } catch { /* ignore */ }
-  }
+  const [photon, nominatim] = await Promise.allSettled([
+    withTimeout(photonSearch(q), 4000),
+    withTimeout(nominatimSearch(q).then(d => d.map(parseNominatim)), 5000),
+  ]);
+
+  const photonResults    = photon.status    === "fulfilled" ? photon.value    : [];
+  const nominatimResults = nominatim.status === "fulfilled" ? nominatim.value : [];
+
+  // Merge: photon first (better street names), nominatim fills gaps
+  const combined = [...photonResults, ...nominatimResults];
+
   // Deduplicate by street+commune
   const seen = new Set();
-  return results.filter(r => {
+  return combined.filter(r => {
     const k = `${r.street}|${r.commune}`.toLowerCase();
     if (seen.has(k) || !r.street) return false;
     seen.add(k);
     return true;
-  }).slice(0, 6);
+  }).slice(0, 7);
 }
 
 // ─── Extract commune from Google address_components ───────────────────────────

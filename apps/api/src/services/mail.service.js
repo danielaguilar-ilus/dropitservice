@@ -1,47 +1,36 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { saveStore, store } from "../data/store.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIG_FILE = path.join(__dirname, "../../smtp-config.json");
+// ─── In-memory config — priority: env vars > db.json > defaults ──────────────
+// In Railway: set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM as
+// environment variables for permanent persistence across deploys.
 
-// ─── Load persisted config (survives server restarts) ────────────────────────
-function loadPersistedConfig() {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
-    }
-  } catch { /* ignore */ }
-  return null;
+function loadFromStore() {
+  return store.media?.smtpConfig || null;
 }
 
-function persistConfig(cfg) {
-  try {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), "utf8");
-  } catch { /* ignore */ }
-}
-
-// ─── In-memory config — initialized from file, then .env as fallback ─────────
-const saved = loadPersistedConfig();
+const saved = loadFromStore();
 let _cfg = {
-  host:     saved?.host     || env.smtpHost,
-  port:     saved?.port     || env.smtpPort,
-  secure:   saved?.secure   ?? env.smtpSecure,
-  user:     saved?.user     || env.smtpUser,
-  pass:     saved?.pass     || env.smtpPass,
-  fromName: saved?.fromName || env.smtpFrom,
+  host:     env.smtpHost     || saved?.host     || "smtp.gmail.com",
+  port:     env.smtpPort     || saved?.port     || 587,
+  secure:   env.smtpSecure   ?? saved?.secure   ?? false,
+  user:     env.smtpUser     || saved?.user     || "",
+  pass:     env.smtpPass     || saved?.pass     || "",
+  fromName: env.smtpFrom     || saved?.fromName || "DropIt Service",
 };
 
 export function updateSmtpConfig({ host, port, secure, user, pass, fromName }) {
-  if (host !== undefined)   _cfg.host     = host;
-  if (port !== undefined)   _cfg.port     = Number(port);
-  if (secure !== undefined) _cfg.secure   = secure;
-  if (user !== undefined)   _cfg.user     = user;
-  if (pass !== undefined)   _cfg.pass     = pass;
+  if (host !== undefined)     _cfg.host     = host;
+  if (port !== undefined)     _cfg.port     = Number(port);
+  if (secure !== undefined)   _cfg.secure   = secure;
+  if (user !== undefined)     _cfg.user     = user;
+  if (pass !== undefined)     _cfg.pass     = pass;
   if (fromName !== undefined) _cfg.fromName = fromName;
-  persistConfig(_cfg); // ← save to file immediately
+  // Persist to db.json so it survives restarts (but env vars take priority on next boot)
+  if (!store.media) store.media = {};
+  store.media.smtpConfig = { ..._cfg };
+  saveStore();
 }
 
 export function getSmtpConfig() {

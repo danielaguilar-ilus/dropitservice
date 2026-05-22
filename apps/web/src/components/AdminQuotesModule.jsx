@@ -705,13 +705,21 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                 </div>
               </div>
 
+              {/* ── Bandeja de entrada: bloque de datos completo ───────────── */}
               <div className="grid gap-3 md:grid-cols-2">
-                <InfoCard icon={User}    label="Contacto"       value={selected.contactPerson} />
-                <InfoCard icon={Phone}   label="Teléfono"       value={<a href={`tel:${selected.contactPhone}`} className="text-dropit-accent font-semibold">{selected.contactPhone}</a>} />
-                <InfoCard icon={Mail}    label="Email"          value={<a href={`mailto:${selected.contactEmail}`} className="text-dropit-accent font-semibold">{selected.contactEmail}</a>} />
+                {/* RUT extraído del campo observaciones */}
+                {(() => {
+                  const rut = (selected.observations || "").split("\n").find(l => l.startsWith("RUT:"))?.replace("RUT: ", "").trim();
+                  return rut ? (
+                    <InfoCard icon={User} label="🪪 RUT" value={<span className="font-mono font-bold text-slate-900">{rut}</span>} />
+                  ) : null;
+                })()}
+                <InfoCard icon={User}    label="Contacto"       value={selected.contactPerson || selected.customerName} />
+                <InfoCard icon={Phone}   label="Teléfono"       value={<a href={`tel:${selected.contactPhone}`} className="text-dropit-accent font-bold">{selected.contactPhone}</a>} />
+                <InfoCard icon={Mail}    label="Email cliente"  value={<a href={`mailto:${selected.contactEmail}`} className="text-dropit-accent font-bold truncate">{selected.contactEmail}</a>} />
                 <InfoCard icon={Clock}   label="Fecha / Hora"   value={`${selected.requiredDate || "—"}${selected.requiredTime ? ` a las ${selected.requiredTime}` : ""}`} />
-                <InfoCard icon={MapPin}  label="📦 Retiro"      value={selected.pickupAddress} />
-                <InfoCard icon={MapPin}  label="🏁 Entrega"     value={selected.deliveryAddress} />
+                <InfoCard icon={MapPin}  label="📦 Dirección retiro"  value={selected.pickupAddress} />
+                <InfoCard icon={MapPin}  label="🏁 Dirección entrega" value={selected.deliveryAddress} />
                 <InfoCard icon={Package} label="Carga"          value={`${selected.packages} bultos · ${selected.estimatedWeightKg} kg`} />
                 {(() => {
                   const live    = routeCache[selected.id];
