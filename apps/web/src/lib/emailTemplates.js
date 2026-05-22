@@ -244,6 +244,94 @@ export function tplEmpresaNuevaCotizacion({ customerName, rut, contactPhone, con
   `, name);
 }
 
+// ─── Cotización confirmada → cliente (precio final, con peoneta si aplica) ───
+export function tplCotizacionConfirmada({
+  customerName,
+  trackingCode,
+  pickupAddress,
+  deliveryAddress,
+  packages,
+  estimatedWeightKg,
+  distanceKm,
+  serviceType,
+  quotedAmount,
+  avionetaCount,
+  requiredDate,
+  requiredTime,
+  internalNotes,
+  isUpdate,
+  logoUrl,
+  companyName,
+  supportEmail,
+}) {
+  const name = companyName || "DropIt Service";
+  const peonetas = Number(avionetaCount) || 0;
+  const total = Number(quotedAmount) || 0;
+  const titleText = isUpdate ? "Cotización actualizada" : "Cotización confirmada";
+  const subtitleText = isUpdate
+    ? "Hemos ajustado tu propuesta con los nuevos parámetros"
+    : "Tu propuesta final está lista";
+
+  return wrapper(`
+    ${header(titleText, subtitleText, logoUrl, name)}
+    ${body(`
+      <tr><td>
+        <p style="margin:0 0 14px;font-size:15px;color:${BRAND.text};font-family:Arial,sans-serif;">
+          Hola <strong>${customerName}</strong>,
+        </p>
+        <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.65;font-family:Arial,sans-serif;">
+          ${isUpdate
+            ? "Te enviamos la <strong>versión actualizada</strong> de tu cotización con los ajustes aplicados. Si todo está conforme, confirma para agendar el retiro."
+            : "Tu solicitud fue procesada y este es el <strong>valor final</strong> de tu servicio de transporte. Si lo confirmas, agendamos el retiro de inmediato."}
+        </p>
+
+        <!-- Precio destacado -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;">
+          <tr>
+            <td style="background:linear-gradient(135deg,${BRAND.accent},${BRAND.accentDark});padding:24px 28px;border-radius:14px;text-align:center;">
+              <p style="margin:0 0 4px;font-size:11px;color:rgba(255,255,255,0.85);font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:2px;font-weight:700;">Valor total del servicio</p>
+              <p style="margin:0;font-size:36px;color:#fff;font-family:Arial,sans-serif;font-weight:900;letter-spacing:-1px;line-height:1.1;">
+                $${total.toLocaleString("es-CL")} <span style="font-size:14px;font-weight:600;opacity:.8;">CLP</span>
+              </p>
+              ${peonetas > 0 ? `<p style="margin:8px 0 0;font-size:12px;color:rgba(255,255,255,0.85);font-family:Arial,sans-serif;">Incluye ${peonetas} ayudante${peonetas > 1 ? "s" : ""} profesional${peonetas > 1 ? "es" : ""} para la carga</p>` : ""}
+            </td>
+          </tr>
+        </table>
+
+        ${infoBox([
+          ["Código de seguimiento", `<strong style="font-family:monospace;color:${BRAND.accent};">${trackingCode || "—"}</strong>`],
+          ["Tipo de servicio",       serviceType || "—"],
+          ["📦 Retiro",              pickupAddress || "—"],
+          ["🏁 Entrega",             deliveryAddress || "—"],
+          ["Bultos / Peso",          `${packages || "—"} bultos · ${estimatedWeightKg || "—"} kg`],
+          ...(distanceKm ? [["Distancia", `${distanceKm} km`]] : []),
+          ...(peonetas > 0 ? [["Ayudantes incluidos", `${peonetas} peoneta${peonetas > 1 ? "s" : ""}`]] : []),
+          ...(requiredDate ? [["Fecha solicitada", `${requiredDate}${requiredTime ? ` · ${requiredTime}` : ""}`]] : []),
+        ])}
+
+        ${internalNotes ? `
+          <div style="margin-top:18px;padding:14px 18px;background:#fff7ed;border-left:3px solid ${BRAND.accent};border-radius:6px;">
+            <p style="margin:0 0 4px;font-size:11px;color:${BRAND.accentDeep};font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">Comentarios del operador</p>
+            <p style="margin:0;font-size:13px;color:#374151;font-family:Arial,sans-serif;line-height:1.6;">${internalNotes}</p>
+          </div>
+        ` : ""}
+
+        <div style="margin-top:24px;padding:14px 18px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;">
+          <p style="margin:0;font-size:13px;color:#166534;font-family:Arial,sans-serif;line-height:1.55;">
+            ✅ <strong>Para confirmar el servicio</strong>, responde este correo o escríbenos a <a href="mailto:${supportEmail || "soporte@dropit.cl"}" style="color:${BRAND.accent};font-weight:700;text-decoration:none;">${supportEmail || "soporte@dropit.cl"}</a>.
+          </p>
+        </div>
+      </td></tr>
+    `)}
+    ${footer(`
+      <tr><td align="center">
+        <p style="margin:0 0 10px;font-size:12px;color:rgba(255,255,255,0.5);font-family:Arial,sans-serif;">El valor es válido por 24 horas. Una vez confirmado, agendamos el retiro.</p>
+        ${button("📩 Confirmar cotización", `mailto:${supportEmail || "soporte@dropit.cl"}?subject=Confirmo cotización ${trackingCode}&body=Hola, confirmo la cotización ${trackingCode} por $${total.toLocaleString("es-CL")}.`)}
+      </td></tr>
+    `)}
+  `, name);
+}
+
 // ─── Status update → client ───────────────────────────────────────────────────
 export function tplEstadoPedido({ customerName, status, trackingCode, eta, conductorName, conductorPhone, trackingUrl, logoUrl, companyName }) {
   const name = companyName || "DropIt Service";

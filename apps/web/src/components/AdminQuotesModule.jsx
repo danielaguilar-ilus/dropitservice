@@ -6,7 +6,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "../lib/messageLog";
 import { api } from "../lib/api";
-import { getCompanyName, getLogoUrl, tplEmpresaNuevaCotizacion } from "../lib/emailTemplates";
+import { getCompanyName, getLogoUrl, tplEmpresaNuevaCotizacion, tplCotizacionConfirmada } from "../lib/emailTemplates";
 import { serviceTypes } from "../lib/constants";
 import StatusBadge from "./StatusBadge";
 import QuotePDFPreview from "./QuotePDFPreview";
@@ -265,7 +265,8 @@ export async function sendWAReminder(request, type, waConfig) {
 export default function AdminQuotesModule({ requests, onSendQuote }) {
   const tick = useTick(30000); // re-render every 30s to update timers
   const [selectedId, setSelectedId] = useState(null);
-  const [quoteForm, setQuoteForm] = useState({ quotedAmount: "", serviceType: serviceTypes[0], internalNotes: "" });
+  const [quoteForm, setQuoteForm] = useState({ quotedAmount: "", serviceType: serviceTypes[0], internalNotes: "", avionetaCount: 0 });
+  const [updateMode, setUpdateMode] = useState(false); // true when re-quoting an already-quoted request
   const [photos, setPhotos] = useState([]); // base64 strings, max 3
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState(null); // {ok, text}
@@ -385,12 +386,18 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
   useEffect(() => {
     if (selected) {
       const suggested = calcSuggestedPrice(selected);
+      // If already quoted, pre-fill from the saved quote so admin can adjust
+      const baseAmount = selected.status === "Cotizado" && selected.quotedAmount
+        ? String(selected.quotedAmount)
+        : suggested ? String(suggested) : (selected.estimatedPrice ? String(selected.estimatedPrice) : "");
       setQuoteForm(f => ({
         ...f,
-        quotedAmount: suggested ? String(suggested) : (selected.estimatedPrice ? String(selected.estimatedPrice) : f.quotedAmount),
+        quotedAmount: baseAmount,
         serviceType: selected.serviceType || serviceTypes[0],
         internalNotes: selected.internalNotes || "",
+        avionetaCount: Number(selected.avionetaCount) || 0,
       }));
+      setUpdateMode(false);
       setMessage(null);
     }
   }, [selectedId]);
@@ -413,47 +420,45 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
       const companyEmail = (() => { try { return JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").email || ""; } catch { return ""; } })();
       const logoUrl = getLogoUrl();
       const companyName = getCompanyName();
-      if (companyEmail) {
-        try {
-          await fetch(`${API_URL}/mail/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: selected.contactEmail,
-              subject: `Cotización lista — ${companyName} · Ref. ${selected.trackingCode}`,
-              html: tplEmpresaNuevaCotizacion({
-                customerName: selected.customerName,
-                rut: (selected.observations || "").split("\n")[0]?.replace("RUT: ", "") || "—",
-                contactPhone: selected.contactPhone,
-                contactEmail: selected.contactEmail,
-                pickupAddress: selected.pickupAddress,
-                pickupCommune: "",
-                deliveryAddress: selected.deliveryAddress,
-                deliveryCommune: "",
-                packages: selected.packages,
-                estimatedWeightKg: selected.estimatedWeightKg,
-                cargoDescription: selected.cargoDescription,
-                requiredDate: selected.requiredDate,
-                requiredTime: selected.requiredTime,
-                observations: selected.observations,
-                trackingCode: selected.trackingCode,
-                logoUrl, companyName,
-                distanceKm: selected.distanceKm,
-                estimatedPrice: finalAmount,
-                imageCount: 0,
-              }),
-              text: `Cotización lista para ${selected.customerName}. Valor: $${finalAmount.toLocaleString("es-CL")}`,
-              // PDF adjunto como HTML imprimible
-              attachments: [{
-                filename: `Cotizacion-${selected.trackingCode}.html`,
-                content:  pdfBase64,
-                encoding: "base64",
-                contentType: "text/html; charset=utf-8",
-              }],
+      const isUpdate = updateMode || selected.status === "Cotizado";
+      const subjectPrefix = isUpdate ? "Cotización actualizada" : "Cotización confirmada";
+      try {
+        await fetch(`${API_URL}/mail/send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: selected.contactEmail,
+            subject: `${subjectPrefix} — ${companyName} · Ref. ${selected.trackingCode}`,
+            html: tplCotizacionConfirmada({
+              customerName:    selected.customerName,
+              trackingCode:    selected.trackingCode,
+              pickupAddress:   selected.pickupAddress,
+              deliveryAddress: selected.deliveryAddress,
+              packages:        selected.packages,
+              estimatedWeightKg: selected.estimatedWeightKg,
+              distanceKm:      selected.distanceKm,
+              serviceType:     quoteForm.serviceType,
+              quotedAmount:    finalAmount,
+              avionetaCount:   Number(quoteForm.avionetaCount) || selected.avionetaCount || 0,
+              requiredDate:    selected.requiredDate,
+              requiredTime:    selected.requiredTime,
+              internalNotes:   quoteForm.internalNotes,
+              isUpdate,
+              logoUrl,
+              companyName,
+              supportEmail:    companyEmail || "soporte@dropit.cl",
             }),
-          });
-        } catch {}
-      }
+            text: `${subjectPrefix} para ${selected.customerName}. Valor total: $${finalAmount.toLocaleString("es-CL")}${quoteForm.avionetaCount ? ` · Incluye ${quoteForm.avionetaCount} ayudante(s)` : ""}`,
+            // PDF adjunto como HTML imprimible
+            attachments: [{
+              filename: `Cotizacion-${selected.trackingCode}.html`,
+              content:  pdfBase64,
+              encoding: "base64",
+              contentType: "text/html; charset=utf-8",
+            }],
+          }),
+        });
+      } catch {}
 
       // WhatsApp confirmation to client
       if (waConfig?.authToken) {
@@ -505,8 +510,12 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
         });
       }
 
-      setMessage({ ok: true, text: `✅ Cotización enviada a ${selected.customerName}` });
-      setQuoteForm({ quotedAmount: "", serviceType: serviceTypes[0], internalNotes: "" });
+      const successText = (updateMode || selected.status === "Cotizado")
+        ? `✅ Cotización actualizada y reenviada a ${selected.customerName}`
+        : `✅ Cotización enviada a ${selected.customerName}`;
+      setMessage({ ok: true, text: successText });
+      setQuoteForm({ quotedAmount: "", serviceType: serviceTypes[0], internalNotes: "", avionetaCount: 0 });
+      setUpdateMode(false);
     } catch (err) {
       setMessage({ ok: false, text: `Error: ${err.message}` });
     } finally {
@@ -918,16 +927,24 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
             </div>
 
             {/* Quote form */}
-            {selected.status === "Pendiente de cotizacion" && (
+            {(selected.status === "Pendiente de cotizacion" || updateMode) && (
               <form onSubmit={submitQuote} className="rounded-2xl border border-dropit-accent/20 bg-white p-5 shadow-sm">
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-dropit-accent/10">
-                    <Send size={16} className="text-dropit-accent" />
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-dropit-accent/10">
+                      <Send size={16} className="text-dropit-accent" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-950">{updateMode ? "Modificar cotización" : "Enviar cotización"}</h4>
+                      <p className="text-xs text-slate-500">{updateMode ? "Se reenviará al cliente con los cambios" : "Se enviará por email y WhatsApp al cliente"}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-black text-slate-950">Enviar cotización</h4>
-                    <p className="text-xs text-slate-500">Se enviará por email y WhatsApp al cliente</p>
-                  </div>
+                  {updateMode && (
+                    <button type="button" onClick={() => { setUpdateMode(false); setMessage(null); }}
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                      <X size={12} /> Cancelar
+                    </button>
+                  )}
                 </div>
 
                 {/* Price suggestion */}
@@ -968,11 +985,34 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="label-base">Notas internas (no se envían al cliente)</label>
+                    <label className="label-base">Comentarios para el cliente (aparecen en el correo)</label>
                     <textarea className="input-base min-h-[72px] resize-none"
                       value={quoteForm.internalNotes}
                       onChange={e => setQuoteForm(f => ({ ...f, internalNotes: e.target.value }))}
-                      placeholder="Comentarios internos sobre el pedido..." />
+                      placeholder="Detalles relevantes del servicio, condiciones especiales, contacto del conductor..." />
+                  </div>
+
+                  {/* Peonetas / ayudantes adjuster */}
+                  <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-lg">💪</div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">Ayudantes incluidos</p>
+                          <p className="text-xs text-slate-500">Se mencionarán en el correo enviado al cliente</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0 rounded-full border border-blue-200 bg-white px-1 py-1 shadow-sm">
+                        <button type="button"
+                          onClick={() => setQuoteForm(f => ({ ...f, avionetaCount: Math.max(0, Number(f.avionetaCount) - 1) }))}
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-base font-bold text-blue-600 hover:bg-blue-50 disabled:opacity-30"
+                          disabled={!Number(quoteForm.avionetaCount)}>−</button>
+                        <span className="w-5 text-center text-base font-black text-slate-800">{Number(quoteForm.avionetaCount) || 0}</span>
+                        <button type="button"
+                          onClick={() => setQuoteForm(f => ({ ...f, avionetaCount: Math.min(5, (Number(f.avionetaCount) || 0) + 1) }))}
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-base font-bold text-blue-600 hover:bg-blue-50">+</button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Photo upload */}
@@ -1005,7 +1045,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                   <button type="submit" disabled={sending || !quoteForm.quotedAmount}
                     className="flex items-center gap-2 rounded-xl bg-dropit-accent px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all disabled:opacity-50">
                     {sending ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
-                    {sending ? "Enviando..." : "Enviar cotización"}
+                    {sending ? "Enviando..." : (updateMode ? "Reenviar al cliente" : "Enviar cotización")}
                   </button>
                   <button type="button" onClick={() => setPdfPreview(buildPDFHtml(selected, Number(quoteForm.quotedAmount) || 0, selected.photos || []))}
                     className="flex items-center gap-2 rounded-xl border border-dropit-accent/30 bg-dropit-accent/5 px-5 py-2.5 text-sm font-bold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all">
@@ -1023,16 +1063,27 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
             )}
 
             {/* Already quoted */}
-            {selected.status === "Cotizado" && (
+            {selected.status === "Cotizado" && !updateMode && (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <CheckCircle2 size={22} className="text-emerald-600" />
                     <div>
-                      <p className="font-bold text-emerald-800">Cotización enviada</p>
-                      <p className="text-sm text-emerald-700">Valor: <strong>${Number(selected.quotedAmount).toLocaleString("es-CL")}</strong> · {selected.serviceType}</p>
+                      <p className="font-bold text-emerald-800">Cotización enviada al cliente</p>
+                      <p className="text-sm text-emerald-700">
+                        Valor: <strong>${Number(selected.quotedAmount).toLocaleString("es-CL")}</strong> · {selected.serviceType}
+                        {(Number(selected.avionetaCount) > 0) && <> · <strong>{selected.avionetaCount} ayudante{selected.avionetaCount > 1 ? "s" : ""}</strong></>}
+                      </p>
                     </div>
                   </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => setUpdateMode(true)}
+                      className="flex items-center gap-1.5 rounded-lg bg-dropit-accent px-3 py-2 text-xs font-bold text-white shadow hover:bg-dropit-accent-dark transition-all">
+                      <RefreshCw size={13} /> Modificar y reenviar
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-end">
                   <button onClick={() => setPdfPreview(buildPDFHtml(selected, selected.quotedAmount, selected.photos || []))}
                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition-all">
                     <Eye size={14} /> Ver PDF

@@ -130,6 +130,21 @@ export function quoteRequest(requestId, payload) {
   request.quotedAmount = Number(payload.quotedAmount);
   request.serviceType = payload.serviceType;
   request.internalNotes = payload.internalNotes || "";
+  if (payload.avionetaCount !== undefined) {
+    request.avionetaCount = Number(payload.avionetaCount) || 0;
+    request.avioneta = request.avionetaCount > 0;
+  }
+  // Track all quote revisions for audit trail
+  if (request.status === "Cotizado") {
+    request.quoteRevisions = request.quoteRevisions || [];
+    request.quoteRevisions.push({
+      revisedAt: new Date().toISOString(),
+      previousAmount: request.previousQuotedAmount ?? null,
+      newAmount: request.quotedAmount,
+      avionetaCount: request.avionetaCount || 0,
+    });
+  }
+  request.previousQuotedAmount = request.quotedAmount;
   request.status = "Cotizado";
   request.emailSent = true;
   request.updatedAt = new Date().toISOString();
