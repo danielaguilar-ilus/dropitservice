@@ -52,13 +52,14 @@ function urgencyConfig(mins) {
   return { color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200", dot: "bg-emerald-400", label: "Reciente", pulse: false };
 }
 
-function calcSuggestedPrice(req) {
-  if (!req.distanceKm) return null;
+function calcSuggestedPrice(req, overrideKm = null) {
+  const km = overrideKm || req.distanceKm;
+  if (!km) return null;
   const isRM = RM_COMUNAS.has((req.pickupAddress || "").split(",").pop()?.trim()) ||
                RM_COMUNAS.has((req.deliveryAddress || "").split(",").pop()?.trim());
   if (!isRM) return null;
   const rate = req.estimatedWeightKg > 50 ? 3000 : 2200;
-  const base = Math.round(req.distanceKm * rate);
+  const base = Math.round(km * rate);
   const avionetaCount = req.avionetaCount ?? (req.avioneta ? 1 : 0);
   const avioneta = avionetaCount * 50000;
   return base + avioneta;
@@ -931,7 +932,8 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
 
                 {/* Price suggestion */}
                 {(() => {
-                  const suggested = calcSuggestedPrice(selected);
+                  const liveKm = routeCache[selected.id]?.km;
+                  const suggested = calcSuggestedPrice(selected, liveKm || null);
                   return suggested ? (
                     <div className="mb-4 flex items-center justify-between rounded-xl bg-dropit-accent/8 border border-dropit-accent/20 px-4 py-3">
                       <div>
