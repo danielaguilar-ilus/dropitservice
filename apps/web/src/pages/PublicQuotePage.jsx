@@ -615,7 +615,6 @@ export default function PublicQuotePage() {
         requiredDate: form.requiredDate,
         requiredTime: form.requiredTime,
         distanceKm: routeInfo?.distanceKm,
-        estimatedPrice: routeInfo?.price != null ? routeInfo.price : null,
         avionetaCount: form.avionetaCount,
         avioneta: form.avionetaCount > 0,
         urgent: form.urgent || false,
@@ -644,7 +643,8 @@ export default function PublicQuotePage() {
       setDeliveryCoords(null);
       const capturedImages = [...images];
       setImages([]);
-      setTimeout(() => setCreated(null), 10000);
+      // Scroll to top of page so user sees the success screen
+      window.scrollTo({ top: 0, behavior: "smooth" });
 
       // ─── Background: upload photos + send notifications (non-blocking) ───
       const savedForm = { ...form };
@@ -711,7 +711,6 @@ export default function PublicQuotePage() {
                     requiredTime: savedForm.requiredTime,
                     observations: savedForm.observations, trackingCode, logoUrl, companyName,
                     distanceKm: savedRouteInfo?.distanceKm,
-                    estimatedPrice: savedRouteInfo?.price,
                     imageCount: imagesSent,
                   }),
                   text: `Nueva cotización de ${savedForm.customerName} (${savedForm.rut}). Código: ${trackingCode}`,
@@ -742,7 +741,6 @@ export default function PublicQuotePage() {
                     `🏁 *Entrega:* ${savedForm.deliveryAddress}${savedForm.deliveryCommune ? `, ${savedForm.deliveryCommune}` : ""}\n` +
                     `📅 *Fecha:* ${savedForm.requiredDate || "—"}${savedForm.requiredTime ? ` a las ${savedForm.requiredTime}` : ""}\n` +
                     `📏 *Distancia:* ${savedRouteInfo ? `${savedRouteInfo.distanceKm} km` : "—"}\n` +
-                    `💰 *Precio est.:* ${savedRouteInfo?.price ? `$${savedRouteInfo.price.toLocaleString("es-CL")}` : "—"}\n` +
                     `📸 *Fotos:* ${imagesSent}`,
                 }),
               }).catch(() => {})
@@ -889,7 +887,7 @@ export default function PublicQuotePage() {
       {/* ─── HERO ─── */}
       <section className="relative overflow-hidden bg-dropit-950 px-4 py-24 text-white">
         {/* Marketing carousel — smart fit: blurred fill + contained main image */}
-        {carouselImages.map((src, i) => (
+        {carouselImages.length > 0 ? carouselImages.map((src, i) => (
           <div
             key={i}
             className="pointer-events-none absolute inset-0 transition-opacity duration-1000"
@@ -900,7 +898,12 @@ export default function PublicQuotePage() {
             {/* Main image contained — no cropping */}
             <img src={src} className="absolute inset-0 h-full w-full object-contain opacity-55" alt="" />
           </div>
-        ))}
+        )) : (
+          /* Logo fallback when no carousel images are loaded */
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-end pr-16 opacity-10">
+            <img src="/dropit-logo.jpeg" alt="" className="h-80 w-80 rounded-full object-contain" />
+          </div>
+        )}
         {/* Dark gradient overlay — stronger at bottom for text legibility */}
         <div className="pointer-events-none absolute inset-0" style={{
           background: "linear-gradient(to bottom, rgba(12,8,4,0.55) 0%, rgba(12,8,4,0.45) 40%, rgba(12,8,4,0.65) 100%)"
@@ -1031,64 +1034,67 @@ export default function PublicQuotePage() {
           </div>
 
           {created ? (
-            <div className="overflow-hidden rounded-2xl border border-dropit-accent/20 bg-white shadow-xl">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-dropit-accent to-dropit-accent-dark px-8 py-8 text-center text-white">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur">
-                  <CheckCircle2 size={34} className="text-white" />
-                </div>
-                <h3 className="text-2xl font-black">¡Solicitud enviada con éxito!</h3>
-                <p className="mt-1 text-sm text-white/80">Te responderemos en menos de 1 hora hábil</p>
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-5 py-2 text-sm font-bold backdrop-blur">
-                  <span className="opacity-70">Código:</span>
-                  <span className="font-mono text-base tracking-widest">{created.trackingCode}</span>
-                </div>
-              </div>
-
-              {/* Detail cards */}
-              <div className="grid gap-3 p-6 md:grid-cols-2">
-                <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">Solicitud</p>
-                  <p className="mt-1 font-mono text-lg font-black text-dropit-950">{created.id}</p>
-                </div>
-                <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">Bultos / Peso</p>
-                  <p className="mt-1 text-lg font-black text-dropit-950">{created.packages} bultos · {created.estimatedWeightKg} kg en total</p>
-                </div>
-                <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">📍 Retiro</p>
-                  <p className="mt-1 text-sm font-semibold text-dropit-800">{created.pickupAddress}</p>
-                </div>
-                <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">🏁 Entrega</p>
-                  <p className="mt-1 text-sm font-semibold text-dropit-800">{created.deliveryAddress}</p>
-                </div>
-                {created.distanceKm && (
-                  <div className="rounded-xl border border-dropit-accent/20 bg-dropit-accent/5 p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">📏 Distancia</p>
-                    <p className="mt-1 text-lg font-black text-dropit-950">{created.distanceKm} km</p>
+            /* ── SUCCESS SCREEN — full page overlay ─────────────────────────── */
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-dropit-950/90 backdrop-blur-sm p-4">
+              <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+                {/* Header */}
+                <div className="bg-gradient-to-br from-dropit-accent via-orange-500 to-dropit-accent-dark px-8 py-10 text-center text-white">
+                  <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur ring-4 ring-white/30">
+                    <CheckCircle2 size={40} className="text-white" />
                   </div>
-                )}
-                {created.estimatedPrice && (
-                  <div className="rounded-xl border border-dropit-accent/20 bg-dropit-accent/5 p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">💰 Valor referencial</p>
-                    <p className="mt-1 text-lg font-black text-dropit-accent">${created.estimatedPrice.toLocaleString("es-CL")}</p>
-                    <p className="text-[10px] text-dropit-500 mt-0.5">Los valores pueden variar según dificultad</p>
+                  <h3 className="text-3xl font-black">¡Solicitud enviada!</h3>
+                  <p className="mt-2 text-base text-white/85">Te responderemos en menos de 1 hora hábil</p>
+                  <div className="mt-5 inline-flex flex-col items-center gap-1 rounded-2xl bg-white/15 px-6 py-3 backdrop-blur">
+                    <span className="text-xs font-bold uppercase tracking-wider text-white/70">Código de seguimiento</span>
+                    <span className="font-mono text-2xl font-black tracking-widest">{created.trackingCode}</span>
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="border-t border-dropit-200 px-6 py-5 text-center">
-                <p className="mb-4 text-sm text-dropit-600">
-                  Revisa tu correo <strong>{created.contactEmail}</strong> — te enviaremos la cotización formal allí
-                </p>
-                <button
-                  onClick={() => setCreated(null)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-dropit-accent px-8 py-3 font-semibold text-white hover:bg-dropit-accent-dark transition-colors"
-                >
-                  Nueva solicitud
-                  <ArrowRight size={16} />
-                </button>
+                {/* Detail cards */}
+                <div className="grid gap-3 p-6 sm:grid-cols-2">
+                  <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">N° Solicitud</p>
+                    <p className="mt-1 font-mono text-lg font-black text-dropit-950">{created.id}</p>
+                  </div>
+                  <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">Carga</p>
+                    <p className="mt-1 text-base font-black text-dropit-950">{created.packages} bultos · {created.estimatedWeightKg} kg</p>
+                  </div>
+                  <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">📍 Retiro</p>
+                    <p className="mt-1 text-sm font-semibold text-dropit-800">{created.pickupAddress}</p>
+                  </div>
+                  <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">🏁 Entrega</p>
+                    <p className="mt-1 text-sm font-semibold text-dropit-800">{created.deliveryAddress}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-dropit-200 bg-dropit-50/50 px-6 py-5">
+                  <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 mb-4">
+                    <Mail size={18} className="flex-shrink-0 mt-0.5 text-sky-500" />
+                    <p className="text-sm text-sky-700">
+                      Enviamos confirmación a <strong>{created.contactEmail}</strong> — recibirás tu cotización formal muy pronto
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <button
+                      onClick={() => setCreated(null)}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dropit-accent px-6 py-3 font-bold text-dropit-accent hover:bg-dropit-accent/5 transition-colors"
+                    >
+                      <ArrowRight size={16} />
+                      Nueva solicitud
+                    </button>
+                    <a
+                      href={`#formulario`}
+                      onClick={() => { setCreated(null); setTimeout(() => setTrackingOpen(true), 200); }}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-dropit-accent px-6 py-3 font-bold text-white hover:bg-dropit-accent-dark transition-colors"
+                    >
+                      <Search size={16} />
+                      Ver seguimiento
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -1185,37 +1191,26 @@ export default function PublicQuotePage() {
 
                   {/* Route result */}
                   {routeInfo && (() => {
-                    const avionetaBonus = (form.avionetaCount || 0) * 50000;
-                    const finalPrice = routeInfo.price != null ? routeInfo.price + avionetaBonus : null;
                     return (
                     <div className="mt-3 overflow-hidden rounded-xl border border-dropit-300 shadow-sm">
-                      {/* Price banner */}
-                      <div className={`flex flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5 ${routeInfo.isRM ? "border-b border-dropit-accent/20 bg-gradient-to-r from-dropit-accent/10 to-orange-50" : "border-b border-slate-200 bg-slate-50"}`}>
+                      {/* Route info banner — price hidden to prevent scraping */}
+                      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5 border-b border-dropit-accent/20 bg-gradient-to-r from-dropit-accent/10 to-orange-50">
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-dropit-accent/20">
                             <RouteIcon size={17} className="text-dropit-accent" />
                           </div>
                           <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-dropit-600">Distancia de la ruta</p>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-dropit-600">Ruta calculada</p>
                             <p className="text-2xl font-black text-dropit-950">{routeInfo.distanceKm} <span className="text-base font-bold">km</span></p>
                           </div>
                         </div>
-                        {routeInfo.isRM && finalPrice != null ? (
-                          <div className="text-right">
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-dropit-600">Precio referencial</p>
-                            <p className="text-2xl font-black text-dropit-accent">${finalPrice.toLocaleString("es-CL")}</p>
-                            <div className="mt-1 rounded-md bg-amber-100 px-2 py-1">
-                              <p className="text-[10px] font-semibold text-amber-700">⚠️ Valor referencial — sujeto a confirmación. El precio final puede variar según dificultad, acceso y condiciones del flete.</p>
-                            </div>
+                        <div className="flex items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5">
+                          <span className="text-xl">💰</span>
+                          <div>
+                            <p className="text-xs font-bold text-sky-700">Cotización personalizada</p>
+                            <p className="text-[11px] text-sky-600">Recibirás el precio exacto en tu correo en <strong>menos de 1 hora hábil</strong></p>
                           </div>
-                        ) : !routeInfo.isRM ? (
-                          <div className="text-right max-w-xs">
-                            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                              <p className="text-xs font-bold text-slate-700">📍 Ruta fuera de Santiago RM</p>
-                              <p className="mt-0.5 text-[11px] text-slate-500">Para fletes fuera de la Región Metropolitana cotizamos caso a caso. Te contactaremos con el precio exacto.</p>
-                            </div>
-                          </div>
-                        ) : null}
+                        </div>
                       </div>
                       {/* Ayudantes de carga */}
                       <div className="border-b border-dropit-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4">

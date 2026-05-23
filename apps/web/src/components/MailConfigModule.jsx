@@ -59,8 +59,8 @@ function friendlySmtpError(raw = "") {
   if (msg.includes("smtp no configurado") || msg.includes("smtp_user") || msg.includes("smtp_pass")) {
     return "SMTP incompleto. Ingresa tu correo y contraseña de aplicación arriba.";
   }
-  if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("timeout")) {
-    return "No se pudo conectar al servidor SMTP. Verifica el host (smtp.gmail.com) y puerto (587).";
+  if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("timeout") || msg.includes("sin respuesta")) {
+    return "⏱️ El test de conexión no obtuvo respuesta en el tiempo esperado.\n\nEsto es normal en entornos de producción donde el proveedor (Railway/Heroku) limita conexiones SMTP salientes.\n\n✅ Usa \"Enviar correo de prueba\" para verificar si el correo realmente funciona — el envío real puede funcionar aunque el test de conexión falle.";
   }
   if (msg.includes("certificate") || msg.includes("ssl") || msg.includes("tls")) {
     return "Error de SSL/TLS. Cambia el cifrado a TLS y el puerto a 587.";

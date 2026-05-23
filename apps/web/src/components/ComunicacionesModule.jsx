@@ -26,8 +26,8 @@ function friendlySmtpError(raw = "") {
   if (msg.includes("smtp no configurado") || msg.includes("smtp_user") || msg.includes("smtp_pass")) {
     return "⚙️ SMTP no configurado. Ve a Comunicaciones → Config. correo para ingresar tu cuenta de Gmail y App Password.";
   }
-  if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("timeout")) {
-    return "🔌 No se pudo conectar al servidor SMTP. Verifica el host y puerto en Config. correo.";
+  if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("timeout") || msg.includes("sin respuesta")) {
+    return "⏱️ Sin respuesta del servidor SMTP.\n\nEn producción (Railway) el test de conexión puede fallar por restricciones de red. Si el correo fue enviado o aparece como enviado en tus logs, la config está bien.\n\nVe a Config. correo y usa 'Enviar correo de prueba' para verificar.";
   }
   if (msg.includes("certificate") || msg.includes("ssl") || msg.includes("tls")) {
     return "🔒 Error de certificado SSL/TLS. Prueba cambiando el cifrado a TLS en Config. correo.";
