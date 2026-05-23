@@ -14,12 +14,17 @@ const BRAND = {
 };
 
 // ─── Helper: read logo URL from client config ─────────────────────────────────
+// Priority: 1) custom URL saved in localStorage  2) bundled public asset
 export function getLogoUrl() {
   try {
     const cc = JSON.parse(localStorage.getItem("dropit-client-config") || "{}");
     const url = cc.logoUrl || "";
-    return (url.startsWith("http") || url.startsWith("data:")) ? url : null;
-  } catch { return null; }
+    if (url.startsWith("http") || url.startsWith("data:")) return url;
+  } catch { /* fall through */ }
+  // Resolve against the page origin so blob:/print contexts get an absolute URL
+  try {
+    return `${window.location.origin}/dropit-logo.jpeg`;
+  } catch { return "/dropit-logo.jpeg"; }
 }
 
 // ─── Helper: read company name from client config ─────────────────────────────

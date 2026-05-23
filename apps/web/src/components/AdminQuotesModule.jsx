@@ -2,7 +2,7 @@ import {
   AlertTriangle, Camera, CheckCircle2, Clock, Download, FileText,
   Mail, MessageSquare, Phone, Send, Truck, User, X, Zap,
   MapPin, Package, RefreshCw, Bell, ZoomIn, Eye, ThumbsUp, Trash2,
-  ChevronLeft,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "../lib/messageLog";
@@ -95,7 +95,7 @@ function buildPDFHtml(request, finalAmount, photos = []) {
   .header { background: linear-gradient(135deg, #F97316 0%, #C2590A 55%, #7C3308 100%); padding: 18px 24px; color: #fff; border-radius: 8px 8px 0 0; }
   .logo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
   .logo-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); }
-  .logo-fallback { width: 44px; height: 44px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: #fff; border: 2px solid rgba(255,255,255,0.3); }
+  .logo-fallback { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 12px; background: rgba(255,255,255,0.2); border-radius: 8px; font-size: 13px; font-weight: 900; color: #fff; letter-spacing: 0.5px; border: 2px solid rgba(255,255,255,0.3); white-space: nowrap; }
   .company-name { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; }
   .company-sub { font-size: 9px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
   .doc-title { font-size: 22px; font-weight: 900; }
@@ -126,7 +126,11 @@ function buildPDFHtml(request, finalAmount, photos = []) {
 <div class="page">
   <div class="header">
     <div class="logo-row">
-      ${logoUrl ? `<img class="logo-img" src="${logoUrl}" alt="Logo" />` : `<div class="logo-fallback">D</div>`}
+      ${logoUrl
+        ? `<img class="logo-img" src="${logoUrl}" alt="Dropit Service"
+             onerror="this.style.display='none';document.getElementById('logo-fb').style.display='inline-flex';" />
+           <span id="logo-fb" class="logo-fallback" style="display:none;">DROPIT SERVICE</span>`
+        : `<span class="logo-fallback">DROPIT SERVICE</span>`}
       <div>
         <div class="company-name">${companyName}</div>
         <div class="company-sub">Transportes &amp; Logística</div>
@@ -718,15 +722,15 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
       )}
 
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-dropit-accent">Gestión</p>
           <h2 className="text-2xl font-black text-slate-800">Cotizaciones</h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {["all","pending","quoted"].map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${filter === f ? "bg-dropit-accent text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-dropit-accent/40"}`}>
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${filter === f ? "bg-dropit-accent text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-dropit-accent/40"}`}>
               {f === "all" ? `Todas (${requests.length})` : f === "pending" ? `Pendientes (${pending.length})` : `Cotizadas (${quoted.length})`}
             </button>
           ))}
@@ -734,8 +738,8 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[340px_1fr]">
-        {/* ── List ── */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        {/* ── List ── hidden on mobile when a quote is selected so detail takes full width */}
+        <div className={`rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden ${selectedId ? "hidden xl:block" : "block"}`}>
           <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
               {pending.length > 0 ? `${pending.length} pendiente${pending.length > 1 ? "s" : ""} — ordenadas por urgencia` : "Sin pendientes"}
@@ -747,18 +751,22 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
               const mins = getElapsedMinutes(req.createdAt);
               const u    = urgencyConfig(mins);
               const isPending = req.status === "Pendiente de cotizacion";
+              const isSelected = selected?.id === req.id;
               return (
                 <button key={req.id} type="button" onClick={() => { setSelectedId(req.id); setConfirmDeleteOpen(false); }}
-                  className={`block w-full p-4 text-left transition-all hover:bg-slate-50 ${selected?.id === req.id ? "bg-dropit-accent/10 border-l-4 border-dropit-accent" : "border-l-4 border-transparent"}`}>
+                  className={`block w-full min-h-[64px] p-4 text-left transition-all hover:bg-slate-50 ${isSelected ? "bg-dropit-accent/10 border-l-4 border-dropit-accent" : "border-l-4 border-transparent"}`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         {isPending && <span className={`mt-0.5 h-2 w-2 flex-shrink-0 rounded-full ${u.dot} ${u.pulse ? "animate-pulse" : ""}`} />}
                         <p className="truncate font-semibold text-slate-900">{req.customerName}</p>
                       </div>
                       <p className="mt-0.5 truncate text-xs text-slate-500">{req.trackingCode}</p>
                     </div>
-                    <StatusBadge status={req.status} />
+                    <div className="flex flex-shrink-0 items-center gap-1.5">
+                      <StatusBadge status={req.status} />
+                      <ChevronRight size={14} className="text-slate-400" />
+                    </div>
                   </div>
                   <p className="mt-1.5 truncate text-xs text-slate-500">{req.deliveryAddress}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -772,11 +780,6 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     {req.urgent && <span className="flex items-center gap-1 rounded-full bg-red-50 border border-red-300 px-2 py-0.5 text-[10px] font-bold text-red-600 animate-pulse">⚡ Urgente</span>}
                     {(req.avionetaCount > 0 || req.avioneta) && <span className="flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-600">🧑‍🏭 {req.avionetaCount > 1 ? `${req.avionetaCount}× ` : ""}Peoneta</span>}
                     {req.distanceKm && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{req.distanceKm} km</span>}
-                    {selected?.id === req.id && (
-                      <span className="xl:hidden flex items-center gap-1 rounded-full bg-dropit-accent px-2 py-0.5 text-[10px] font-bold text-white">
-                        ▼ Ver detalle
-                      </span>
-                    )}
                   </div>
                 </button>
               );
@@ -786,15 +789,16 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
 
         {/* ── Detail ── */}
         {selected ? (
-          <div className="space-y-4" ref={detailRef}>
-            {/* ── Mobile: back button ── */}
-            <div className="xl:hidden">
+          <div className="space-y-4 min-w-0" ref={detailRef}>
+            {/* ── Mobile: back button — sticky so it's reachable while scrolling ── */}
+            <div className="xl:hidden sticky top-0 z-10 -mx-0 pt-0">
               <button
                 type="button"
                 onClick={() => setSelectedId(null)}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-sm px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors w-full"
               >
-                <ChevronLeft size={16} /> Volver a lista
+                <ChevronLeft size={16} className="text-dropit-accent" />
+                <span>Volver a lista</span>
               </button>
             </div>
             {/* Urgency banner for pending */}
@@ -802,27 +806,27 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
               const mins = getElapsedMinutes(selected.createdAt);
               const u = urgencyConfig(mins);
               return (
-                <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${u.bg}`}>
-                  <div className="flex items-center gap-2">
+                <div className={`flex flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${u.bg}`}>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Clock size={15} className={u.color} />
                     <span className={`text-sm font-bold ${u.color}`}>
-                      {mins >= 60 ? "⏱ Cotización vencida" : `⏱ ${formatElapsed(mins)} transcurridos`}
+                      {mins >= 60 ? "Cotización vencida" : `${formatElapsed(mins)} transcurridos`}
                     </span>
                     <span className={`text-xs ${u.color} opacity-70`}>
-                      · Recibida el {new Date(selected.createdAt).toLocaleString("es-CL")}
+                      Recibida: {new Date(selected.createdAt).toLocaleString("es-CL")}
                     </span>
                   </div>
                   {/* WA Reminders */}
                   {waConfig?.authToken && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {["30min","45min","60min"].map(type => {
                         const sentKey = `${selected.id}-${type}`;
                         const done = reminderSent[sentKey] || (selected.remindersSent || []).some(r => r.type === type);
                         return (
                           <button key={type} onClick={() => handleReminder(type)} disabled={done}
-                            className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${done ? "bg-green-100 text-green-700 cursor-default" : "bg-white border border-slate-200 text-slate-700 hover:border-dropit-accent/40 hover:text-dropit-accent"}`}>
+                            className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${done ? "bg-green-100 text-green-700 cursor-default" : "bg-white border border-slate-200 text-slate-700 hover:border-dropit-accent/40 hover:text-dropit-accent"}`}>
                             <Bell size={11} />
-                            {done ? "✓" : `WA ${type}`}
+                            {done ? "Enviado" : `WA ${type}`}
                           </button>
                         );
                       })}
@@ -833,16 +837,16 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
             })()}
 
             {/* Client + route info */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
-                <div>
-                  <h3 className="text-xl font-black text-slate-950 flex items-center gap-2">
-                    {selected.customerName}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-hidden">
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 flex flex-wrap items-center gap-2">
+                    <span className="break-words">{selected.customerName}</span>
                     {selected.urgent && <span className="inline-flex items-center gap-1 rounded-full bg-red-100 border border-red-300 px-2.5 py-0.5 text-xs font-bold text-red-600 animate-pulse">⚡ Urgente</span>}
                   </h3>
-                  <p className="text-sm text-slate-500 mt-0.5">{selected.id} · {selected.trackingCode}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 break-all">{selected.id} · {selected.trackingCode}</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <StatusBadge status={selected.status} />
                   <button onClick={() => setPdfPreview(buildPDFHtml(selected, Number(quoteForm.quotedAmount) || selected.quotedAmount, selected.photos || []))}
                     className="flex items-center gap-1.5 rounded-lg border border-dropit-accent/30 bg-dropit-accent/5 px-3 py-2 text-sm font-semibold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all shadow-sm">
@@ -850,7 +854,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   </button>
                   {/* ── Eliminar con confirmación inline (sin window.confirm) ── */}
                   {confirmDeleteOpen ? (
-                    <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 w-full sm:w-auto">
                       <span className="text-xs font-semibold text-red-700">¿Eliminar permanentemente?</span>
                       <button type="button" onClick={handleDeleteQuote} disabled={deletingQuote}
                         className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50">
@@ -876,7 +880,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
               </div>
 
               {/* ── Bandeja de entrada: bloque de datos completo ───────────── */}
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {/* RUT: campo dedicado, con fallback a observaciones para solicitudes antiguas */}
                 {(() => {
                   const rut = selected.customerRut || (selected.observations || "").split("\n").find(l => l.startsWith("RUT:"))?.replace("RUT: ", "").trim();
@@ -886,7 +890,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                 })()}
                 <InfoCard icon={User}    label="Contacto"       value={selected.contactPerson || selected.customerName} />
                 <InfoCard icon={Phone}   label="Teléfono"       value={<a href={`tel:${selected.contactPhone}`} className="text-dropit-accent font-bold">{selected.contactPhone}</a>} />
-                <InfoCard icon={Mail}    label="Email cliente"  value={<a href={`mailto:${selected.contactEmail}`} className="text-dropit-accent font-bold truncate">{selected.contactEmail}</a>} />
+                <InfoCard icon={Mail}    label="Email cliente"  value={<a href={`mailto:${selected.contactEmail}`} className="text-dropit-accent font-bold break-all">{selected.contactEmail}</a>} />
                 <InfoCard icon={Clock}   label="Fecha / Hora"   value={`${selected.requiredDate || "—"}${selected.requiredTime ? ` a las ${selected.requiredTime}` : ""}`} />
                 <InfoCard icon={MapPin}  label="📦 Dirección retiro"  value={selected.pickupAddress} />
                 <InfoCard icon={MapPin}  label="🏁 Dirección entrega" value={selected.deliveryAddress} />
@@ -946,7 +950,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   const total       = baseFlete;
                   const zone        = isRM ? "Santiago RM" : km > 500 ? "Larga distancia" : km > 100 ? "Regional" : "Local";
                   return (
-                    <div className="md:col-span-2 rounded-xl border-2 border-dropit-accent/30 bg-gradient-to-br from-dropit-accent/5 to-dropit-accent/10 p-4">
+                    <div className="sm:col-span-2 rounded-xl border-2 border-dropit-accent/30 bg-gradient-to-br from-dropit-accent/5 to-dropit-accent/10 p-4">
                       <div className="mb-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Zap size={16} className="text-dropit-accent" />
@@ -958,7 +962,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                           {zone}
                         </span>
                       </div>
-                      <div className="grid gap-2 text-sm md:grid-cols-2">
+                      <div className="grid gap-2 text-sm sm:grid-cols-2">
                         <div className="flex justify-between rounded-lg bg-white/70 px-3 py-2">
                           <span className="text-slate-600">Distancia</span>
                           <strong className="text-slate-900">{km} km</strong>
@@ -999,16 +1003,16 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   );
                 })()}
 
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <InfoCard icon={Package} label="Descripción" value={selected.cargoDescription} />
                 </div>
                 {selected.observations && (
-                  <div className="md:col-span-2">
+                  <div className="sm:col-span-2">
                     <InfoCard icon={FileText} label="Observaciones" value={selected.observations} />
                   </div>
                 )}
                 {(selected.avionetaCount > 0 || selected.avioneta) && (
-                  <div className="md:col-span-2">
+                  <div className="sm:col-span-2">
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <p className="text-xs font-bold text-amber-700">
                         🧑‍🏭 {selected.avionetaCount > 0 ? `${selected.avionetaCount} peoneta${selected.avionetaCount > 1 ? "s" : ""} solicitada${selected.avionetaCount > 1 ? "s" : ""}` : "1 peoneta solicitada"}
@@ -1239,13 +1243,14 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                               <input className="input-base pl-7 font-bold" type="number" min="0" step="1000"
                                 inputMode="numeric"
                                 value={quoteForm.peonetaUnitCost}
+                                onFocus={e => e.target.select()}
                                 onChange={e => setQuoteForm(f => ({ ...f, peonetaUnitCost: Number(e.target.value) || 0 }))}
                                 placeholder="0 = solo registrar cantidad" />
                             </div>
                             <p className="mt-1 text-[10px] text-slate-500">Déjalo en 0 para registrar la cantidad sin afectar el precio</p>
                           </div>
                           {peonetaCount > 0 && (
-                            <div className="md:col-span-2 flex items-center justify-between rounded-lg bg-white border-2 border-amber-200 px-3 py-2 shadow-sm">
+                            <div className="col-span-full flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white border-2 border-amber-200 px-3 py-2 shadow-sm">
                               <span className="text-xs font-semibold text-slate-600">Subtotal peonetas</span>
                               <strong className="text-base font-black text-amber-700">{peonetaCount} × ${peonetaUnit.toLocaleString("es-CL")} = ${peonetaSubtotal.toLocaleString("es-CL")}</strong>
                             </div>
@@ -1301,12 +1306,12 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                           </div>
 
                           {/* Total banner */}
-                          <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-dropit-accent to-dropit-accent-dark px-4 py-3 text-white shadow-lg shadow-dropit-accent/30">
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest opacity-90">Total a cotizar al cliente</p>
-                              <p className="text-[10px] opacity-75">{quoteForm.manualOverride ? "Sobrescrito manualmente" : "Calculado automáticamente"}</p>
+                          <div className="flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-dropit-accent to-dropit-accent-dark px-4 py-3 text-white shadow-lg shadow-dropit-accent/30">
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-bold uppercase tracking-widest opacity-90 whitespace-nowrap">Total a cotizar</p>
+                              <p className="text-[10px] opacity-75">{quoteForm.manualOverride ? "Manual" : "Auto"}</p>
                             </div>
-                            <strong className="text-3xl font-black tracking-tight">${finalTotal.toLocaleString("es-CL")}</strong>
+                            <strong className="text-2xl font-black tracking-tight shrink-0">${finalTotal.toLocaleString("es-CL")}</strong>
                           </div>
 
                           {/* Manual override */}
@@ -1389,14 +1394,14 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   <button type="submit" disabled={sending || getFinalAmount() <= 0}
-                    className="flex items-center gap-2 rounded-xl bg-dropit-accent px-6 py-3 text-sm font-bold text-white shadow-md shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-dropit-accent px-6 py-3 text-sm font-bold text-white shadow-md shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto">
                     {sending ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
                     {sending ? "Enviando..." : (updateMode ? `Reenviar — $${getFinalAmount().toLocaleString("es-CL")}` : `Enviar cotización — $${getFinalAmount().toLocaleString("es-CL")}`)}
                   </button>
                   <button type="button" onClick={() => setPdfPreview(buildPDFHtml(selected, getFinalAmount(), selected.photos || []))}
-                    className="flex items-center gap-2 rounded-xl border border-dropit-accent/30 bg-dropit-accent/5 px-5 py-3 text-sm font-bold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all">
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dropit-accent/30 bg-dropit-accent/5 px-5 py-3 text-sm font-bold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all sm:w-auto">
                     <Eye size={15} /> Vista previa PDF
                   </button>
                 </div>
@@ -1434,11 +1439,11 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                 {/* Confirmation link + manual accept */}
                 <div className="mt-4 rounded-xl border border-emerald-300 bg-white p-4 space-y-3">
                   <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Opciones de confirmación</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <button
                       onClick={handleAcceptManual}
                       disabled={acceptingManual}
-                      className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-700 transition-all disabled:opacity-60"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-700 transition-all disabled:opacity-60 sm:w-auto"
                     >
                       {acceptingManual ? <RefreshCw size={13} className="animate-spin" /> : <ThumbsUp size={13} />}
                       {acceptingManual ? "Procesando..." : "Cliente aceptó (por teléfono / chat)"}
@@ -1449,7 +1454,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                         navigator.clipboard?.writeText(url).catch(() => {});
                         window.open(url, "_blank");
                       }}
-                      className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-all"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-all sm:w-auto"
                     >
                       <Eye size={13} /> Ver página del cliente
                     </button>
@@ -1552,12 +1557,12 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
 
 function InfoCard({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 min-w-0">
       <div className="flex items-center gap-1.5 mb-1">
-        <Icon size={11} className="text-dropit-accent" />
+        <Icon size={11} className="text-dropit-accent flex-shrink-0" />
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
       </div>
-      <div className="text-sm font-medium text-slate-800">{value}</div>
+      <div className="text-sm font-medium text-slate-800 break-words">{value}</div>
     </div>
   );
 }
