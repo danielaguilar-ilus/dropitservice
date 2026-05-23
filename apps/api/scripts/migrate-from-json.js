@@ -17,7 +17,7 @@ import { readFileSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import pg from "pg";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const { Pool } = pg;
 
