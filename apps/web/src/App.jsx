@@ -184,7 +184,7 @@ function AppInner() {
       case "request":
         return <CustomerQuoteForm onCreate={handleCreateRequest} />;
       case "quotes":
-        return <AdminQuotesModule requests={requests} onSendQuote={handleSendQuote} />;
+        return <AdminQuotesModule requests={requests} onSendQuote={handleSendQuote} onRefresh={loadBootstrap} />;
       case "import":
         return <BulkImportModule onImport={handleImport} />;
       case "planning":

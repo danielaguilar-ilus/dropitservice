@@ -88,8 +88,17 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getTracking: (code) => request(`/tracking/${code}`),
+  // ─── Quote acceptance ───────────────────────────────────────────────────────
+  acceptQuoteManual: (requestId) =>
+    request(`/quote-requests/${requestId}/accept-manual`, { method: "PATCH", body: JSON.stringify({}) }),
+  getPublicQuote: (requestId, token) =>
+    request(`/quote-requests/${requestId}/public?token=${encodeURIComponent(token || "")}`),
+  acceptQuote: (requestId, token) =>
+    request(`/quote-requests/${requestId}/accept`, { method: "PATCH", body: JSON.stringify({ token }) }),
+
   sendEmail: (payload) =>
     request("/mail/send", { method: "POST", body: JSON.stringify(payload) }),
+  getMailHealth: () => request("/mail/health"),
   testSmtp: () => request("/mail/test", { method: "POST" }),
   updateSmtpConfig: (payload) =>
     request("/mail/config", { method: "POST", body: JSON.stringify(payload) }),

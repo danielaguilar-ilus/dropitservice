@@ -1,7 +1,7 @@
 import {
   AlertTriangle, Camera, CheckCircle2, Clock, Download, FileText,
   Mail, MessageSquare, Phone, Send, Truck, User, X, Zap,
-  MapPin, Package, RefreshCw, Bell, ZoomIn, Eye,
+  MapPin, Package, RefreshCw, Bell, ZoomIn, Eye, ThumbsUp,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "../lib/messageLog";
@@ -255,7 +255,7 @@ export async function sendWAReminder(request, type, waConfig) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function AdminQuotesModule({ requests, onSendQuote }) {
+export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) {
   const tick = useTick(30000); // re-render every 30s to update timers
   const [selectedId, setSelectedId] = useState(null);
   const [quoteForm, setQuoteForm] = useState({
@@ -281,6 +281,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
   const [lightboxPhoto, setLightboxPhoto] = useState(null); // src string or null
   const [autoToast, setAutoToast] = useState(null); // {ok, text}
   const [pdfPreview, setPdfPreview] = useState(null); // HTML string or null
+  const [acceptingManual, setAcceptingManual] = useState(false);
   // ─── On-demand distance calculation per request ─────────────────────────────
   // Caches computed km by requestId so we don't re-geocode every selection
   const [routeCache, setRouteCache] = useState({}); // { [requestId]: {km, durationMin, loading, error} }
@@ -463,12 +464,14 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
       const pdfHtml       = buildPDFHtml(selected, finalAmount, selected.photos || []);
       const pdfBase64     = btoa(unescape(encodeURIComponent(pdfHtml)));
 
-      // Send email with PDF attached
+      // Send email with PDF attached + confirmation link
       const companyEmail = (() => { try { return JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").user || ""; } catch { return ""; } })();
       const logoUrl = getLogoUrl();
       const companyName = getCompanyName();
       const isUpdate = updateMode || selected.status === "Cotizado";
       const subjectPrefix = isUpdate ? "Cotización actualizada" : "Cotización confirmada";
+      // Build confirmation URL (client clicks to accept online)
+      const confirmUrl = `${window.location.origin}/confirmar?id=${selected.id}&token=${request.acceptanceToken || selected.acceptanceToken || ""}`;
       try {
         await fetch(`${API_URL}/mail/send`, {
           method: "POST",
@@ -494,6 +497,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
               logoUrl,
               companyName,
               supportEmail:    companyEmail || "soporte@dropit.cl",
+              confirmUrl,
             }),
             text: `${subjectPrefix} para ${selected.customerName}. Valor total: $${finalAmount.toLocaleString("es-CL")}${quoteForm.avionetaCount ? ` · Incluye ${quoteForm.avionetaCount} peoneta(s)` : ""}`,
             // PDF adjunto como HTML imprimible
@@ -602,6 +606,25 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
       ? { ok: true,  text: `Recordatorio "${type}" enviado por WhatsApp` }
       : { ok: false, text: "Error al enviar recordatorio. Verifica config WA." }
     );
+  }
+
+  async function handleAcceptManual() {
+    if (!selected || acceptingManual) return;
+    if (!window.confirm(`¿Marcar la cotización de ${selected.customerName} como aceptada por el cliente? Se enviarán emails de confirmación.`)) return;
+    setAcceptingManual(true);
+    try {
+      await fetch(`${API_URL}/quote-requests/${selected.id}/accept-manual`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      setMessage({ ok: true, text: `✅ Cotización marcada como aceptada — emails enviados a ${selected.contactEmail} y al equipo` });
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      setMessage({ ok: false, text: `Error al marcar como aceptado: ${err.message}` });
+    } finally {
+      setAcceptingManual(false);
+    }
   }
 
   return (
@@ -1330,11 +1353,63 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                     </button>
                   </div>
                 </div>
+                {/* Confirmation link + manual accept */}
+                <div className="mt-4 rounded-xl border border-emerald-300 bg-white p-4 space-y-3">
+                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Opciones de confirmación</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleAcceptManual}
+                      disabled={acceptingManual}
+                      className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-700 transition-all disabled:opacity-60"
+                    >
+                      {acceptingManual ? <RefreshCw size={13} className="animate-spin" /> : <ThumbsUp size={13} />}
+                      {acceptingManual ? "Procesando..." : "Cliente aceptó (por teléfono / chat)"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin}/confirmar?id=${selected.id}&token=${selected.acceptanceToken || ""}`;
+                        navigator.clipboard?.writeText(url).catch(() => {});
+                        window.open(url, "_blank");
+                      }}
+                      className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-all"
+                    >
+                      <Eye size={13} /> Ver página del cliente
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    O comparte el link de confirmación con el cliente para que acepte online.
+                  </p>
+                </div>
+                {message && (
+                  <div className={`mt-3 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${message.ok ? "bg-emerald-100 border border-emerald-300 text-emerald-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
+                    {message.ok ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                    {message.text}
+                  </div>
+                )}
                 <div className="mt-3 flex items-center justify-end">
                   <button onClick={() => setPdfPreview(buildPDFHtml(selected, selected.quotedAmount, selected.photos || []))}
                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition-all">
                     <Eye size={14} /> Ver PDF
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Already accepted by client */}
+            {selected.status === "Aceptado por cliente" && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                <div className="flex items-center gap-3">
+                  <ThumbsUp size={22} className="text-blue-600" />
+                  <div>
+                    <p className="font-bold text-blue-800">✅ Cliente aceptó la cotización</p>
+                    <p className="text-sm text-blue-700">
+                      Valor confirmado: <strong>${Number(selected.quotedAmount).toLocaleString("es-CL")}</strong>
+                      {selected.acceptedAt && <> · {new Date(selected.acceptedAt).toLocaleString("es-CL")}</>}
+                    </p>
+                    <p className="mt-1 text-xs text-blue-600">
+                      🚛 El pedido ya está disponible en el módulo de <strong>Planificación</strong> para asignar ruta y camión.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

@@ -263,6 +263,7 @@ export function tplCotizacionConfirmada({
   logoUrl,
   companyName,
   supportEmail,
+  confirmUrl,
 }) {
   const name = companyName || "DropIt Service";
   const peonetas = Number(avionetaCount) || 0;
@@ -326,8 +327,17 @@ export function tplCotizacionConfirmada({
     ${footer(`
       <tr><td align="center">
         <p style="margin:0 0 10px;font-size:12px;color:rgba(255,255,255,0.5);font-family:Arial,sans-serif;">El valor es válido por 24 horas. Una vez confirmado, agendamos el retiro.</p>
-        ${button("📩 Confirmar cotización", `mailto:${supportEmail || "soporte@dropit.cl"}?subject=Confirmo cotización ${trackingCode}&body=Hola, confirmo la cotización ${trackingCode} por $${total.toLocaleString("es-CL")}.`)}
+        ${confirmUrl
+          ? button("✅ Confirmar cotización online", confirmUrl)
+          : button("📩 Confirmar cotización", `mailto:${supportEmail || "soporte@dropit.cl"}?subject=Confirmo cotización ${trackingCode}&body=Hola, confirmo la cotización ${trackingCode} por $${total.toLocaleString("es-CL")}.`)
+        }
       </td></tr>
+      ${confirmUrl ? `
+      <tr><td align="center" style="padding-top:12px;">
+        <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.3);font-family:Arial,sans-serif;">
+          O escribe a <a href="mailto:${supportEmail || "soporte@dropit.cl"}" style="color:${BRAND.accent};">${supportEmail || "soporte@dropit.cl"}</a> para confirmar por correo.
+        </p>
+      </td></tr>` : ""}
     `)}
   `, name);
 }

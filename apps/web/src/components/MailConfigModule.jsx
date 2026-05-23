@@ -1,5 +1,6 @@
 import {
   CheckCircle2,
+  ExternalLink,
   Eye,
   EyeOff,
   Globe,
@@ -48,6 +49,25 @@ const CLIENT_DEFAULTS = {
   logoUrl: "/dropit-logo.jpeg",
 };
 
+// ─── Translate raw SMTP/Gmail errors to friendly Spanish messages ─────────────
+function friendlySmtpError(raw = "") {
+  if (!raw) return "Error al enviar. Verifica la configuración SMTP.";
+  const msg = raw.toLowerCase();
+  if (msg.includes("badcredentials") || msg.includes("username and password") || msg.includes("invalid login") || msg.includes("535")) {
+    return "Contraseña de aplicación inválida o expirada.\n\nSolución: Ve a myaccount.google.com → Seguridad → Contraseñas de aplicaciones, genera una nueva clave de 16 caracteres y pégala aquí en el campo Contraseña.";
+  }
+  if (msg.includes("smtp no configurado") || msg.includes("smtp_user") || msg.includes("smtp_pass")) {
+    return "SMTP incompleto. Ingresa tu correo y contraseña de aplicación arriba.";
+  }
+  if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("timeout")) {
+    return "No se pudo conectar al servidor SMTP. Verifica el host (smtp.gmail.com) y puerto (587).";
+  }
+  if (msg.includes("certificate") || msg.includes("ssl") || msg.includes("tls")) {
+    return "Error de SSL/TLS. Cambia el cifrado a TLS y el puerto a 587.";
+  }
+  return raw;
+}
+
 // ─── Test Email Modal ──────────────────────────────────────────────────────────
 function TestEmailModal({ onClose, smtpConfig }) {
   const [to, setTo] = useState("");
@@ -65,11 +85,11 @@ function TestEmailModal({ onClose, smtpConfig }) {
         text: "Correo de prueba — DropIt Service. La configuración SMTP está funcionando correctamente.",
       });
       setSending(false);
-      setResult({ ok: true, msg: `Correo enviado a ${to} correctamente.` });
+      setResult({ ok: true, msg: `✅ Correo enviado a ${to} correctamente.` });
       setTimeout(() => onClose(), 3000);
     } catch (err) {
       setSending(false);
-      setResult({ ok: false, msg: err.message || "Error al enviar. Verifica la configuración SMTP." });
+      setResult({ ok: false, msg: friendlySmtpError(err.message) });
     }
   }
 
@@ -98,11 +118,19 @@ function TestEmailModal({ onClose, smtpConfig }) {
             <p className="mt-0.5"><span className="font-semibold">Servidor:</span> {smtpConfig.host || "—"}:{smtpConfig.port || "—"} ({smtpConfig.encryption || "—"})</p>
           </div>
           {result && (
-            <div className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${
-              result.ok ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-600"
+            <div className={`rounded-lg border px-3 py-2.5 text-sm ${
+              result.ok ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
             }`}>
-              <CheckCircle2 size={15} className="mt-0.5 flex-shrink-0" />
-              {result.msg}
+              <div className="flex items-start gap-2">
+                <CheckCircle2 size={15} className="mt-0.5 flex-shrink-0" />
+                <p className="whitespace-pre-line leading-relaxed">{result.msg}</p>
+              </div>
+              {!result.ok && (
+                <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer"
+                  className="mt-2 flex items-center gap-1 text-xs font-bold text-dropit-accent hover:underline">
+                  <ExternalLink size={11} /> Generar App Password en Google →
+                </a>
+              )}
             </div>
           )}
           <div className="flex gap-2">
@@ -175,7 +203,7 @@ function SmtpTab() {
       setTestResult({ ok: true, msg: result.message || `Conexión exitosa con ${cfg.host}:${cfg.port}` });
     } catch (err) {
       setTesting(false);
-      setTestResult({ ok: false, msg: err.message || "No se pudo conectar al servidor SMTP." });
+      setTestResult({ ok: false, msg: friendlySmtpError(err.message) });
     }
   }
 
@@ -236,10 +264,19 @@ function SmtpTab() {
         </div>
 
         {testResult && (
-          <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-            testResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-600"
+          <div className={`rounded-lg border px-4 py-3 text-sm ${
+            testResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
           }`}>
-            <CheckCircle2 size={15} />{testResult.msg}
+            <div className="flex items-start gap-2">
+              <CheckCircle2 size={15} className="mt-0.5 flex-shrink-0" />
+              <p className="whitespace-pre-line leading-relaxed">{testResult.msg}</p>
+            </div>
+            {!testResult.ok && (
+              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer"
+                className="mt-2 flex items-center gap-1 text-xs font-bold text-dropit-accent hover:underline">
+                <ExternalLink size={11} /> Generar nuevo App Password en Google
+              </a>
+            )}
           </div>
         )}
 

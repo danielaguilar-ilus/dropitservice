@@ -1,6 +1,7 @@
 import { writeFileSync, mkdirSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { randomUUID } from "crypto";
 import {
   incidentStatus,
   nextReference,
@@ -121,6 +122,8 @@ export async function createQuoteRequest(payload) {
     createdAt: now,
     updatedAt: now,
     approximateLocation: "Solicitud recibida",
+    acceptanceToken: randomUUID(),
+    acceptedAt: null,
   };
 
   let saved;
@@ -208,6 +211,37 @@ export async function quoteRequest(requestId, payload) {
     },
   });
 
+  return updated;
+}
+
+export async function acceptQuoteRequest(requestId, token) {
+  const request = HAS_DB
+    ? await db.findRequest(requestId)
+    : store.requests.find((item) => item.id === requestId);
+
+  if (!request) throw new Error("Solicitud no encontrada");
+  if (request.status !== "Cotizado") throw new Error("La solicitud no tiene una cotización activa para aceptar");
+  if (token && request.acceptanceToken && request.acceptanceToken !== token) {
+    throw new Error("Token de aceptación inválido");
+  }
+
+  const updates = {
+    status: "Aceptado por cliente",
+    acceptedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    approximateLocation: "Aceptado — pendiente de agendamiento",
+  };
+
+  let updated;
+  if (HAS_DB) {
+    updated = await db.updateRequest(requestId, updates);
+  } else {
+    Object.assign(request, updates);
+    saveStore();
+    updated = request;
+  }
+
+  await notify({ type: "quote_accepted", to: updated.contactEmail, requestId: updated.id });
   return updated;
 }
 

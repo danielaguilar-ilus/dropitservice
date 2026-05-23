@@ -1,26 +1,41 @@
 import {
+  AlertTriangle,
   CheckCircle2,
   Edit2,
+  ExternalLink,
   Mail,
   MessageSquare,
+  RefreshCw,
   RotateCcw,
   Save,
   Send,
+  Settings,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { tplPrueba } from "../lib/emailTemplates";
+import { getCompanyName, getLogoUrl, tplPrueba } from "../lib/emailTemplates";
 
-const SMTP_KEY = "dropit-smtp-config";
-
-function loadSmtp() {
-  try { return JSON.parse(localStorage.getItem(SMTP_KEY) || "{}"); }
-  catch { return {}; }
+// ─── Translate raw SMTP/Gmail errors to friendly Spanish messages ─────────────
+function friendlySmtpError(raw = "") {
+  if (!raw) return "Error al enviar. Verifica la configuración en Config. correo.";
+  const msg = raw.toLowerCase();
+  if (msg.includes("badcredentials") || msg.includes("username and password") || msg.includes("invalid login") || msg.includes("535")) {
+    return "❌ Contraseña de aplicación inválida o expirada. Gmail rechazó las credenciales.\n\nSolución: Ve a myaccount.google.com → Seguridad → Contraseñas de aplicaciones, genera una nueva clave y actualízala en Comunicaciones → Config. correo.";
+  }
+  if (msg.includes("smtp no configurado") || msg.includes("smtp_user") || msg.includes("smtp_pass")) {
+    return "⚙️ SMTP no configurado. Ve a Comunicaciones → Config. correo para ingresar tu cuenta de Gmail y App Password.";
+  }
+  if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("timeout")) {
+    return "🔌 No se pudo conectar al servidor SMTP. Verifica el host y puerto en Config. correo.";
+  }
+  if (msg.includes("certificate") || msg.includes("ssl") || msg.includes("tls")) {
+    return "🔒 Error de certificado SSL/TLS. Prueba cambiando el cifrado a TLS en Config. correo.";
+  }
+  return raw;
 }
 
-function TestEmailModal({ onClose, templateSubject }) {
-  const smtp = loadSmtp();
+function TestEmailModal({ onClose, templateSubject, smtpHealth }) {
   const [to, setTo] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
@@ -28,31 +43,46 @@ function TestEmailModal({ onClose, templateSubject }) {
   async function send() {
     if (!to.includes("@")) return;
     setSending(true);
+    setResult(null);
     try {
-      const smtp = loadSmtp();
       await api.sendEmail({
         to,
         subject: `[Prueba] ${templateSubject}`,
-        html: tplPrueba({ templateSubject, senderName: smtp.senderName }),
+        html: tplPrueba({ templateSubject, senderName: smtpHealth?.fromName, logoUrl: getLogoUrl(), companyName: getCompanyName() }),
         text: `Prueba de plantilla — ${templateSubject}`,
       });
       setSending(false);
-      setResult({ ok: true, msg: `Correo enviado a ${to} correctamente.` });
+      setResult({ ok: true, msg: `✅ Correo enviado a ${to} correctamente.` });
       setTimeout(() => onClose(), 3000);
     } catch (err) {
       setSending(false);
-      setResult({ ok: false, msg: err.message || "Error al enviar. Verifica la configuración en Config. correo." });
+      setResult({ ok: false, msg: friendlySmtpError(err.message) });
     }
   }
 
+  const configured = smtpHealth?.configured;
+  const senderDisplay = smtpHealth?.user
+    ? `${smtpHealth.fromName || "DropIt Service"} <${smtpHealth.user.replace("***", "···")}>`
+    : "no configurado";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-800">Enviar mensaje de prueba</h3>
           <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100"><X size={16} /></button>
         </div>
         <div className="space-y-4">
+          {/* SMTP status */}
+          {!configured && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+              <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-bold">SMTP no configurado</p>
+                <p className="mt-0.5">Ve a <strong>Comunicaciones → Config. correo</strong> para configurar tu cuenta.</p>
+              </div>
+            </div>
+          )}
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-600">Destinatario</label>
             <input type="email" autoFocus
@@ -63,19 +93,28 @@ function TestEmailModal({ onClose, templateSubject }) {
           </div>
           <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500 space-y-0.5">
             <p><span className="font-semibold">Asunto:</span> {templateSubject}</p>
-            <p><span className="font-semibold">Desde:</span> {smtp.senderName || "DropIt Service"} &lt;{smtp.email || "no configurado"}&gt;</p>
-            <p><span className="font-semibold">Servidor:</span> {smtp.host || "—"}:{smtp.port || "—"} ({smtp.encryption || "—"})</p>
+            <p><span className="font-semibold">Desde:</span> {senderDisplay}</p>
+            <p><span className="font-semibold">Host:</span> {smtpHealth?.host || "—"}:587</p>
           </div>
           {result && (
-            <div className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${
-              result.ok ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"
+            <div className={`rounded-lg border px-3 py-2.5 text-sm ${
+              result.ok ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
             }`}>
-              <CheckCircle2 size={15} className="mt-0.5 flex-shrink-0" />{result.msg}
+              <p className="whitespace-pre-line text-xs leading-relaxed">{result.msg}</p>
+              {!result.ok && (
+                <a
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); onClose(); /* caller sets active module */ }}
+                  className="mt-2 flex items-center gap-1 text-xs font-bold text-dropit-accent hover:underline"
+                >
+                  <Settings size={11} /> Ir a Config. correo
+                </a>
+              )}
             </div>
           )}
           <div className="flex gap-2">
             <button onClick={onClose} className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
-            <button onClick={send} disabled={sending || !to.includes("@")}
+            <button onClick={send} disabled={sending || !to.includes("@") || !configured}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-dropit-accent py-2.5 text-sm font-bold text-white hover:bg-dropit-accent/90 disabled:opacity-50">
               {sending ? <><div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />Enviando...</> : <><Send size={14} />Enviar</>}
             </button>
@@ -195,6 +234,15 @@ export default function ComunicacionesModule({ currentUser }) {
   const [toast, setToast] = useState("");
   const [preview, setPreview] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
+  const [smtpHealth, setSmtpHealth] = useState(null);
+  const [smtpLoading, setSmtpLoading] = useState(true);
+
+  // ─── Check real SMTP health from backend ─────────────────────────────────────
+  useEffect(() => {
+    api.getMailHealth()
+      .then(data => { setSmtpHealth(data); setSmtpLoading(false); })
+      .catch(() => { setSmtpHealth({ ok: false, configured: false }); setSmtpLoading(false); });
+  }, []);
 
   function showToast(msg) {
     setToast(msg);
@@ -247,6 +295,7 @@ export default function ComunicacionesModule({ currentUser }) {
         <TestEmailModal
           onClose={() => setShowTestModal(false)}
           templateSubject={getDraft(selectedTemplate).subject}
+          smtpHealth={smtpHealth}
         />
       )}
       {/* Toast */}
@@ -255,6 +304,33 @@ export default function ComunicacionesModule({ currentUser }) {
           <CheckCircle2 size={16} className="text-emerald-600" />
           <p className="text-sm font-medium text-emerald-700">{toast}</p>
         </div>
+      )}
+
+      {/* SMTP health banner */}
+      {!smtpLoading && smtpHealth && (
+        smtpHealth.configured ? (
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">
+            <CheckCircle2 size={15} className="flex-shrink-0 text-emerald-500" />
+            <span>
+              SMTP configurado — enviando como <strong>{smtpHealth.user?.replace("***", "···")}</strong>
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} className="flex-shrink-0 text-amber-500" />
+              <span className="font-semibold">SMTP no configurado</span>
+              <span className="text-amber-700">— Los correos no se enviarán hasta que configures tu cuenta.</span>
+            </div>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); document.dispatchEvent(new CustomEvent("dropit:navigate", { detail: "com-config" })); }}
+              className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 transition-colors"
+            >
+              <Settings size={12} /> Configurar ahora
+            </a>
+          </div>
+        )
       )}
 
       {/* Header */}

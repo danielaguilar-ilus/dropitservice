@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import App from "./App";
 import PublicQuotePage from "./pages/PublicQuotePage";
 import PrivacyPage from "./pages/PrivacyPage";
+import ConfirmQuotePage from "./pages/ConfirmQuotePage";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -11,6 +12,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <Routes>
         <Route path="/cotizar" element={<PublicQuotePage />} />
+        <Route path="/confirmar" element={<ConfirmQuotePage />} />
         <Route path="/privacidad" element={<PrivacyPage />} />
         <Route path="/*" element={<App />} />
       </Routes>

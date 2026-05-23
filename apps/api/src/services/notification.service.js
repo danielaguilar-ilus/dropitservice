@@ -8,6 +8,7 @@ const notificationTemplates = {
   quote_received: "Confirmacion de recepcion de solicitud",
   quote_internal: "Nueva solicitud pendiente de cotizacion",
   quote_sent: "Cotizacion enviada al cliente",
+  quote_accepted: "Cotizacion aceptada por el cliente",
   order_scheduled: "Pedido agendado",
   order_preparing: "Pedido en preparacion",
   order_on_route: "Pedido en ruta",
