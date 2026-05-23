@@ -106,19 +106,19 @@ Where:
 
 ---
 
-## Public form coordination — Saúl loader
+## Public form coordination — Saud loader
 
 When the public form submits, render `<SaulLoader visible={loading} />` as a fullscreen overlay:
 
 - 4-step progress: Validando → Calculando ruta → Generando tracking → Enviando
 - Each step has its own duration (800–1200 ms) and shows a spinner while active, checkmark when done
-- Saúl mascot (`/saul-mascot.png`) animates with a bounce; falls back to an inline SVG cartoon if the image is missing
+- Saud mascot (`/saul-mascot.png`) animates with a bounce; falls back to an inline SVG cartoon if the image is missing
 - Speech bubble: "¡Tranqui, lo tengo!" — Chilean warm tone
 - Backdrop: dropit-50/white/amber-50 gradient with backdrop-blur
 - Modal-style card with rounded-3xl, shadow-2xl
 - Cycling motivational messages every 2.5 s
 
-To upgrade visuals: drop the operator-provided cartoon at `apps/web/public/saul-mascot.png` (suggest 512×512 PNG with transparent background).
+To upgrade visuals: drop the operator-provided cartoon at `apps/web/public/saud-mascot.png` (suggest 512×512 PNG with transparent background).
 
 ---
 

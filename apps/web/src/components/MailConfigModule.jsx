@@ -165,8 +165,12 @@ function SmtpTab() {
 
   async function testConn() {
     setTesting(true); setTestResult(null);
+    // 15-second client-side safety net (backend already has 10s timeout)
+    const clientTimeout = new Promise((_, rej) =>
+      setTimeout(() => rej(new Error("Sin respuesta en 15s. Revisa conexión y servidor SMTP.")), 15_000)
+    );
     try {
-      const result = await api.testSmtp();
+      const result = await Promise.race([api.testSmtp(), clientTimeout]);
       setTesting(false);
       setTestResult({ ok: true, msg: result.message || `Conexión exitosa con ${cfg.host}:${cfg.port}` });
     } catch (err) {

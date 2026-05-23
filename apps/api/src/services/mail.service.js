@@ -50,15 +50,33 @@ function createTransport() {
 }
 
 export async function sendMail({ to, subject, html, text, attachments = [] }) {
+  // Early diagnostics — fail fast with a clear message
+  if (!_cfg.host || !_cfg.user || !_cfg.pass) {
+    const missing = [
+      !_cfg.host && "SMTP_HOST",
+      !_cfg.user && "SMTP_USER",
+      !_cfg.pass && "SMTP_PASS",
+    ].filter(Boolean).join(", ");
+    const err = new Error(`SMTP no configurado · faltan: ${missing}`);
+    console.error("[mail] cannot send to", to, "→", err.message);
+    throw err;
+  }
   const transporter = createTransport();
-  return transporter.sendMail({
-    from: `"${_cfg.fromName}" <${_cfg.user}>`,
-    to,
-    subject,
-    html,
-    text,
-    attachments,
-  });
+  try {
+    const info = await transporter.sendMail({
+      from: `"${_cfg.fromName}" <${_cfg.user}>`,
+      to,
+      subject,
+      html,
+      text,
+      attachments,
+    });
+    console.log("[mail] ✓ sent to", to, "·", subject, "·", info.messageId);
+    return info;
+  } catch (err) {
+    console.error("[mail] ✗ failed to", to, "·", err.message);
+    throw err;
+  }
 }
 
 export async function testConnection() {

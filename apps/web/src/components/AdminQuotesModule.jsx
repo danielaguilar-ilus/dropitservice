@@ -12,6 +12,7 @@ import StatusBadge from "./StatusBadge";
 import QuotePDFPreview from "./QuotePDFPreview";
 import { loadGoogleMaps } from "./GoogleMap";
 import { calcPrice, calcNationalBase, calcRMPrice } from "../lib/pricing";
+import StreetAutocomplete from "./StreetAutocomplete";
 
 const API_URL  = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 const API_BASE = API_URL.replace(/\/api\/?$/, ""); // strip trailing /api → http://localhost:4000
@@ -273,6 +274,8 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
     manualOverride: false,    // when true, quotedAmount input is the source of truth
     pickupOverride: "",       // override of pickup address (empty = use request's)
     deliveryOverride: "",     // override of delivery address (empty = use request's)
+    pickupCoords: null,       // {lat,lng} resolved by autocomplete (skip geocoding)
+    deliveryCoords: null,     // {lat,lng} resolved by autocomplete (skip geocoding)
   });
   const [updateMode, setUpdateMode] = useState(false); // true when re-quoting an already-quoted request
   const [photos, setPhotos] = useState([]); // base64 strings, max 3
@@ -295,19 +298,17 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
   }, []);
 
   // ─── Geocode + OSRM route → live km calculation ─────────────────────────────
-  // Runs whenever a request is selected. If the request already has distanceKm
-  // we do nothing. Otherwise we geocode both addresses via Google and ask OSRM
-  // for the driving distance. Result cached per requestId.
-  async function calcRouteForRequest(req) {
+  // req puede incluir pickupCoords/deliveryCoords (pre-resueltos por autocomplete)
+  // para omitir la fase de geocodificación y ir directo a OSRM.
+  async function calcRouteForRequest(req, overrideCoords = {}) {
     if (!req || routeCache[req.id]?.km || routeCache[req.id]?.loading) return;
     if (!req.pickupAddress || !req.deliveryAddress) return;
 
     setRouteCache(prev => ({ ...prev, [req.id]: { loading: true } }));
 
-    // Helper: reject after N ms
     const timeout = (ms, msg = "Timeout") => new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms));
 
-    // Nominatim geocode — no API key needed, works everywhere
+    // Si el autocomplete ya resolvió coords, úsalas; de lo contrario geocodificar vía Nominatim
     const nominatimGeocode = async (addr) => {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + ", Chile")}&limit=1`;
       const res = await Promise.race([fetch(url, { headers: { "Accept-Language": "es" } }), timeout(7000, "Geocode timeout")]);
@@ -317,7 +318,9 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
     };
 
     try {
-      const [pc, dc] = await Promise.all([nominatimGeocode(req.pickupAddress), nominatimGeocode(req.deliveryAddress)]);
+      const pc = overrideCoords.pickup || await nominatimGeocode(req.pickupAddress);
+      const dc = overrideCoords.delivery || await nominatimGeocode(req.deliveryAddress);
+
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 8000);
       const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pc.lng},${pc.lat};${dc.lng},${dc.lat}?overview=false`;
@@ -409,6 +412,8 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
         manualOverride: false,
         pickupOverride: "",
         deliveryOverride: "",
+        pickupCoords: null,
+        deliveryCoords: null,
       }));
       setUpdateMode(false);
       setMessage(null);
@@ -572,6 +577,8 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
         manualOverride: false,
         pickupOverride: "",
         deliveryOverride: "",
+        pickupCoords: null,
+        deliveryCoords: null,
       });
       setUpdateMode(false);
     } catch (err) {
@@ -1044,27 +1051,50 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                         <div className="space-y-3 p-4">
                           <div className="grid gap-3 md:grid-cols-2">
                             <div>
-                              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">📦 Origen</label>
-                              <input className="input-base mt-1 text-sm" type="text"
+                              <label className="mb-1 text-[11px] font-bold text-slate-600 uppercase tracking-wider block">📦 Origen</label>
+                              <StreetAutocomplete
                                 value={quoteForm.pickupOverride || selected.pickupAddress || ""}
-                                onChange={e => setQuoteForm(f => ({ ...f, pickupOverride: e.target.value }))}
-                                placeholder="Dirección de retiro" />
+                                onChange={v => setQuoteForm(f => ({ ...f, pickupOverride: v, pickupCoords: null }))}
+                                onCoordsChange={coords => setQuoteForm(f => ({ ...f, pickupCoords: coords }))}
+                                placeholder="Dirección de retiro"
+                                dotColor="#3B82F6"
+                              />
                             </div>
                             <div>
-                              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">🏁 Destino</label>
-                              <input className="input-base mt-1 text-sm" type="text"
+                              <label className="mb-1 text-[11px] font-bold text-slate-600 uppercase tracking-wider block">🏁 Destino</label>
+                              <StreetAutocomplete
                                 value={quoteForm.deliveryOverride || selected.deliveryAddress || ""}
-                                onChange={e => setQuoteForm(f => ({ ...f, deliveryOverride: e.target.value }))}
-                                placeholder="Dirección de entrega" />
+                                onChange={v => setQuoteForm(f => ({ ...f, deliveryOverride: v, deliveryCoords: null }))}
+                                onCoordsChange={coords => setQuoteForm(f => ({ ...f, deliveryCoords: coords }))}
+                                placeholder="Dirección de entrega"
+                                dotColor="#10B981"
+                              />
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <button type="button"
-                              onClick={() => calcRouteForRequest({
-                                ...selected,
-                                pickupAddress: quoteForm.pickupOverride || selected.pickupAddress,
-                                deliveryAddress: quoteForm.deliveryOverride || selected.deliveryAddress,
-                              })}
+                              onClick={() => {
+                                const reqForCalc = {
+                                  ...selected,
+                                  id: selected.id + "__override",
+                                  pickupAddress: quoteForm.pickupOverride || selected.pickupAddress,
+                                  deliveryAddress: quoteForm.deliveryOverride || selected.deliveryAddress,
+                                };
+                                // Clear stale cache for this request so it recalculates
+                                setRouteCache(prev => {
+                                  const next = { ...prev };
+                                  delete next[selected.id];
+                                  delete next[selected.id + "__override"];
+                                  return next;
+                                });
+                                calcRouteForRequest(
+                                  { ...reqForCalc, id: selected.id },
+                                  {
+                                    pickup:   quoteForm.pickupCoords   || undefined,
+                                    delivery: quoteForm.deliveryCoords || undefined,
+                                  }
+                                );
+                              }}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-sm">
                               <RefreshCw size={12} /> Recalcular ruta
                             </button>

@@ -9,6 +9,21 @@ router.get("/config", (req, res) => {
   res.json({ ok: true, config: { ...cfg, pass: cfg.pass ? "••••••••" : "" } });
 });
 
+// ─── GET health — does SMTP have all required fields? ────────────────────────
+router.get("/health", (req, res) => {
+  const cfg = getSmtpConfig();
+  const configured = !!(cfg.host && cfg.user && cfg.pass);
+  res.json({
+    ok: true,
+    configured,
+    host: cfg.host || null,
+    user: cfg.user ? `${cfg.user.split("@")[0]}@***` : null,
+    hasPassword: !!cfg.pass,
+    fromName: cfg.fromName || null,
+    source: cfg.pass ? "configured" : "missing",
+  });
+});
+
 // ─── POST update config ───────────────────────────────────────────────────────
 router.post("/config", (req, res) => {
   const { host, port, secure, user, pass, fromName } = req.body;
@@ -18,8 +33,15 @@ router.post("/config", (req, res) => {
 
 // ─── POST test connection ─────────────────────────────────────────────────────
 router.post("/test", async (req, res) => {
+  const TIMEOUT_MS = 10_000;
+  const timeoutPromise = new Promise((_, rej) =>
+    setTimeout(
+      () => rej(new Error(`Sin respuesta del servidor SMTP en ${TIMEOUT_MS / 1000}s. Verifica host, puerto y credenciales.`)),
+      TIMEOUT_MS,
+    )
+  );
   try {
-    await testConnection();
+    await Promise.race([testConnection(), timeoutPromise]);
     res.json({ ok: true, message: "Conexión SMTP verificada correctamente." });
   } catch (err) {
     res.status(400).json({ ok: false, message: err.message });

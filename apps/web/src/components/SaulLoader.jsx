@@ -1,5 +1,5 @@
-// ─── Saúl Loader — fullscreen waiting overlay ────────────────────────────────
-// Shows the Dropit mascot ("Saúl") with animated progress while the public
+// ─── Saud Loader — fullscreen waiting overlay ────────────────────────────────
+// Shows the Dropit mascot ("Saud") with animated progress while the public
 // form is being submitted. Replace /saul-mascot.png in /public with the
 // actual cartoon to upgrade visuals; SVG fallback works out of the box.
 
@@ -68,12 +68,12 @@ export default function SaulLoader({ visible }) {
         <div className="absolute -bottom-8 -right-4 h-24 w-24 rounded-full bg-amber-300/30 blur-3xl animate-pulse" />
 
         <div className="relative rounded-3xl border border-dropit-accent/20 bg-white p-6 shadow-2xl shadow-dropit-accent/20">
-          {/* Saúl mascot */}
+          {/* Saud mascot */}
           <div className="flex justify-center mb-4">
             <div className="relative">
               <img
-                src="/saul-mascot.png"
-                alt="Saúl - Dropit Service"
+                src="/saud-mascot.png"
+                alt="Saud - Dropit Service"
                 className="h-44 w-44 object-contain drop-shadow-xl animate-saul-bounce"
                 onError={(e) => {
                   // Fallback: hide broken image, show SVG instead
