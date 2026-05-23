@@ -1,7 +1,7 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 
-// Build marker: 2026-05-23 — retry SMTP fix deploy
+// Build marker: 2026-05-23 — google maps env vars now configured
 // Graceful error handling — prevent crashes from unhandled rejections
 process.on("unhandledRejection", (reason) => {
   console.error("⚠️ Unhandled Rejection:", reason);

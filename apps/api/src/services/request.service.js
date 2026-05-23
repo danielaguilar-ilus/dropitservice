@@ -16,7 +16,9 @@ import { uploadImage, isCloudinaryConfigured } from "./cloudinary.service.js";
 // Uploads photos to Cloudinary if configured, otherwise saves locally.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
-const UPLOADS_DIR = join(__dirname, "../../uploads");
+// DATA_DIR keeps uploads co-located with db.json on the Railway Volume.
+// Falls back to apps/api/uploads (same behaviour as before) when not set.
+const UPLOADS_DIR = join(process.env.DATA_DIR || join(__dirname, "../.."), "uploads");
 
 function ensureUploadsDir() {
   if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });

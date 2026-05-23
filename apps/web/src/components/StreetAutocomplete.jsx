@@ -112,19 +112,28 @@ export default function StreetAutocomplete({
   required = false,
   disabled = false,
 }) {
-  const [open,        setOpen]    = useState(false);
-  const [results,     setResults] = useState([]);
-  const [loading,     setLoading] = useState(false);
-  const [usingGoogle, setGoogle]  = useState(false);
-  const debRef  = useRef(null);
-  const gmRef   = useRef(null);
-  const wrapRef = useRef(null);
+  const [open,         setOpen]    = useState(false);
+  const [results,      setResults] = useState([]);
+  const [loading,      setLoading] = useState(false);
+  const [usingGoogle,  setGoogle]  = useState(false);
+  // tracks whether the *current* visible results came from Google Places (not just SDK loaded)
+  const [resultsFromGoogle, setResultsFromGoogle] = useState(false);
+  const debRef    = useRef(null);
+  const gmRef     = useRef(null);
+  const wrapRef   = useRef(null);
+  const cancelRef = useRef(false);
 
   // Carga el SDK de Google Maps al montar
   useEffect(() => {
+    cancelRef.current = false;
     loadGoogleMaps()
-      .then(gm => { gmRef.current = gm; setGoogle(true); })
+      .then(gm => {
+        if (cancelRef.current) return;
+        gmRef.current = gm;
+        setGoogle(true);
+      })
       .catch(() => {});
+    return () => { cancelRef.current = true; };
   }, []);
 
   // Cierra el dropdown al hacer clic fuera
@@ -152,9 +161,10 @@ export default function StreetAutocomplete({
         new gm.places.AutocompleteService().getPlacePredictions(
           { input: val, componentRestrictions: { country: "cl" }, types: ["address"] },
           (preds, status) => {
+            if (cancelRef.current) return;
             setLoading(false);
             if (status !== gm.places.PlacesServiceStatus.OK || !preds) {
-              setResults([]); setOpen(false); return;
+              setResults([]); setOpen(false); setResultsFromGoogle(false); return;
             }
             setResults(preds.map(p => ({
               placeId:  p.place_id,
@@ -162,12 +172,14 @@ export default function StreetAutocomplete({
               sublabel: p.structured_formatting.secondary_text || "",
               full:     p.description,
             })));
+            setResultsFromGoogle(true);
             setOpen(true);
           }
         );
       } else {
         // ── Photon + Nominatim ───────────────────────────────────────────────
         multiSearch(val).then(parsed => {
+          if (cancelRef.current) return;
           const items = parsed.map(p => ({
             label:    p.street,
             sublabel: [p.commune, "Chile"].filter(Boolean).join(", "),
@@ -175,9 +187,10 @@ export default function StreetAutocomplete({
             lat: p.lat, lng: p.lng,
           }));
           setResults(items);
+          setResultsFromGoogle(false);
           setOpen(items.length > 0);
           setLoading(false);
-        }).catch(() => setLoading(false));
+        }).catch(() => { if (!cancelRef.current) setLoading(false); });
       }
     }, 280);
   }
@@ -226,6 +239,10 @@ export default function StreetAutocomplete({
           onChange={handleChange}
           onFocus={() => results.length > 0 && setOpen(true)}
           autoComplete="off"
+          inputMode="text"
+          autoCorrect="off"
+          autoCapitalize="words"
+          spellCheck={false}
           required={required}
           disabled={disabled}
         />
@@ -261,7 +278,7 @@ export default function StreetAutocomplete({
             </li>
           ))}
           <li className="flex items-center justify-end bg-white px-4 py-2">
-            {usingGoogle ? (
+            {resultsFromGoogle ? (
               <img
                 src="https://maps.gstatic.com/mapfiles/api-3/images/powered-by-google-on-white3.png"
                 alt="Powered by Google"

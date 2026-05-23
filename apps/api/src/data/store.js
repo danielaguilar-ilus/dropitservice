@@ -1,11 +1,17 @@
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { createId } from "../lib/id.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
-const DB_PATH    = join(__dirname, "../../db.json");
+
+// DATA_DIR allows overriding the storage location via env var.
+// Railway: set DATA_DIR=/data and mount a Volume at /data.
+// Local: falls back to apps/api/ (same behaviour as before).
+const DATA_DIR = process.env.DATA_DIR || join(__dirname, "../..");
+try { mkdirSync(DATA_DIR, { recursive: true }); } catch {}
+const DB_PATH = join(DATA_DIR, "db.json");
 
 export const workflow = [
   "Pendiente de cotizacion",
