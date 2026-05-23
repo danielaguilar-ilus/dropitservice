@@ -9,6 +9,7 @@ import { tplClienteNuevaCotizacion, tplEmpresaNuevaCotizacion, getLogoUrl, getCo
 import { calcPrice } from "../lib/pricing";
 import ChileCoverageMap from "../components/ChileCoverageMap";
 import { loadGoogleMaps } from "../components/GoogleMap";
+import SaulLoader from "../components/SaulLoader";
 
 const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
@@ -1046,6 +1047,9 @@ export default function PublicQuotePage() {
 
   return (
     <div className="min-h-screen bg-white font-sans">
+      {/* ─── Saúl loader during form submission ─── */}
+      <SaulLoader visible={loading} />
+
       {/* ─── NAVBAR ─── */}
       <header className="sticky top-0 z-50 border-b border-dropit-200 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">

@@ -134,6 +134,20 @@ export function quoteRequest(requestId, payload) {
     request.avionetaCount = Number(payload.avionetaCount) || 0;
     request.avioneta = request.avionetaCount > 0;
   }
+  // Persist editable pricing components (set by the admin wizard)
+  if (payload.peonetaUnitCost !== undefined) {
+    request.peonetaUnitCost = Number(payload.peonetaUnitCost) || 0;
+  }
+  if (payload.discount !== undefined) {
+    request.discount = Number(payload.discount) || 0;
+  }
+  // Persist updated addresses if operator edited them in the wizard
+  if (payload.pickupAddress && payload.pickupAddress !== request.pickupAddress) {
+    request.pickupAddress = payload.pickupAddress;
+  }
+  if (payload.deliveryAddress && payload.deliveryAddress !== request.deliveryAddress) {
+    request.deliveryAddress = payload.deliveryAddress;
+  }
   // Track all quote revisions for audit trail
   if (request.status === "Cotizado") {
     request.quoteRevisions = request.quoteRevisions || [];
@@ -142,6 +156,8 @@ export function quoteRequest(requestId, payload) {
       previousAmount: request.previousQuotedAmount ?? null,
       newAmount: request.quotedAmount,
       avionetaCount: request.avionetaCount || 0,
+      peonetaUnitCost: request.peonetaUnitCost || 0,
+      discount: request.discount || 0,
     });
   }
   request.previousQuotedAmount = request.quotedAmount;

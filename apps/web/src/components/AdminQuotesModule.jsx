@@ -263,7 +263,17 @@ export async function sendWAReminder(request, type, waConfig) {
 export default function AdminQuotesModule({ requests, onSendQuote }) {
   const tick = useTick(30000); // re-render every 30s to update timers
   const [selectedId, setSelectedId] = useState(null);
-  const [quoteForm, setQuoteForm] = useState({ quotedAmount: "", serviceType: serviceTypes[0], internalNotes: "", avionetaCount: 0 });
+  const [quoteForm, setQuoteForm] = useState({
+    quotedAmount: "",
+    serviceType: serviceTypes[0],
+    internalNotes: "",
+    avionetaCount: 0,
+    peonetaUnitCost: 50000,   // editable unit cost per peoneta (CLP)
+    discount: 0,              // discount to subtract from the calculated total
+    manualOverride: false,    // when true, quotedAmount input is the source of truth
+    pickupOverride: "",       // override of pickup address (empty = use request's)
+    deliveryOverride: "",     // override of delivery address (empty = use request's)
+  });
   const [updateMode, setUpdateMode] = useState(false); // true when re-quoting an already-quoted request
   const [photos, setPhotos] = useState([]); // base64 strings, max 3
   const [sending, setSending] = useState(false);
@@ -394,23 +404,63 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
         serviceType: selected.serviceType || serviceTypes[0],
         internalNotes: selected.internalNotes || "",
         avionetaCount: Number(selected.avionetaCount) || 0,
+        peonetaUnitCost: Number(selected.peonetaUnitCost) || 50000,
+        discount: Number(selected.discount) || 0,
+        manualOverride: false,
+        pickupOverride: "",
+        deliveryOverride: "",
       }));
       setUpdateMode(false);
       setMessage(null);
     }
   }, [selectedId]);
 
+  // ─── Helper: compute final amount from wizard state ────────────────────────
+  function getFinalAmount() {
+    if (!selected) return 0;
+    const liveKm = routeCache[selected.id]?.km;
+    const km = Number(selected.distanceKm || liveKm) || 0;
+    const weight = Number(selected.estimatedWeightKg) || 0;
+    const pickupAddr = quoteForm.pickupOverride || selected.pickupAddress || "";
+    const deliveryAddr = quoteForm.deliveryOverride || selected.deliveryAddress || "";
+    const isRM = RM_COMUNAS.has(pickupAddr.split(",").pop()?.trim()) ||
+                 RM_COMUNAS.has(deliveryAddr.split(",").pop()?.trim());
+    const basePrice = km > 0 ? (isRM ? calcRMPrice(km) : calcNationalBase(km)) : 0;
+    const weightSurcharge = weight > 500 ? 0.35 : weight > 200 ? 0.25 : weight > 50 ? 0.15 : 0;
+    const baseFlete = basePrice > 0 ? Math.round(basePrice * (1 + weightSurcharge) / 1000) * 1000 : 0;
+    const peonetaCount = Number(quoteForm.avionetaCount) || 0;
+    const peonetaUnit = Number(quoteForm.peonetaUnitCost) || 0;
+    const peonetaSubtotal = peonetaCount * peonetaUnit;
+    const discount = Number(quoteForm.discount) || 0;
+    const calculatedTotal = Math.max(0, baseFlete + peonetaSubtotal - discount);
+    return quoteForm.manualOverride
+      ? (Number(quoteForm.quotedAmount) || 0)
+      : calculatedTotal;
+  }
+
   async function submitQuote(e) {
     e.preventDefault();
     if (!selected) return;
+
+    const finalAmount = getFinalAmount();
+    if (finalAmount <= 0) {
+      setMessage({ ok: false, text: "El total debe ser mayor a $0. Revisa los pasos del constructor." });
+      return;
+    }
+
     setSending(true);
     setMessage(null);
     try {
-      // Mark as quoted
-      const request = await onSendQuote(selected.id, quoteForm);
+      // Mark as quoted — pass computed final amount + address overrides
+      const payload = {
+        ...quoteForm,
+        quotedAmount: String(finalAmount),
+        pickupAddress: quoteForm.pickupOverride || selected.pickupAddress,
+        deliveryAddress: quoteForm.deliveryOverride || selected.deliveryAddress,
+      };
+      const request = await onSendQuote(selected.id, payload);
 
       // Build PDF HTML for attachment
-      const finalAmount   = Number(quoteForm.quotedAmount);
       const pdfHtml       = buildPDFHtml(selected, finalAmount, selected.photos || []);
       const pdfBase64     = btoa(unescape(encodeURIComponent(pdfHtml)));
 
@@ -512,7 +562,17 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
         ? `✅ Cotización actualizada y reenviada a ${selected.customerName}`
         : `✅ Cotización enviada a ${selected.customerName}`;
       setMessage({ ok: true, text: successText });
-      setQuoteForm({ quotedAmount: "", serviceType: serviceTypes[0], internalNotes: "", avionetaCount: 0 });
+      setQuoteForm({
+        quotedAmount: "",
+        serviceType: serviceTypes[0],
+        internalNotes: "",
+        avionetaCount: 0,
+        peonetaUnitCost: 50000,
+        discount: 0,
+        manualOverride: false,
+        pickupOverride: "",
+        deliveryOverride: "",
+      });
       setUpdateMode(false);
     } catch (err) {
       setMessage({ ok: false, text: `Error: ${err.message}` });
@@ -944,74 +1004,239 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                   )}
                 </div>
 
-                {/* Price suggestion */}
+                {/* ─── Constructor paso a paso ────────────────────────────── */}
                 {(() => {
                   const liveKm = routeCache[selected.id]?.km;
-                  const suggested = calcSuggestedPrice(selected, liveKm || null);
-                  return suggested ? (
-                    <div className="mb-4 flex items-center justify-between rounded-xl bg-dropit-accent/8 border border-dropit-accent/20 px-4 py-3">
-                      <div>
-                        <p className="text-xs font-bold text-dropit-700">💡 Precio calculado automáticamente</p>
-                        <p className="text-2xl font-black text-dropit-accent">${suggested.toLocaleString("es-CL")}</p>
-                        {(selected.avionetaCount > 0 || selected.avioneta) && <p className="text-[10px] text-dropit-600">Incluye {selected.avionetaCount || 1} peoneta{(selected.avionetaCount || 1) > 1 ? "s" : ""}</p>}
-                      </div>
-                      <button type="button" onClick={() => setQuoteForm(f => ({ ...f, quotedAmount: String(suggested) }))}
-                        className="rounded-lg bg-dropit-accent px-3 py-2 text-xs font-bold text-white hover:bg-dropit-accent-dark transition-all">
-                        Usar este valor
-                      </button>
-                    </div>
-                  ) : null;
-                })()}
+                  const km = Number(selected.distanceKm || liveKm) || 0;
+                  const weight = Number(selected.estimatedWeightKg) || 0;
+                  const pickupAddr = quoteForm.pickupOverride || selected.pickupAddress || "";
+                  const deliveryAddr = quoteForm.deliveryOverride || selected.deliveryAddress || "";
+                  const isRM = RM_COMUNAS.has(pickupAddr.split(",").pop()?.trim()) ||
+                               RM_COMUNAS.has(deliveryAddr.split(",").pop()?.trim());
+                  const basePrice = km > 0 ? (isRM ? calcRMPrice(km) : calcNationalBase(km)) : 0;
+                  const weightSurcharge = weight > 500 ? 0.35 : weight > 200 ? 0.25 : weight > 50 ? 0.15 : 0;
+                  const baseFlete = basePrice > 0 ? Math.round(basePrice * (1 + weightSurcharge) / 1000) * 1000 : 0;
+                  const peonetaCount = Number(quoteForm.avionetaCount) || 0;
+                  const peonetaUnit = Number(quoteForm.peonetaUnitCost) || 0;
+                  const peonetaSubtotal = peonetaCount * peonetaUnit;
+                  const discount = Number(quoteForm.discount) || 0;
+                  const calculatedTotal = Math.max(0, baseFlete + peonetaSubtotal - discount);
+                  const finalTotal = quoteForm.manualOverride
+                    ? (Number(quoteForm.quotedAmount) || 0)
+                    : calculatedTotal;
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="label-base">Valor final del servicio (CLP)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
-                      <input className="input-base pl-7 text-lg font-bold" type="number" min="0"
-                        value={quoteForm.quotedAmount}
-                        onChange={e => setQuoteForm(f => ({ ...f, quotedAmount: e.target.value }))}
-                        required placeholder="0" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="label-base">Tipo de servicio</label>
-                    <select className="input-base" value={quoteForm.serviceType}
-                      onChange={e => setQuoteForm(f => ({ ...f, serviceType: e.target.value }))}>
-                      {serviceTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="label-base">Comentarios para el cliente (aparecen en el correo)</label>
-                    <textarea className="input-base min-h-[72px] resize-none"
-                      value={quoteForm.internalNotes}
-                      onChange={e => setQuoteForm(f => ({ ...f, internalNotes: e.target.value }))}
-                      placeholder="Detalles relevantes del servicio, condiciones especiales, contacto del conductor..." />
-                  </div>
-
-                  {/* Peonetas / ayudantes adjuster */}
-                  <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-lg">💪</div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-800">Peonetas incluidos</p>
-                          <p className="text-xs text-slate-500">Se mencionarán en el correo enviado al cliente</p>
+                  return (
+                    <div className="space-y-4">
+                      {/* STEP 1 — Ruta */}
+                      <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/30 overflow-hidden">
+                        <div className="flex items-center gap-3 bg-blue-100/60 px-4 py-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white shadow-md shadow-blue-300">1</div>
+                          <div className="flex-1">
+                            <h5 className="text-sm font-black text-blue-900">Confirma la ruta</h5>
+                            <p className="text-[11px] text-blue-700">Edita las direcciones si necesitas y recalcula la distancia</p>
+                          </div>
+                          {km > 0 && (
+                            <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white">
+                              {km} km
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-3 p-4">
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">📦 Origen</label>
+                              <input className="input-base mt-1 text-sm" type="text"
+                                value={quoteForm.pickupOverride || selected.pickupAddress || ""}
+                                onChange={e => setQuoteForm(f => ({ ...f, pickupOverride: e.target.value }))}
+                                placeholder="Dirección de retiro" />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">🏁 Destino</label>
+                              <input className="input-base mt-1 text-sm" type="text"
+                                value={quoteForm.deliveryOverride || selected.deliveryAddress || ""}
+                                onChange={e => setQuoteForm(f => ({ ...f, deliveryOverride: e.target.value }))}
+                                placeholder="Dirección de entrega" />
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <button type="button"
+                              onClick={() => calcRouteForRequest({
+                                ...selected,
+                                pickupAddress: quoteForm.pickupOverride || selected.pickupAddress,
+                                deliveryAddress: quoteForm.deliveryOverride || selected.deliveryAddress,
+                              })}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-sm">
+                              <RefreshCw size={12} /> Recalcular ruta
+                            </button>
+                            {km > 0 && (
+                              <div className="text-xs font-bold text-blue-900">
+                                Zona: {isRM ? "Santiago RM" : km > 500 ? "Larga distancia" : km > 100 ? "Regional" : "Local"} · Base ${basePrice.toLocaleString("es-CL")}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0 rounded-full border border-blue-200 bg-white px-1 py-1 shadow-sm">
-                        <button type="button"
-                          onClick={() => setQuoteForm(f => ({ ...f, avionetaCount: Math.max(0, Number(f.avionetaCount) - 1) }))}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-base font-bold text-blue-600 hover:bg-blue-50 disabled:opacity-30"
-                          disabled={!Number(quoteForm.avionetaCount)}>−</button>
-                        <span className="w-5 text-center text-base font-black text-slate-800">{Number(quoteForm.avionetaCount) || 0}</span>
-                        <button type="button"
-                          onClick={() => setQuoteForm(f => ({ ...f, avionetaCount: Math.min(5, (Number(f.avionetaCount) || 0) + 1) }))}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-base font-bold text-blue-600 hover:bg-blue-50">+</button>
+
+                      {/* STEP 2 — Peonetas */}
+                      <div className="rounded-2xl border-2 border-amber-100 bg-amber-50/30 overflow-hidden">
+                        <div className="flex items-center gap-3 bg-amber-100/60 px-4 py-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-600 text-sm font-black text-white shadow-md shadow-amber-300">2</div>
+                          <div className="flex-1">
+                            <h5 className="text-sm font-black text-amber-900">Peonetas requeridos</h5>
+                            <p className="text-[11px] text-amber-700">
+                              Cliente solicitó <strong>{selected.avionetaCount || 0}</strong>. Tú decides cuántos incluir y el costo unitario.
+                            </p>
+                          </div>
+                          {peonetaCount > 0 && (
+                            <span className="rounded-full bg-amber-600 px-2.5 py-1 text-[11px] font-bold text-white">
+                              🧑‍🏭 {peonetaCount}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid gap-4 p-4 md:grid-cols-2">
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Cantidad</label>
+                            <div className="mt-1 flex items-center gap-2 rounded-xl border-2 border-amber-200 bg-white px-2 py-1.5">
+                              <button type="button"
+                                onClick={() => setQuoteForm(f => ({ ...f, avionetaCount: Math.max(0, Number(f.avionetaCount) - 1) }))}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg text-xl font-bold text-amber-600 hover:bg-amber-100 disabled:opacity-30 transition-colors"
+                                disabled={!Number(quoteForm.avionetaCount)}>−</button>
+                              <span className="flex-1 text-center text-xl font-black text-slate-900">{Number(quoteForm.avionetaCount) || 0}</span>
+                              <button type="button"
+                                onClick={() => setQuoteForm(f => ({ ...f, avionetaCount: Math.min(5, (Number(f.avionetaCount) || 0) + 1) }))}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg text-xl font-bold text-amber-600 hover:bg-amber-100 transition-colors">+</button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Valor unitario por peoneta (CLP)</label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
+                              <input className="input-base pl-7 font-bold" type="number" min="0" step="1000"
+                                value={quoteForm.peonetaUnitCost}
+                                onChange={e => setQuoteForm(f => ({ ...f, peonetaUnitCost: Number(e.target.value) || 0 }))}
+                                placeholder="50000" />
+                            </div>
+                            <p className="mt-1 text-[10px] text-slate-500">Coloca 0 si las peonetas no afectan el precio</p>
+                          </div>
+                          {peonetaCount > 0 && (
+                            <div className="md:col-span-2 flex items-center justify-between rounded-lg bg-white border-2 border-amber-200 px-3 py-2 shadow-sm">
+                              <span className="text-xs font-semibold text-slate-600">Subtotal peonetas</span>
+                              <strong className="text-base font-black text-amber-700">{peonetaCount} × ${peonetaUnit.toLocaleString("es-CL")} = ${peonetaSubtotal.toLocaleString("es-CL")}</strong>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* STEP 3 — Precio final + detalles */}
+                      <div className="rounded-2xl border-2 border-dropit-accent/30 bg-gradient-to-br from-dropit-accent/5 to-dropit-accent/10 overflow-hidden">
+                        <div className="flex items-center gap-3 bg-dropit-accent/15 px-4 py-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-dropit-accent text-sm font-black text-white shadow-md shadow-dropit-accent/40">3</div>
+                          <div className="flex-1">
+                            <h5 className="text-sm font-black text-dropit-accent">Precio final</h5>
+                            <p className="text-[11px] text-dropit-700">Desglose transparente — puedes ajustar el descuento o sobrescribir el total</p>
+                          </div>
+                          <span className="rounded-full bg-dropit-accent px-2.5 py-1 text-[11px] font-bold text-white">
+                            ${finalTotal.toLocaleString("es-CL")}
+                          </span>
+                        </div>
+                        <div className="space-y-3 p-4">
+                          {/* Breakdown */}
+                          <div className="space-y-1.5 rounded-xl bg-white/80 p-3 text-sm shadow-inner">
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Flete base {km > 0 ? `(${km} km)` : "(sin ruta)"}</span>
+                              <strong className="text-slate-900">${basePrice.toLocaleString("es-CL")}</strong>
+                            </div>
+                            {weightSurcharge > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Recargo peso ({weight} kg, +{Math.round(weightSurcharge * 100)}%)</span>
+                                <strong className="text-slate-900">+${Math.round(basePrice * weightSurcharge).toLocaleString("es-CL")}</strong>
+                              </div>
+                            )}
+                            <div className="flex justify-between border-t border-slate-200 pt-1.5">
+                              <span className="text-slate-700 font-semibold">Subtotal flete</span>
+                              <strong className="text-slate-900">${baseFlete.toLocaleString("es-CL")}</strong>
+                            </div>
+                            {peonetaCount > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">🧑‍🏭 Peonetas ({peonetaCount} × ${peonetaUnit.toLocaleString("es-CL")})</span>
+                                <strong className="text-slate-900">+${peonetaSubtotal.toLocaleString("es-CL")}</strong>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
+                              <span className="text-slate-600">Descuento</span>
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-red-500">−$</span>
+                                <input className="w-32 rounded-md border-2 border-red-200 bg-red-50/40 pl-7 pr-2 py-1 text-right text-sm font-bold text-red-700 focus:border-red-400 focus:outline-none" type="number" min="0" step="500"
+                                  value={quoteForm.discount}
+                                  onChange={e => setQuoteForm(f => ({ ...f, discount: Number(e.target.value) || 0 }))}
+                                  placeholder="0" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Total banner */}
+                          <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-dropit-accent to-dropit-accent-dark px-4 py-3 text-white shadow-lg shadow-dropit-accent/30">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest opacity-90">Total a cotizar al cliente</p>
+                              <p className="text-[10px] opacity-75">{quoteForm.manualOverride ? "Sobrescrito manualmente" : "Calculado automáticamente"}</p>
+                            </div>
+                            <strong className="text-3xl font-black tracking-tight">${finalTotal.toLocaleString("es-CL")}</strong>
+                          </div>
+
+                          {/* Manual override */}
+                          <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox"
+                                checked={quoteForm.manualOverride}
+                                onChange={e => setQuoteForm(f => ({
+                                  ...f,
+                                  manualOverride: e.target.checked,
+                                  quotedAmount: e.target.checked ? String(calculatedTotal) : f.quotedAmount,
+                                }))}
+                                className="h-4 w-4 rounded border-slate-300 text-dropit-accent focus:ring-dropit-accent" />
+                              <span className="text-xs font-bold text-slate-700">Sobrescribir total manualmente</span>
+                            </label>
+                            {quoteForm.manualOverride && (
+                              <div className="mt-2 relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
+                                <input className="input-base pl-7 text-right text-lg font-black text-dropit-accent" type="number" min="0"
+                                  value={quoteForm.quotedAmount}
+                                  onChange={e => setQuoteForm(f => ({ ...f, quotedAmount: e.target.value }))}
+                                  placeholder="0" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Tipo de servicio + comentarios */}
+                          <div className="grid gap-3 md:grid-cols-2 pt-1">
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Tipo de servicio</label>
+                              <select className="input-base mt-1" value={quoteForm.serviceType}
+                                onChange={e => setQuoteForm(f => ({ ...f, serviceType: e.target.value }))}>
+                                {serviceTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </div>
+                            <div className="flex items-end">
+                              <p className="text-[10px] text-slate-500 leading-tight">
+                                ✓ Las peonetas se mencionan en el correo<br />
+                                ✓ El PDF incluye desglose completo
+                              </p>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Comentarios para el cliente (visibles en el correo)</label>
+                            <textarea className="input-base mt-1 min-h-[64px] resize-none text-sm"
+                              value={quoteForm.internalNotes}
+                              onChange={e => setQuoteForm(f => ({ ...f, internalNotes: e.target.value }))}
+                              placeholder="Detalles del servicio, condiciones especiales, contacto del conductor..." />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  );
+                })()}
 
+                <div className="grid gap-4 mt-4 md:grid-cols-2">
                   {/* Photo upload */}
                   <div className="md:col-span-2">
                     <label className="label-base">Fotos adjuntas (máx. 6)</label>
@@ -1039,13 +1264,13 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <button type="submit" disabled={sending || !quoteForm.quotedAmount}
-                    className="flex items-center gap-2 rounded-xl bg-dropit-accent px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all disabled:opacity-50">
+                  <button type="submit" disabled={sending || getFinalAmount() <= 0}
+                    className="flex items-center gap-2 rounded-xl bg-dropit-accent px-6 py-3 text-sm font-bold text-white shadow-md shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                     {sending ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
-                    {sending ? "Enviando..." : (updateMode ? "Reenviar al cliente" : "Enviar cotización")}
+                    {sending ? "Enviando..." : (updateMode ? `Reenviar — $${getFinalAmount().toLocaleString("es-CL")}` : `Enviar cotización — $${getFinalAmount().toLocaleString("es-CL")}`)}
                   </button>
-                  <button type="button" onClick={() => setPdfPreview(buildPDFHtml(selected, Number(quoteForm.quotedAmount) || 0, selected.photos || []))}
-                    className="flex items-center gap-2 rounded-xl border border-dropit-accent/30 bg-dropit-accent/5 px-5 py-2.5 text-sm font-bold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all">
+                  <button type="button" onClick={() => setPdfPreview(buildPDFHtml(selected, getFinalAmount(), selected.photos || []))}
+                    className="flex items-center gap-2 rounded-xl border border-dropit-accent/30 bg-dropit-accent/5 px-5 py-3 text-sm font-bold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all">
                     <Eye size={15} /> Vista previa PDF
                   </button>
                 </div>
