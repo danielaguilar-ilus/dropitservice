@@ -3,6 +3,8 @@
  *
  * Prioridad: Google Places API (si VITE_GOOGLE_MAPS_API_KEY está configurado)
  * Fallback: Photon (Komoot) + Nominatim en paralelo (gratuito, sin API key).
+ * Si Google devuelve REQUEST_DENIED o cualquier error, se cae permanentemente
+ * a OSM durante la sesión (googleDisabledRef) sin bloquear el input.
  *
  * Props:
  *   value          → string controlado (lo que se muestra en el input)
@@ -21,29 +23,113 @@ import { MapPin, Search, X, Loader2 } from "lucide-react";
 import { loadGoogleMaps } from "./GoogleMap";
 import { COMUNAS } from "../lib/comunas";
 
-// ─── Photon (Komoot) — rápido, sesgado hacia Santiago ─────────────────────────
-async function photonSearch(q) {
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ", Chile")}&limit=6&lat=-33.45&lon=-70.65`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return (data.features || []).map(f => {
-    const p = f.properties || {};
-    const [lng, lat] = f.geometry?.coordinates || [0, 0];
-    const street = [p.street, p.housenumber].filter(Boolean).join(" ") || p.name || "";
-    const rawCity = p.city || p.district || p.locality || p.county || "";
-    const commune = COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase())
-                 || COMUNAS.find(c => rawCity.toLowerCase().includes(c.toLowerCase()))
-                 || rawCity;
-    const subtext = [rawCity, p.state, "Chile"].filter(Boolean).slice(0, 2).join(", ");
-    return { street, commune, subtext, raw: rawCity, lat, lng };
-  });
+// ─── Comunas de la Región Metropolitana para priorizar resultados urbanos ─────
+const RM_COMUNAS = new Set([
+  "Santiago", "Providencia", "Las Condes", "Vitacura", "Lo Barnechea",
+  "Ñuñoa", "La Reina", "Peñalolén", "Macul", "San Joaquín", "La Florida",
+  "La Pintana", "El Bosque", "Pedro Aguirre Cerda", "San Miguel", "San Ramón",
+  "Lo Espejo", "Estación Central", "Cerrillos", "Maipú", "Pudahuel",
+  "Quinta Normal", "Cerro Navia", "Lo Prado", "Renca", "Conchalí",
+  "Huechuraba", "Recoleta", "Independencia", "Quilicura", "Colina",
+  "Lampa", "Tiltil", "Puente Alto", "Pirque", "San José de Maipo",
+  "San Bernardo", "Buin", "Paine", "Calera de Tango", "Talagante",
+  "El Monte", "Isla de Maipo", "Peñaflor", "Padre Hurtado", "Melipilla",
+  "Curacaví", "María Pinto", "San Pedro", "Alhué", "Buín",
+]);
+
+// ─── Normalización para dedup (sin acentos, lowercase, solo alfanumérico) ─────
+function normalizeKey(str) {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-// ─── Nominatim — fallback estructurado ────────────────────────────────────────
+// ─── Detecta si el query parece urbano (corto, sin ciudad explícita foránea) ──
+function looksUrban(q) {
+  return q.trim().split(/\s+/).length <= 5;
+}
+
+// ─── Photon (Komoot) — sesgado a Santiago ─────────────────────────────────────
+async function photonSearchSantiago(q) {
+  // Con sesgo geográfico a Santiago + filtro de tipos viales
+  const tagFilter =
+    "&osm_tag=highway:residential&osm_tag=highway:primary&osm_tag=highway:secondary" +
+    "&osm_tag=highway:tertiary&osm_tag=highway:unclassified";
+  const url =
+    `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ", Chile")}` +
+    `&limit=8&lat=-33.45&lon=-70.65&location_bias_scale=0.5${tagFilter}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  const features = data.features || [];
+
+  // Si devuelve menos de 3 resultados, reintenta sin filtro osm_tag
+  if (features.length < 3) {
+    const url2 =
+      `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ", Chile")}` +
+      `&limit=8&lat=-33.45&lon=-70.65&location_bias_scale=0.5`;
+    const res2 = await fetch(url2);
+    const data2 = await res2.json();
+    return parsePhotonFeatures(data2.features || []);
+  }
+  return parsePhotonFeatures(features);
+}
+
+// ─── Photon sin sesgo geográfico — cubre regiones ─────────────────────────────
+async function photonSearchNational(q) {
+  const url =
+    `https://photon.komoot.io/api/?q=${encodeURIComponent(q + ", Chile")}` +
+    `&limit=6`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return parsePhotonFeatures(data.features || []);
+}
+
+function parsePhotonFeatures(features) {
+  return features.map(f => {
+    const p = f.properties || {};
+    const [lng, lat] = f.geometry?.coordinates || [0, 0];
+    const street =
+      [p.street, p.housenumber].filter(Boolean).join(" ") ||
+      p.name ||
+      "";
+    const rawCity =
+      p.city || p.district || p.locality || p.county || "";
+    const commune =
+      COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase()) ||
+      COMUNAS.find(c => rawCity.toLowerCase().includes(c.toLowerCase())) ||
+      rawCity;
+    const subtext = [rawCity, p.state, "Chile"].filter(Boolean).slice(0, 2).join(", ");
+    const hasNumber = Boolean(p.housenumber);
+    const inRM = RM_COMUNAS.has(commune) || RM_COMUNAS.has(rawCity);
+    return { street, commune, subtext, raw: rawCity, lat, lng, hasNumber, inRM, source: "photon" };
+  }).filter(r => r.street);
+}
+
+// ─── Nominatim — estructurado, dedupe, por calle ──────────────────────────────
 async function nominatimSearch(q) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=cl&addressdetails=1&limit=7&accept-language=es`;
+  // Separa número del nombre si el query lo incluye (ej. "Apoquindo 4775")
+  const streetMatch = q.match(/^(.+?)\s+(\d{3,5})\s*$/);
+  let url;
+  if (streetMatch) {
+    const streetName = streetMatch[1].trim();
+    const houseNum   = streetMatch[2];
+    url =
+      `https://nominatim.openstreetmap.org/search?format=json` +
+      `&street=${encodeURIComponent(streetName + " " + houseNum)}` +
+      `&countrycodes=cl&addressdetails=1&limit=7&dedupe=1&accept-language=es`;
+  } else {
+    url =
+      `https://nominatim.openstreetmap.org/search?format=json` +
+      `&q=${encodeURIComponent(q)}` +
+      `&countrycodes=cl&addressdetails=1&limit=7&featuretype=street&dedupe=1&accept-language=es`;
+  }
   const res = await fetch(url, { headers: { "Accept-Language": "es" } });
-  return res.json();
+  const data = await res.json();
+  return data.map(parseNominatim);
 }
 
 function parseNominatim(result) {
@@ -51,14 +137,19 @@ function parseNominatim(result) {
   const num     = a.house_number || "";
   const road    = a.road || a.pedestrian || a.footway || a.cycleway || a.path || "";
   const rawCity = a.city_district || a.suburb || a.quarter || a.city || a.town || a.village || a.municipality || "";
-  const commune = COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase())
-               || COMUNAS.find(c => rawCity.toLowerCase().includes(c.toLowerCase()))
-               || rawCity;
-  const street  = road ? [road, num].filter(Boolean).join(" ") : result.display_name.split(",")[0].trim();
+  const commune =
+    COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase()) ||
+    COMUNAS.find(c => rawCity.toLowerCase().includes(c.toLowerCase())) ||
+    rawCity;
+  const street  = road
+    ? [road, num].filter(Boolean).join(" ")
+    : result.display_name.split(",")[0].trim();
   const subtext = [rawCity, a.county, a.state].filter(Boolean).slice(0, 2).join(", ");
   const lat = parseFloat(result.lat);
   const lng = parseFloat(result.lon);
-  return { street, commune, subtext, raw: rawCity, lat, lng };
+  const hasNumber = Boolean(num);
+  const inRM = RM_COMUNAS.has(commune) || RM_COMUNAS.has(rawCity);
+  return { street, commune, subtext, raw: rawCity, lat, lng, hasNumber, inRM, source: "nominatim" };
 }
 
 function withTimeout(promise, ms) {
@@ -68,22 +159,39 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-// Photon + Nominatim en paralelo, deduplicado
+// ─── 3 búsquedas en paralelo, ranking y dedup ────────────────────────────────
 async function multiSearch(q) {
-  const [photon, nominatim] = await Promise.allSettled([
-    withTimeout(photonSearch(q), 4000),
-    withTimeout(nominatimSearch(q).then(d => d.map(parseNominatim)), 5000),
+  const urban = looksUrban(q);
+
+  const [photonSCL, photonCL, nominatim] = await Promise.allSettled([
+    withTimeout(photonSearchSantiago(q), 5000),
+    withTimeout(photonSearchNational(q), 5000),
+    withTimeout(nominatimSearch(q), 6000),
   ]);
-  const photonResults    = photon.status    === "fulfilled" ? photon.value    : [];
-  const nominatimResults = nominatim.status === "fulfilled" ? nominatim.value : [];
-  const combined = [...photonResults, ...nominatimResults];
+
+  const all = [
+    ...(photonSCL.status  === "fulfilled" ? photonSCL.value  : []),
+    ...(photonCL.status   === "fulfilled" ? photonCL.value   : []),
+    ...(nominatim.status  === "fulfilled" ? nominatim.value  : []),
+  ];
+
+  // Dedup por clave normalizada
   const seen = new Set();
-  return combined.filter(r => {
-    const k = `${r.street}|${r.commune}`.toLowerCase();
+  const deduped = all.filter(r => {
+    const k = normalizeKey(`${r.street}|${r.commune}`);
     if (seen.has(k) || !r.street) return false;
     seen.add(k);
     return true;
-  }).slice(0, 7);
+  });
+
+  // Ranking: con número > RM (si query urbano) > resto
+  deduped.sort((a, b) => {
+    const scoreA = (a.hasNumber ? 2 : 0) + (urban && a.inRM ? 1 : 0);
+    const scoreB = (b.hasNumber ? 2 : 0) + (urban && b.inRM ? 1 : 0);
+    return scoreB - scoreA;
+  });
+
+  return deduped.slice(0, 7);
 }
 
 // Extrae la comuna desde los componentes de dirección de Google
@@ -118,10 +226,13 @@ export default function StreetAutocomplete({
   const [usingGoogle,  setGoogle]  = useState(false);
   // tracks whether the *current* visible results came from Google Places (not just SDK loaded)
   const [resultsFromGoogle, setResultsFromGoogle] = useState(false);
-  const debRef    = useRef(null);
-  const gmRef     = useRef(null);
-  const wrapRef   = useRef(null);
-  const cancelRef = useRef(false);
+  const debRef           = useRef(null);
+  const gmRef            = useRef(null);
+  const wrapRef          = useRef(null);
+  const cancelRef        = useRef(false);
+  // Once Google returns REQUEST_DENIED / OVER_QUERY_LIMIT, we permanently
+  // switch to OSM for the rest of the session — no more wasted round-trips.
+  const googleDisabledRef = useRef(false);
 
   // Carga el SDK de Google Maps al montar
   useEffect(() => {
@@ -156,28 +267,9 @@ export default function StreetAutocomplete({
       setLoading(true);
       const gm = gmRef.current || window.google?.maps;
 
-      if (gm?.places?.AutocompleteService) {
-        // ── Google Places ────────────────────────────────────────────────────
-        new gm.places.AutocompleteService().getPlacePredictions(
-          { input: val, componentRestrictions: { country: "cl" }, types: ["address"] },
-          (preds, status) => {
-            if (cancelRef.current) return;
-            setLoading(false);
-            if (status !== gm.places.PlacesServiceStatus.OK || !preds) {
-              setResults([]); setOpen(false); setResultsFromGoogle(false); return;
-            }
-            setResults(preds.map(p => ({
-              placeId:  p.place_id,
-              label:    p.structured_formatting.main_text,
-              sublabel: p.structured_formatting.secondary_text || "",
-              full:     p.description,
-            })));
-            setResultsFromGoogle(true);
-            setOpen(true);
-          }
-        );
-      } else {
-        // ── Photon + Nominatim ───────────────────────────────────────────────
+      // Helper: cae a OSM (Photon + Nominatim) — usado tanto cuando no hay
+      // Google como cuando Google falla (REQUEST_DENIED por billing, etc.)
+      const fallbackToOSM = () => {
         multiSearch(val).then(parsed => {
           if (cancelRef.current) return;
           const items = parsed.map(p => ({
@@ -191,6 +283,51 @@ export default function StreetAutocomplete({
           setOpen(items.length > 0);
           setLoading(false);
         }).catch(() => { if (!cancelRef.current) setLoading(false); });
+      };
+
+      const canTryGoogle =
+        !googleDisabledRef.current && gm?.places?.AutocompleteService;
+
+      if (canTryGoogle) {
+        // ── Google Places ────────────────────────────────────────────────────
+        new gm.places.AutocompleteService().getPlacePredictions(
+          { input: val, componentRestrictions: { country: "cl" }, types: ["address"] },
+          (preds, status) => {
+            if (cancelRef.current) return;
+            const ok = gm.places.PlacesServiceStatus.OK;
+            const denied = gm.places.PlacesServiceStatus.REQUEST_DENIED;
+            const overLimit = gm.places.PlacesServiceStatus.OVER_QUERY_LIMIT;
+
+            // Si Google nos baneó por billing/cuota, no volvemos a intentar
+            if (status === denied || status === overLimit) {
+              googleDisabledRef.current = true;
+              console.warn(
+                "[StreetAutocomplete] Google Places",
+                status,
+                "— cambiando a Photon/Nominatim para el resto de la sesión"
+              );
+            }
+
+            // Cualquier status != OK o sin predicciones → fallback OSM
+            if (status !== ok || !preds || preds.length === 0) {
+              fallbackToOSM();
+              return;
+            }
+
+            setLoading(false);
+            setResults(preds.map(p => ({
+              placeId:  p.place_id,
+              label:    p.structured_formatting.main_text,
+              sublabel: p.structured_formatting.secondary_text || "",
+              full:     p.description,
+            })));
+            setResultsFromGoogle(true);
+            setOpen(true);
+          }
+        );
+      } else {
+        // ── Sin Google (o ya deshabilitado) → directo a Photon + Nominatim ──
+        fallbackToOSM();
       }
     }, 280);
   }
