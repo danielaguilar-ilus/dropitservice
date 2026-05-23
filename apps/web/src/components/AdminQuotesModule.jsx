@@ -287,6 +287,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
   // Caches computed km by requestId so we don't re-geocode every selection
   const [routeCache, setRouteCache] = useState({}); // { [requestId]: {km, durationMin, loading, error} }
   const [deletingQuote, setDeletingQuote] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const autoSentRef = useRef(new Set()); // tracks keys "requestId-type" sent this session
   const photoInputRef = useRef(null);
   const detailRef = useRef(null);
@@ -644,10 +645,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
 
   async function handleDeleteQuote() {
     if (!selected) return;
-    const confirmed = window.confirm(
-      `¿Eliminar esta cotización permanentemente? Esta acción no se puede deshacer.\n\nCliente: ${selected.customerName}\nCódigo: ${selected.trackingCode}`
-    );
-    if (!confirmed) return;
+    setConfirmDeleteOpen(false);
     setDeletingQuote(true);
     setMessage(null);
     try {
@@ -750,7 +748,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
               const u    = urgencyConfig(mins);
               const isPending = req.status === "Pendiente de cotizacion";
               return (
-                <button key={req.id} type="button" onClick={() => setSelectedId(req.id)}
+                <button key={req.id} type="button" onClick={() => { setSelectedId(req.id); setConfirmDeleteOpen(false); }}
                   className={`block w-full p-4 text-left transition-all hover:bg-slate-50 ${selected?.id === req.id ? "bg-dropit-accent/10 border-l-4 border-dropit-accent" : "border-l-4 border-transparent"}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -850,15 +848,30 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     className="flex items-center gap-1.5 rounded-lg border border-dropit-accent/30 bg-dropit-accent/5 px-3 py-2 text-sm font-semibold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all shadow-sm">
                     <Eye size={14} /> Vista previa PDF
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleDeleteQuote}
-                    disabled={deletingQuote}
-                    className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {deletingQuote ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    {deletingQuote ? "Eliminando..." : "Eliminar"}
-                  </button>
+                  {/* ── Eliminar con confirmación inline (sin window.confirm) ── */}
+                  {confirmDeleteOpen ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                      <span className="text-xs font-semibold text-red-700">¿Eliminar permanentemente?</span>
+                      <button type="button" onClick={handleDeleteQuote} disabled={deletingQuote}
+                        className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50">
+                        {deletingQuote ? "..." : "Sí, eliminar"}
+                      </button>
+                      <button type="button" onClick={() => setConfirmDeleteOpen(false)}
+                        className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteOpen(true)}
+                      disabled={deletingQuote}
+                      className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {deletingQuote ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      {deletingQuote ? "Eliminando..." : "Eliminar"}
+                    </button>
+                  )}
                 </div>
               </div>
 
