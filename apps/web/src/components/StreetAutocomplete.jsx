@@ -159,10 +159,66 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-// ─── 3 búsquedas en paralelo, ranking y dedup ────────────────────────────────
+// ─── HERE Maps Geocoding (premium quality, 250k/mes gratis sin tarjeta) ───────
+// Signup: https://platform.here.com (solo email, no requiere tarjeta)
+// Variable: VITE_HERE_API_KEY
+const HERE_KEY = import.meta.env.VITE_HERE_API_KEY || "";
+// Module-level state: si HERE devuelve 401/403, lo deshabilitamos hasta refresh
+const hereDisabledRef = { disabled: false };
+
+async function hereAutocomplete(q) {
+  if (!HERE_KEY) return [];
+  // at=lat,lon sesga al Santiago RM. in=countryCode:CHL restringe a Chile.
+  const url =
+    `https://autosuggest.search.hereapi.com/v1/autosuggest` +
+    `?at=-33.45,-70.65` +
+    `&q=${encodeURIComponent(q)}` +
+    `&in=countryCode:CHL` +
+    `&types=address,street` +
+    `&limit=8` +
+    `&lang=es` +
+    `&apiKey=${HERE_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      console.warn("[StreetAutocomplete] HERE Maps key inválida o sin permisos:", res.status);
+      hereDisabledRef.disabled = true; // (objeto módulo-level, ver abajo)
+    }
+    return [];
+  }
+  const data = await res.json();
+  return (data.items || []).map(item => {
+    const addr = item.address || {};
+    const street = [addr.street, addr.houseNumber].filter(Boolean).join(" ") || item.title || "";
+    const rawCity = addr.district || addr.city || addr.county || "";
+    const commune =
+      COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase()) ||
+      COMUNAS.find(c => rawCity.toLowerCase().includes(c.toLowerCase())) ||
+      rawCity;
+    const subtext = [rawCity, addr.state || "", "Chile"].filter(Boolean).slice(0, 2).join(", ");
+    const lat = item.position?.lat ?? item.access?.[0]?.lat;
+    const lng = item.position?.lng ?? item.access?.[0]?.lng;
+    const hasNumber = Boolean(addr.houseNumber);
+    const inRM = RM_COMUNAS.has(commune) || RM_COMUNAS.has(rawCity);
+    return { street, commune, subtext, raw: rawCity, lat, lng, hasNumber, inRM, source: "here" };
+  }).filter(r => r.street);
+}
+
+// ─── multiSearch: HERE primero (si hay key), después OSM en paralelo ──────────
 async function multiSearch(q) {
   const urban = looksUrban(q);
+  const useHere = HERE_KEY && !hereDisabledRef.disabled;
 
+  // 1) HERE — si está disponible, intenta primero (mejor cobertura Chile)
+  let hereResults = [];
+  if (useHere) {
+    try {
+      hereResults = await withTimeout(hereAutocomplete(q), 5000);
+    } catch { hereResults = []; }
+  }
+
+  // 2) OSM (Photon Santiago + Photon CL + Nominatim) en paralelo
+  //    Siempre se ejecutan para enriquecer / cubrir gaps de HERE
   const [photonSCL, photonCL, nominatim] = await Promise.allSettled([
     withTimeout(photonSearchSantiago(q), 5000),
     withTimeout(photonSearchNational(q), 5000),
@@ -170,9 +226,10 @@ async function multiSearch(q) {
   ]);
 
   const all = [
-    ...(photonSCL.status  === "fulfilled" ? photonSCL.value  : []),
-    ...(photonCL.status   === "fulfilled" ? photonCL.value   : []),
-    ...(nominatim.status  === "fulfilled" ? nominatim.value  : []),
+    ...hereResults, // HERE primero (mejor calidad)
+    ...(photonSCL.status === "fulfilled" ? photonSCL.value : []),
+    ...(photonCL.status  === "fulfilled" ? photonCL.value  : []),
+    ...(nominatim.status === "fulfilled" ? nominatim.value : []),
   ];
 
   // Dedup por clave normalizada
@@ -184,10 +241,10 @@ async function multiSearch(q) {
     return true;
   });
 
-  // Ranking: con número > RM (si query urbano) > resto
+  // Ranking: HERE > con número > RM (si urbano) > resto
   deduped.sort((a, b) => {
-    const scoreA = (a.hasNumber ? 2 : 0) + (urban && a.inRM ? 1 : 0);
-    const scoreB = (b.hasNumber ? 2 : 0) + (urban && b.inRM ? 1 : 0);
+    const scoreA = (a.source === "here" ? 4 : 0) + (a.hasNumber ? 2 : 0) + (urban && a.inRM ? 1 : 0);
+    const scoreB = (b.source === "here" ? 4 : 0) + (b.hasNumber ? 2 : 0) + (urban && b.inRM ? 1 : 0);
     return scoreB - scoreA;
   });
 
@@ -326,11 +383,14 @@ export default function StreetAutocomplete({
           }
         );
       } else {
-        // ── Sin Google (o ya deshabilitado) → directo a Photon + Nominatim ──
+        // ── Sin Google (o ya deshabilitado) → directo a HERE + Photon + Nominatim ──
         fallbackToOSM();
       }
     }, 280);
   }
+
+  // ¿Algún resultado vino de HERE? — afecta el badge del footer
+  const hasHereResult = results.some(r => r.source === "here");
 
   function select(item) {
     const gm = gmRef.current || window.google?.maps;
@@ -421,6 +481,10 @@ export default function StreetAutocomplete({
                 alt="Powered by Google"
                 className="h-4 object-contain"
               />
+            ) : hasHereResult ? (
+              <span className="text-[10px] font-semibold text-slate-500">
+                Sugerencias por <span className="text-[#48DAD0]">HERE Maps</span>
+              </span>
             ) : (
               <span className="text-[9px] text-slate-400">© OpenStreetMap contributors</span>
             )}
