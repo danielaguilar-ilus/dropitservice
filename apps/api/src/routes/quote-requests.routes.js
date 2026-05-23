@@ -106,14 +106,30 @@ router.post("/", async (req, res) => {
         ? `[${request.trackingCode}] ⚡ URGENTE — NUEVA COTIZACIÓN — ${request.customerName}`
         : `[${request.trackingCode}] Nueva cotización — ${request.customerName}`;
       console.log("[new-quote-mail] intentando envío a", smtpCfg.user, "· asunto:", subject);
+      // Fire-and-forget — la respuesta HTTP se envía sin esperar el correo.
+      // Esto es intencional: el envío SMTP no debe bloquear la creación de cotización.
+      // Los errores se loguean con detalle MÁXIMO para diagnóstico en Railway.
       sendMail({
         to: smtpCfg.user,
         subject,
         html: newQuoteEmailHtml(request),
       }).then(info => {
-        console.log("[new-quote-mail] OK — messageId:", info.messageId);
+        console.log("[new-quote-mail] OK — messageId:", info.messageId,
+          "· accepted:", info.accepted, "· rejected:", info.rejected,
+          "· response:", info.response, "· trackingCode:", request.trackingCode);
       }).catch(err => {
-        console.error("[new-quote-mail] FALLO —", err.message);
+        // ★ LOG SUPER VISIBLE — esto debe aparecer en los logs de Railway ★
+        console.error("==================================================");
+        console.error("[new-quote-mail] ✗✗✗ FALLO al enviar correo de nueva cotización");
+        console.error("[new-quote-mail] trackingCode:", request.trackingCode);
+        console.error("[new-quote-mail] destinatario:", smtpCfg.user);
+        console.error("[new-quote-mail] error.message:", err.message);
+        console.error("[new-quote-mail] error.code:", err.code);
+        console.error("[new-quote-mail] error.command:", err.command);
+        console.error("[new-quote-mail] error.response:", err.response);
+        console.error("[new-quote-mail] error.responseCode:", err.responseCode);
+        console.error("[new-quote-mail] error.stack:", err.stack);
+        console.error("==================================================");
       });
     } else {
       const missing = [

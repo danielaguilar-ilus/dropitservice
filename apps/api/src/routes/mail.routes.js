@@ -62,4 +62,80 @@ router.post("/send", async (req, res) => {
   }
 });
 
+// ─── GET diagnostic test-send — full Nodemailer detail in JSON response ──────
+// Usage: /api/mail/test-send?to=your-email@gmail.com
+// Defaults to SMTP_USER if no `to` provided. Returns full error stack on failure.
+router.get("/test-send", async (req, res) => {
+  const startedAt = Date.now();
+  const cfg = getSmtpConfig();
+  const to = (req.query.to && String(req.query.to)) || cfg.user;
+  const config = {
+    host: cfg.host || null,
+    port: cfg.port || null,
+    secure: !!cfg.secure,
+    user: cfg.user || null,
+    fromName: cfg.fromName || null,
+    hasPassword: !!cfg.pass,
+    passwordLen: cfg.pass ? cfg.pass.length : 0,
+  };
+  if (!to) {
+    return res.status(400).json({
+      ok: false,
+      duration_ms: Date.now() - startedAt,
+      config,
+      error: { message: "No 'to' destination provided and SMTP_USER is empty." },
+    });
+  }
+  const subject = `[Dropit Diagnostic] Test send · ${new Date().toISOString()}`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:24px auto;padding:24px;border:1px solid #eee;border-radius:10px">
+      <h2 style="color:#f97316;margin:0 0 12px">Dropit · diagnóstico SMTP</h2>
+      <p>Si recibes este correo, el envío SMTP desde Railway funciona correctamente.</p>
+      <ul style="font-size:13px;color:#555">
+        <li><b>Host:</b> ${config.host}</li>
+        <li><b>Puerto:</b> ${config.port}</li>
+        <li><b>User:</b> ${config.user}</li>
+        <li><b>Generado:</b> ${new Date().toLocaleString("es-CL")}</li>
+      </ul>
+    </div>`;
+  const text = `Dropit diagnostic test send · host=${config.host} port=${config.port} user=${config.user} · sent ${new Date().toISOString()}`;
+
+  try {
+    const info = await sendMail({ to, subject, html, text });
+    return res.json({
+      ok: true,
+      duration_ms: Date.now() - startedAt,
+      config,
+      to,
+      subject,
+      messageId: info.messageId,
+      response: info.response,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      pending: info.pending,
+      envelope: info.envelope,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      duration_ms: Date.now() - startedAt,
+      config,
+      to,
+      subject,
+      error: {
+        message: err.message,
+        code: err.code || null,
+        command: err.command || null,
+        response: err.response || null,
+        responseCode: err.responseCode || null,
+        errno: err.errno || null,
+        syscall: err.syscall || null,
+        address: err.address || null,
+        port: err.port || null,
+        stack: err.stack || null,
+      },
+    });
+  }
+});
+
 export default router;

@@ -62,6 +62,16 @@ export async function sendMail({ to, subject, html, text, attachments = [] }) {
     throw err;
   }
   const transporter = createTransport();
+  // Verbose logging — dump transporter config (without password) before send
+  console.log("[mail] → transporter.options:", {
+    host: _cfg.host,
+    port: _cfg.port,
+    secure: _cfg.secure,
+    user: _cfg.user,
+    passLen: _cfg.pass ? _cfg.pass.length : 0,
+    fromName: _cfg.fromName,
+  });
+  console.log("[mail] → enviando a:", to, "· asunto:", subject);
   try {
     const info = await transporter.sendMail({
       from: `"${_cfg.fromName}" <${_cfg.user}>`,
@@ -72,9 +82,29 @@ export async function sendMail({ to, subject, html, text, attachments = [] }) {
       attachments,
     });
     console.log("[mail] ✓ sent to", to, "·", subject, "·", info.messageId);
+    console.log("[mail] ✓ Nodemailer response:", {
+      messageId: info.messageId,
+      response: info.response,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      pending: info.pending,
+      envelope: info.envelope,
+    });
     return info;
   } catch (err) {
     console.error("[mail] ✗ failed to", to, "·", err.message);
+    console.error("[mail] ✗ Nodemailer error details:", {
+      message: err.message,
+      code: err.code,
+      command: err.command,
+      response: err.response,
+      responseCode: err.responseCode,
+      errno: err.errno,
+      syscall: err.syscall,
+      address: err.address,
+      port: err.port,
+      stack: err.stack,
+    });
     throw err;
   }
 }
