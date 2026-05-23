@@ -596,6 +596,9 @@ export default function PublicQuotePage() {
 
     setLoading(true);
     setError("");
+    // Minimum loader duration so the SaulLoader animation completes all 4 steps
+    // (~800 + 1200 + 900 + 1100 = 4000 ms). Only enforced on success — errors exit immediately.
+    const MIN_LOADER_MS = 4000;
     try {
       const payload = {
         customerName: form.customerName,
@@ -619,11 +622,16 @@ export default function PublicQuotePage() {
         photos: [],  // Photos sent separately in background (faster first response)
         bultosDetail: bultos.filter(b => b.largo || b.ancho || b.alto || b.peso),
       };
-      const res = await fetch(`${API_URL}/quote-requests`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // Run the API call and the minimum-duration timer in parallel.
+      // The timer only pads the success path; throw exits immediately and skips the delay.
+      const [res] = await Promise.all([
+        fetch(`${API_URL}/quote-requests`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }),
+        new Promise(resolve => setTimeout(resolve, MIN_LOADER_MS)),
+      ]);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error al enviar solicitud");
 

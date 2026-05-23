@@ -81,6 +81,32 @@ function AppInner() {
   useEffect(() => {
     if (session) {
       loadBootstrap().catch(() => undefined);
+      // Re-hydrate backend SMTP config from localStorage on every login.
+      // Railway wipes db.json on every deploy, so the in-memory config is lost.
+      // This ensures the operator never has to visit "Config. correo" after a redeploy.
+      try {
+        const SMTP_KEY = "dropit-smtp-config";
+        const stored = JSON.parse(localStorage.getItem(SMTP_KEY) || "{}");
+        // localStorage uses `email` and `password`; backend expects `user` and `pass`
+        const user = stored.email || stored.user || "";
+        const pass = stored.password || stored.pass || "";
+        if (user && pass) {
+          api.updateSmtpConfig({
+            host:     stored.host     || "smtp.gmail.com",
+            port:     stored.port     || 587,
+            secure:   stored.encryption === "SSL",
+            user,
+            pass,
+            fromName: stored.senderName || stored.fromName || "DropIt Service",
+          }).catch((err) => {
+            console.warn("[smtp-sync] no se pudo sincronizar SMTP al backend:", err.message);
+          });
+        } else {
+          console.warn("[smtp-sync] localStorage no tiene credenciales SMTP — configura en Config. correo");
+        }
+      } catch {
+        // localStorage unavailable (SSR, private browsing) — ignore silently
+      }
     }
   }, [session]);
 

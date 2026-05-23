@@ -93,16 +93,36 @@ router.post("/", async (req, res) => {
 
     // ─── Operator notification email on EVERY new quote ─────────────────────
     const smtpCfg = getSmtpConfig();
-    if (smtpCfg.user && smtpCfg.host) {
+    console.log("[new-quote-mail] SMTP state →", {
+      host: smtpCfg.host || "(vacío)",
+      port: smtpCfg.port,
+      user: smtpCfg.user || "(vacío)",
+      hasPass: !!smtpCfg.pass,
+      trackingCode: request.trackingCode,
+    });
+    if (smtpCfg.user && smtpCfg.host && smtpCfg.pass) {
       const isUrgent = !!req.body.urgent;
       const subject = isUrgent
         ? `[${request.trackingCode}] ⚡ URGENTE — NUEVA COTIZACIÓN — ${request.customerName}`
         : `[${request.trackingCode}] Nueva cotización — ${request.customerName}`;
+      console.log("[new-quote-mail] intentando envío a", smtpCfg.user, "· asunto:", subject);
       sendMail({
         to: smtpCfg.user,
         subject,
         html: newQuoteEmailHtml(request),
-      }).catch(err => console.error("[new-quote-mail]", err.message));
+      }).then(info => {
+        console.log("[new-quote-mail] OK — messageId:", info.messageId);
+      }).catch(err => {
+        console.error("[new-quote-mail] FALLO —", err.message);
+      });
+    } else {
+      const missing = [
+        !smtpCfg.host && "SMTP_HOST",
+        !smtpCfg.user && "SMTP_USER",
+        !smtpCfg.pass && "SMTP_PASS",
+      ].filter(Boolean).join(", ");
+      console.warn("[new-quote-mail] OMITIDO — SMTP incompleto, faltan:", missing,
+        "· configura env vars en Railway o usa el panel Config. correo");
     }
 
     res.status(201).json({ request, ...buildDashboardPayload() });

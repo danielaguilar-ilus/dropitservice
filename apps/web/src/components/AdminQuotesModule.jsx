@@ -269,7 +269,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
     serviceType: serviceTypes[0],
     internalNotes: "",
     avionetaCount: 0,
-    peonetaUnitCost: 50000,   // editable unit cost per peoneta (CLP)
+    peonetaUnitCost: 0,       // editable unit cost per peoneta (CLP) — default 0 = metadata only
     discount: 0,              // discount to subtract from the calculated total
     manualOverride: false,    // when true, quotedAmount input is the source of truth
     pickupOverride: "",       // override of pickup address (empty = use request's)
@@ -407,7 +407,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
         serviceType: selected.serviceType || serviceTypes[0],
         internalNotes: selected.internalNotes || "",
         avionetaCount: Number(selected.avionetaCount) || 0,
-        peonetaUnitCost: Number(selected.peonetaUnitCost) || 50000,
+        peonetaUnitCost: selected.peonetaUnitCost != null ? Number(selected.peonetaUnitCost) : 0,
         discount: Number(selected.discount) || 0,
         manualOverride: false,
         pickupOverride: "",
@@ -572,7 +572,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
         serviceType: serviceTypes[0],
         internalNotes: "",
         avionetaCount: 0,
-        peonetaUnitCost: 50000,
+        peonetaUnitCost: 0,
         discount: 0,
         manualOverride: false,
         pickupOverride: "",
@@ -1142,11 +1142,12 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                             <div className="relative mt-1">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
                               <input className="input-base pl-7 font-bold" type="number" min="0" step="1000"
+                                inputMode="numeric"
                                 value={quoteForm.peonetaUnitCost}
                                 onChange={e => setQuoteForm(f => ({ ...f, peonetaUnitCost: Number(e.target.value) || 0 }))}
-                                placeholder="50000" />
+                                placeholder="0 = solo registrar cantidad" />
                             </div>
-                            <p className="mt-1 text-[10px] text-slate-500">Coloca 0 si las peonetas no afectan el precio</p>
+                            <p className="mt-1 text-[10px] text-slate-500">Déjalo en 0 para registrar la cantidad sin afectar el precio</p>
                           </div>
                           {peonetaCount > 0 && (
                             <div className="md:col-span-2 flex items-center justify-between rounded-lg bg-white border-2 border-amber-200 px-3 py-2 shadow-sm">
