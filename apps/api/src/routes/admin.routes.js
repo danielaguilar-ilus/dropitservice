@@ -2,7 +2,7 @@ import { Router } from "express";
 import { readFileSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const router = Router();
 
@@ -280,6 +280,70 @@ router.post("/migrate-from-json", requireAdmin, async (_req, res) => {
       errors: errors.slice(0, 20), // cap at 20 errors to avoid huge responses
       errorCount: errors.length,
     });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: err.code, stack: err.stack },
+    });
+  }
+});
+
+// ─── POST /api/_admin/seed-users ──────────────────────────────────────────────
+// Crea o actualiza los super_admins iniciales con passwords conocidas.
+// Idempotente — si el user ya existe (por email), actualiza password + role.
+// Uso típico tras un deploy fresh con DB vacía o tras reset de password.
+router.post("/seed-users", requireAdmin, async (_req, res) => {
+  if (!process.env.DATABASE_URL) {
+    return res.status(400).json({ ok: false, message: "DATABASE_URL no set" });
+  }
+  try {
+    const dbMod = await import("../data/db.js");
+    const results = [];
+
+    // 1. Juandaniel super_admin (acepta variante con capital J en el legacy)
+    const existing1 =
+      (await dbMod.findUserByEmail("juandaniel.aguilar17@gmail.com")) ||
+      (await dbMod.findUserByEmail("Juandaniel.aguilar17@gmail.com"));
+    if (existing1) {
+      await dbMod.updateUser(existing1.id, {
+        email: "juandaniel.aguilar17@gmail.com",
+        password: "123456789",
+        role: "super_admin",
+        isActive: true,
+      });
+      results.push({ email: "juandaniel.aguilar17@gmail.com", action: "updated", id: existing1.id });
+    } else {
+      const created = await dbMod.createUser({
+        id: "usr-juandaniel",
+        email: "juandaniel.aguilar17@gmail.com",
+        name: "Juandaniel Aguilar",
+        password: "123456789",
+        role: "super_admin",
+      });
+      results.push({ email: "juandaniel.aguilar17@gmail.com", action: "created", id: created.id });
+    }
+
+    // 2. Dropit Contacto super_admin
+    const existing2 = await dbMod.findUserByEmail("dropitcontacto@gmail.com");
+    if (existing2) {
+      await dbMod.updateUser(existing2.id, {
+        password: "123456789Saud",
+        role: "super_admin",
+        isActive: true,
+      });
+      results.push({ email: "dropitcontacto@gmail.com", action: "updated", id: existing2.id });
+    } else {
+      const created = await dbMod.createUser({
+        id: "usr-dropitcontacto",
+        email: "dropitcontacto@gmail.com",
+        name: "Dropit Contacto",
+        password: "123456789Saud",
+        role: "super_admin",
+      });
+      results.push({ email: "dropitcontacto@gmail.com", action: "created", id: created.id });
+    }
+
+    return res.json({ ok: true, users: results });
   } catch (err) {
     return res.status(500).json({
       ok: false,

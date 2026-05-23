@@ -12,6 +12,7 @@ import quoteRequestsRoutes from "./quote-requests.routes.js";
 import quotesRoutes from "./quotes.routes.js";
 import trackingRoutes from "./tracking.routes.js";
 import trucksRoutes from "./trucks.routes.js";
+import usersRoutes from "./users.routes.js";
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use("/tracking", trackingRoutes);
 router.use("/mail", mailRoutes);
 router.use("/media", mediaRoutes);
 router.use("/whatsapp", whatsappRoutes);
+router.use("/users", usersRoutes);
 
 export default router;
