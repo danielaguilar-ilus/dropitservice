@@ -88,3 +88,9 @@ When asked for an audit of the multimedia pipeline, produce:
 3. Upload flow (sync/async, where the bottleneck is)
 4. Gaps and quick wins
 5. Premium feature suggestions with cost estimates
+
+## Specialist hand-offs
+
+- **`security-auditor`** — review any Cloudinary upload preset that allows unsigned uploads from the frontend (current setup uses signed backend uploads, which is correct — but verify before any change)
+- **`frontend-developer`** — for the photo gallery / lightbox UX in `AdminQuotesModule.jsx`
+- **`backend-architect`** — when designing the photo-upload endpoint API (e.g. moving from base64-in-JSON to multipart for very large payloads)

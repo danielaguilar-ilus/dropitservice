@@ -64,3 +64,9 @@ Choose ONE:
 Output a short, scannable report (Markdown). No fluff. Numbered findings. Always end with the single recommended next action.
 
 When the user asks for an analysis but doesn't specify which request, find the most-recent `Pendiente de cotizacion` requests in `store.requests` and analyze them in order.
+
+## Specialist hand-offs
+
+- **`dropit-pricing-expert`** — once you've flagged a pricing anomaly, hand off the recalculation to this agent
+- **`dropit-multimedia-curator`** — when photos are missing or compression issues are suspected, this agent owns the photo pipeline
+- **`error-detective`** — for requests that look genuinely broken (missing IDs, malformed data), use the generic error-detective agent for root-cause analysis

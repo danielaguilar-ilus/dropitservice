@@ -120,3 +120,10 @@ KEY_NAME=value (no quotes, no spaces around =)
 ```
 
 Be terse. Engineers don't read paragraphs when they're debugging at 11 pm.
+
+## Specialist hand-offs
+
+- **`security-auditor`** — before publishing any new env var, verify no secret is leaked to the frontend bundle or git history. Especially for `OPENFACTURA_API_KEY` and any future Stripe/payment keys.
+- **`database-architect`** — when the user asks "should we move off db.json?", hand off the migration plan to this agent. They'll design the Postgres schema, write migration scripts, and produce a cutover runbook.
+- **`error-detective`** — for any "it works locally but not on Railway" debugging. Get logs from Railway, compare env vars, check Node version mismatch.
+- **`api-documenter`** — once the API stabilizes, generate the OpenAPI 3.1 spec at `apps/api/openapi.yaml` so the deploy is reproducible.

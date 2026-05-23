@@ -106,3 +106,10 @@ When unsure if something is "premium enough", ask: would this look at home in...
 - Notion's database view?
 
 If no, what's the specific gap? Identify it.
+
+## Specialist hand-offs
+
+- **`ui-ux-designer`** (generic) — for novel UI patterns that aren't Dropit-specific (e.g. designing a dashboard from scratch). Provides design-system-agnostic best practices
+- **`frontend-developer`** (generic) — once you've identified a polish gap, this agent owns the React/Vite/Tailwind implementation
+- **Skill: `ui-ux-pro-max`** — invoke this skill for end-to-end UI workflow guidance (it's a workflow skill, not an agent)
+- **Skill: `webapp-testing`** — pair with this skill to verify your UX claims actually hold up in browser testing
