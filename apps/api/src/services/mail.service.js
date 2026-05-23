@@ -79,6 +79,14 @@ function createTransport() {
       user: _cfg.user,
       pass: _cfg.pass,
     },
+    // ─── Force IPv4 ────────────────────────────────────────────────────────────
+    // Railway's outbound IPv6 to Gmail times out with ENETUNREACH on
+    // 2607:f8b0:...:587. Forcing family=4 + tls.servername fixes it.
+    family: 4,
+    tls: { servername: _cfg.host, minVersion: "TLSv1.2" },
+    connectionTimeout: 10_000,
+    greetingTimeout:   10_000,
+    socketTimeout:     20_000,
   });
 }
 
