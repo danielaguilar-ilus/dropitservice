@@ -602,6 +602,7 @@ export default function PublicQuotePage() {
     try {
       const payload = {
         customerName: form.customerName,
+        customerRut: form.rut,
         contactPerson: form.customerName,
         contactPhone: form.contactPhone,
         contactEmail: form.contactEmail,
@@ -618,7 +619,7 @@ export default function PublicQuotePage() {
         avionetaCount: form.avionetaCount,
         avioneta: form.avionetaCount > 0,
         urgent: form.urgent || false,
-        observations: `${form.urgent ? "⚡ URGENTE\n" : ""}RUT: ${form.rut}\n${form.observations}`,
+        observations: `${form.urgent ? "⚡ URGENTE\n" : ""}${form.observations}`.trim(),
         photos: [],  // Photos sent separately in background (faster first response)
         bultosDetail: bultos.filter(b => b.largo || b.ancho || b.alto || b.peso),
       };
@@ -1052,7 +1053,7 @@ export default function PublicQuotePage() {
                 </div>
                 <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">Bultos / Peso</p>
-                  <p className="mt-1 text-lg font-black text-dropit-950">{created.packages} bultos · {created.estimatedWeightKg} kg</p>
+                  <p className="mt-1 text-lg font-black text-dropit-950">{created.packages} bultos · {created.estimatedWeightKg} kg en total</p>
                 </div>
                 <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">📍 Retiro</p>

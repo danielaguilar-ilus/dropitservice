@@ -87,37 +87,37 @@ function buildPDFHtml(request, finalAmount, photos = []) {
 <meta charset="UTF-8">
 <title>Cotización ${request.trackingCode}</title>
 <style>
-  @page { size: A4; margin: 0; }
+  @page { size: A4; margin: 12mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; color: #1f2937; background: #fff; }
-  .page { width: 210mm; min-height: 297mm; padding: 0; }
-  .header { background: linear-gradient(135deg, #F97316 0%, #C2590A 55%, #7C3308 100%); padding: 32px 40px; color: #fff; }
-  .logo-row { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-  .logo-img { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); }
-  .logo-fallback { width: 52px; height: 52px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; color: #fff; border: 2px solid rgba(255,255,255,0.3); }
-  .company-name { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
-  .company-sub { font-size: 10px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
-  .doc-title { font-size: 30px; font-weight: 900; }
-  .doc-subtitle { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 6px; }
-  .body { padding: 32px 40px; }
-  .section { margin-bottom: 24px; }
-  .section-title { font-size: 11px; font-weight: 800; color: #F97316; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #fed7aa; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .info-card { background: #fff8f1; border: 1px solid #fed7aa; border-left: 3px solid #F97316; border-radius: 6px; padding: 10px 14px; }
-  .info-label { font-size: 10px; color: #C2590A; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-  .info-value { font-size: 13px; color: #1f2937; font-weight: 500; margin-top: 2px; }
-  .price-box { background: linear-gradient(135deg, #F97316 0%, #C2590A 100%); color: #fff; border-radius: 12px; padding: 24px 32px; text-align: center; margin: 24px 0; }
-  .price-label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; }
-  .price-amount { font-size: 42px; font-weight: 900; margin: 6px 0; letter-spacing: -1px; }
-  .price-note { font-size: 11px; opacity: 0.7; }
-  .route-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; display: flex; align-items: center; gap: 16px; }
+  body { font-family: Arial, sans-serif; color: #1f2937; background: #fff; font-size: 12px; }
+  .page { width: 100%; }
+  .header { background: linear-gradient(135deg, #F97316 0%, #C2590A 55%, #7C3308 100%); padding: 18px 24px; color: #fff; border-radius: 8px 8px 0 0; }
+  .logo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .logo-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); }
+  .logo-fallback { width: 44px; height: 44px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: #fff; border: 2px solid rgba(255,255,255,0.3); }
+  .company-name { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; }
+  .company-sub { font-size: 9px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
+  .doc-title { font-size: 22px; font-weight: 900; }
+  .doc-subtitle { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 4px; }
+  .body { padding: 16px 24px; }
+  .section { margin-bottom: 14px; }
+  .section-title { font-size: 10px; font-weight: 800; color: #F97316; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #fed7aa; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .info-card { background: #fff8f1; border: 1px solid #fed7aa; border-left: 3px solid #F97316; border-radius: 5px; padding: 7px 10px; }
+  .info-label { font-size: 9px; color: #C2590A; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-value { font-size: 12px; color: #1f2937; font-weight: 500; margin-top: 1px; }
+  .price-box { background: linear-gradient(135deg, #F97316 0%, #C2590A 100%); color: #fff; border-radius: 10px; padding: 16px 24px; text-align: center; margin: 14px 0; }
+  .price-label { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; }
+  .price-amount { font-size: 34px; font-weight: 900; margin: 4px 0; letter-spacing: -1px; }
+  .price-note { font-size: 10px; opacity: 0.7; }
+  .route-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; display: flex; align-items: center; gap: 12px; }
   .route-point { flex: 1; }
-  .route-point-label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-  .route-point-value { font-size: 13px; font-weight: 600; color: #111827; margin-top: 2px; }
-  .route-arrow { font-size: 20px; color: #F97316; flex-shrink: 0; }
-  .footer { margin-top: 32px; padding: 20px 40px; background: #1a0f05; color: rgba(255,255,255,0.5); font-size: 10px; text-align: center; }
+  .route-point-label { font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
+  .route-point-value { font-size: 12px; font-weight: 600; color: #111827; margin-top: 2px; }
+  .route-arrow { font-size: 18px; color: #F97316; flex-shrink: 0; }
+  .footer { margin-top: 14px; padding: 12px 24px; background: #1a0f05; color: rgba(255,255,255,0.5); font-size: 9px; text-align: center; border-radius: 0 0 8px 8px; }
   .footer strong { color: #F97316; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; background: rgba(249,115,22,0.15); color: #C2590A; border: 1px solid rgba(249,115,22,0.3); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; background: rgba(249,115,22,0.15); color: #C2590A; border: 1px solid rgba(249,115,22,0.3); }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head>
@@ -140,7 +140,7 @@ function buildPDFHtml(request, finalAmount, photos = []) {
       <div class="section-title">Cliente</div>
       <div class="grid-2">
         <div class="info-card"><div class="info-label">Empresa / Persona</div><div class="info-value">${request.customerName}</div></div>
-        <div class="info-card"><div class="info-label">RUT</div><div class="info-value">${(request.observations || "").split("\n")[0]?.replace("RUT: ", "") || "—"}</div></div>
+        ${(request.customerRut || (() => { const m = (request.observations || "").split("\n").find(l => l.startsWith("RUT:")); return m ? m.replace("RUT: ", "").trim() : ""; })()) ? `<div class="info-card"><div class="info-label">RUT</div><div class="info-value" style="font-family:monospace;">${request.customerRut || (request.observations || "").split("\n").find(l => l.startsWith("RUT:"))?.replace("RUT: ", "").trim() || "—"}</div></div>` : ""}
         <div class="info-card"><div class="info-label">Teléfono</div><div class="info-value">${request.contactPhone}</div></div>
         <div class="info-card"><div class="info-label">Email</div><div class="info-value">${request.contactEmail}</div></div>
       </div>
@@ -159,19 +159,13 @@ function buildPDFHtml(request, finalAmount, photos = []) {
           <div class="route-point-value">${request.deliveryAddress}</div>
         </div>
       </div>
-      ${request.distanceKm ? `<p style="margin-top:8px;font-size:12px;color:#6b7280;">📏 Distancia calculada: <strong style="color:#F97316;">${request.distanceKm} km</strong></p>` : ""}
-      <div style="margin-top:12px;text-align:center;">
-        <a href="https://www.google.com/maps/dir/${encodeURIComponent(request.pickupAddress + ", Chile")}/${encodeURIComponent(request.deliveryAddress + ", Chile")}"
-          target="_blank" style="display:inline-block;background:#F97316;color:#fff;padding:8px 20px;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;">
-          🗺️ Ver ruta en Google Maps
-        </a>
-      </div>
+      ${request.distanceKm ? `<p style="margin-top:7px;font-size:11px;color:#6b7280;">Distancia calculada: <strong style="color:#F97316;">${request.distanceKm} km</strong></p>` : ""}
     </div>
 
     <div class="section">
       <div class="section-title">Detalle de carga</div>
       <div class="grid-2">
-        <div class="info-card"><div class="info-label">Bultos / Peso</div><div class="info-value">${request.packages} bultos · ${request.estimatedWeightKg} kg</div></div>
+        <div class="info-card"><div class="info-label">Bultos / Peso total</div><div class="info-value">${request.packages} bultos · ${request.estimatedWeightKg} kg en total</div></div>
         <div class="info-card"><div class="info-label">Fecha requerida</div><div class="info-value">${request.requiredDate || "—"}${request.requiredTime ? ` a las ${request.requiredTime}` : ""}</div></div>
         <div class="info-card" style="grid-column:1/-1"><div class="info-label">Descripción</div><div class="info-value">${request.cargoDescription}</div></div>
         ${(request.avionetaCount > 0 || request.avioneta) ? `<div class="info-card" style="grid-column:1/-1"><div class="info-label">Peonetas</div><div class="info-value">✓ ${request.avionetaCount > 0 ? `${request.avionetaCount} peoneta${request.avionetaCount > 1 ? "s" : ""} incluida${request.avionetaCount > 1 ? "s" : ""}` : "1 peoneta incluida"}</div></div>` : ""}
@@ -782,11 +776,11 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
 
               {/* ── Bandeja de entrada: bloque de datos completo ───────────── */}
               <div className="grid gap-3 md:grid-cols-2">
-                {/* RUT extraído del campo observaciones */}
+                {/* RUT: campo dedicado, con fallback a observaciones para solicitudes antiguas */}
                 {(() => {
-                  const rut = (selected.observations || "").split("\n").find(l => l.startsWith("RUT:"))?.replace("RUT: ", "").trim();
+                  const rut = selected.customerRut || (selected.observations || "").split("\n").find(l => l.startsWith("RUT:"))?.replace("RUT: ", "").trim();
                   return rut ? (
-                    <InfoCard icon={User} label="🪪 RUT" value={<span className="font-mono font-bold text-slate-900">{rut}</span>} />
+                    <InfoCard icon={User} label="RUT" value={<span className="font-mono font-bold text-slate-900">{rut}</span>} />
                   ) : null;
                 })()}
                 <InfoCard icon={User}    label="Contacto"       value={selected.contactPerson || selected.customerName} />
@@ -795,7 +789,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                 <InfoCard icon={Clock}   label="Fecha / Hora"   value={`${selected.requiredDate || "—"}${selected.requiredTime ? ` a las ${selected.requiredTime}` : ""}`} />
                 <InfoCard icon={MapPin}  label="📦 Dirección retiro"  value={selected.pickupAddress} />
                 <InfoCard icon={MapPin}  label="🏁 Dirección entrega" value={selected.deliveryAddress} />
-                <InfoCard icon={Package} label="Carga"          value={`${selected.packages} bultos · ${selected.estimatedWeightKg} kg`} />
+                <InfoCard icon={Package} label="Carga"          value={`${selected.packages} bultos · ${selected.estimatedWeightKg} kg en total`} />
                 {(() => {
                   const live    = routeCache[selected.id];
                   const km      = selected.distanceKm || live?.km;

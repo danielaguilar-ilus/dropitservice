@@ -79,6 +79,7 @@ export async function createQuoteRequest(payload) {
     trackingCode: nextTrackingCode(),
     source: "formulario_cliente",
     customerName: payload.customerName,
+    customerRut: payload.customerRut || "",
     contactPerson: payload.contactPerson,
     contactPhone: payload.contactPhone,
     contactEmail: payload.contactEmail,
