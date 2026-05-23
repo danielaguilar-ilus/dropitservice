@@ -943,7 +943,7 @@ export default function PublicQuotePage() {
 
           let companyEmail = "";
           let waConfig = null;
-          try { companyEmail = JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").email || ""; } catch {}
+          try { companyEmail = JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").user || ""; } catch {}
           try { waConfig = JSON.parse(localStorage.getItem("dropit-whatsapp-config") || "null"); } catch {}
 
           const trackingCode = data.request?.trackingCode || "N/A";
@@ -1501,11 +1501,11 @@ export default function PublicQuotePage() {
                             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-xl">💪</div>
                             <div>
                               <p className="text-sm font-bold text-slate-800">¿Necesitas ayuda con la carga?</p>
-                              <p className="mt-0.5 text-xs text-slate-500">Sumamos cargadores profesionales para objetos pesados, voluminosos o frágiles</p>
+                              <p className="mt-0.5 text-xs text-slate-500">Sumamos peonetas profesionales para objetos pesados, voluminosos o frágiles</p>
                               <p className="mt-1 text-xs text-slate-400">El valor se cotiza según el trabajo y metodología requerida</p>
                               {form.avionetaCount > 0 && (
                                 <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
-                                  {form.avionetaCount} ayudante{form.avionetaCount > 1 ? "s" : ""}
+                                  {form.avionetaCount} peoneta{form.avionetaCount > 1 ? "s" : ""}
                                 </p>
                               )}
                             </div>

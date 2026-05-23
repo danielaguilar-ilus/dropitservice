@@ -6,32 +6,45 @@ import { getSmtpConfig, sendMail } from "../services/mail.service.js";
 
 const router = Router();
 
-// ─── Urgent email template (server-side, guaranteed delivery) ────────────────
-function urgentEmailHtml(req) {
+// ─── Operator notification email (server-side, guaranteed delivery) ──────────
+function newQuoteEmailHtml(req) {
   const now = new Date().toLocaleString("es-CL");
+  const isUrgent = !!req.urgent;
+  const headerBg = isUrgent
+    ? "linear-gradient(135deg,#dc2626,#991b1b)"
+    : "linear-gradient(135deg,#f97316,#c2590a)";
+  const headerTitle = isUrgent ? "⚡ COTIZACIÓN URGENTE" : "🚛 Nueva cotización recibida";
+  const headerSub   = isUrgent
+    ? "El cliente marcó esta solicitud como urgente — atender de inmediato"
+    : "Un cliente acaba de enviar una solicitud de cotización";
+  const badge = isUrgent
+    ? `<div class="badge urgent">🔴 PRIORIDAD MÁXIMA</div>`
+    : `<div class="badge normal">📋 Pendiente de cotización</div>`;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
 <style>
   body{font-family:Arial,sans-serif;background:#f8f8f8;margin:0;padding:0}
   .wrap{max-width:560px;margin:30px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-  .header{background:linear-gradient(135deg,#dc2626,#991b1b);padding:28px 32px;color:#fff}
+  .header{background:${headerBg};padding:28px 32px;color:#fff}
   .header h1{margin:0;font-size:22px;font-weight:900}
   .header p{margin:6px 0 0;font-size:13px;opacity:.85}
   .body{padding:28px 32px}
-  .badge{display:inline-block;background:#dc2626;color:#fff;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:800;margin-bottom:18px;animation:none}
+  .badge{display:inline-block;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:800;margin-bottom:18px}
+  .badge.urgent{background:#dc2626;color:#fff}
+  .badge.normal{background:#f97316;color:#fff}
   .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:14px}
   .row:last-child{border-bottom:none}
   .row span:first-child{color:#666}
   .row span:last-child{font-weight:700;color:#111;text-align:right;max-width:60%}
-  .btn{display:block;margin:24px auto 0;background:#dc2626;color:#fff;text-decoration:none;padding:13px 32px;border-radius:8px;font-weight:800;font-size:15px;text-align:center}
+  .btn{display:block;margin:24px auto 0;background:${isUrgent ? "#dc2626" : "#f97316"};color:#fff;text-decoration:none;padding:13px 32px;border-radius:8px;font-weight:800;font-size:15px;text-align:center}
   .footer{padding:16px 32px;background:#f4f4f4;text-align:center;font-size:11px;color:#999}
 </style></head><body>
 <div class="wrap">
   <div class="header">
-    <h1>⚡ COTIZACIÓN URGENTE</h1>
-    <p>El cliente marcó esta solicitud como urgente — atender de inmediato</p>
+    <h1>${headerTitle}</h1>
+    <p>${headerSub}</p>
   </div>
   <div class="body">
-    <div class="badge">🔴 PRIORIDAD MÁXIMA</div>
+    ${badge}
     <div class="row"><span>Código</span><span><strong style="font-family:monospace">${req.trackingCode}</strong></span></div>
     <div class="row"><span>Cliente</span><span>${req.customerName}</span></div>
     <div class="row"><span>Teléfono</span><span>${req.contactPhone || "—"}</span></div>
@@ -39,11 +52,13 @@ function urgentEmailHtml(req) {
     <div class="row"><span>📦 Retiro</span><span>${req.pickupAddress}</span></div>
     <div class="row"><span>🏁 Entrega</span><span>${req.deliveryAddress}</span></div>
     <div class="row"><span>Bultos / Peso</span><span>${req.packages} bultos · ${req.estimatedWeightKg} kg</span></div>
-    ${req.distanceKm ? `<div class="row"><span>Distancia</span><span><strong style="color:#dc2626">${req.distanceKm} km</strong></span></div>` : ""}
+    ${req.cargoDescription ? `<div class="row"><span>Carga</span><span>${req.cargoDescription}</span></div>` : ""}
+    ${req.avionetaCount > 0 ? `<div class="row"><span>Peonetas</span><span>${req.avionetaCount} peoneta${req.avionetaCount > 1 ? "s" : ""} solicitada${req.avionetaCount > 1 ? "s" : ""}</span></div>` : ""}
+    ${req.distanceKm ? `<div class="row"><span>Distancia</span><span><strong>${req.distanceKm} km</strong></span></div>` : ""}
     <div class="row"><span>Recibida</span><span>${now}</span></div>
-    <a href="https://dropitapi-production.up.railway.app" class="btn">⚡ Ir al panel ahora</a>
+    <a href="https://dropitapi-production.up.railway.app" class="btn">${isUrgent ? "⚡ Ir al panel ahora" : "📋 Ver cotización en el panel"}</a>
   </div>
-  <div class="footer">Dropit Service · Alerta urgente automática · No responder</div>
+  <div class="footer">Dropit Service · Notificación automática · No responder</div>
 </div></body></html>`;
 }
 
@@ -76,16 +91,18 @@ router.post("/", async (req, res) => {
 
     const request = await createQuoteRequest(req.body);
 
-    // ─── Urgent: fire server-side email immediately (non-blocking) ──────────
-    if (req.body.urgent) {
-      const smtpCfg = getSmtpConfig();
-      if (smtpCfg.user && smtpCfg.host) {
-        sendMail({
-          to: smtpCfg.user,
-          subject: `⚡ URGENTE — Cotización de ${request.customerName} (${request.trackingCode})`,
-          html: urgentEmailHtml(request),
-        }).catch(err => console.error("[urgent-mail]", err.message));
-      }
+    // ─── Operator notification email on EVERY new quote ─────────────────────
+    const smtpCfg = getSmtpConfig();
+    if (smtpCfg.user && smtpCfg.host) {
+      const isUrgent = !!req.body.urgent;
+      const subject = isUrgent
+        ? `[${request.trackingCode}] ⚡ URGENTE — NUEVA COTIZACIÓN — ${request.customerName}`
+        : `[${request.trackingCode}] Nueva cotización — ${request.customerName}`;
+      sendMail({
+        to: smtpCfg.user,
+        subject,
+        html: newQuoteEmailHtml(request),
+      }).catch(err => console.error("[new-quote-mail]", err.message));
     }
 
     res.status(201).json({ request, ...buildDashboardPayload() });

@@ -60,9 +60,7 @@ function calcSuggestedPrice(req, overrideKm = null) {
   if (!isRM) return null;
   const rate = req.estimatedWeightKg > 50 ? 3000 : 2200;
   const base = Math.round(km * rate);
-  const avionetaCount = req.avionetaCount ?? (req.avioneta ? 1 : 0);
-  const avioneta = avionetaCount * 50000;
-  return base + avioneta;
+  return base;
 }
 
 // ─── Live timer hook ──────────────────────────────────────────────────────────
@@ -175,7 +173,7 @@ function buildPDFHtml(request, finalAmount, photos = []) {
         <div class="info-card"><div class="info-label">Bultos / Peso</div><div class="info-value">${request.packages} bultos · ${request.estimatedWeightKg} kg</div></div>
         <div class="info-card"><div class="info-label">Fecha requerida</div><div class="info-value">${request.requiredDate || "—"}${request.requiredTime ? ` a las ${request.requiredTime}` : ""}</div></div>
         <div class="info-card" style="grid-column:1/-1"><div class="info-label">Descripción</div><div class="info-value">${request.cargoDescription}</div></div>
-        ${(request.avionetaCount > 0 || request.avioneta) ? `<div class="info-card" style="grid-column:1/-1"><div class="info-label">Servicio adicional</div><div class="info-value">✓ ${request.avionetaCount > 0 ? `${request.avionetaCount} peoneta${request.avionetaCount > 1 ? "s" : ""} incluida${request.avionetaCount > 1 ? "s" : ""} (+$${(request.avionetaCount * 50000).toLocaleString("es-CL")})` : "Avioneta/Cargador incluido (+$50.000)"}</div></div>` : ""}
+        ${(request.avionetaCount > 0 || request.avioneta) ? `<div class="info-card" style="grid-column:1/-1"><div class="info-label">Peonetas</div><div class="info-value">✓ ${request.avionetaCount > 0 ? `${request.avionetaCount} peoneta${request.avionetaCount > 1 ? "s" : ""} incluida${request.avionetaCount > 1 ? "s" : ""}` : "1 peoneta incluida"}</div></div>` : ""}
       </div>
     </div>
 
@@ -417,7 +415,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
       const pdfBase64     = btoa(unescape(encodeURIComponent(pdfHtml)));
 
       // Send email with PDF attached
-      const companyEmail = (() => { try { return JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").email || ""; } catch { return ""; } })();
+      const companyEmail = (() => { try { return JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").user || ""; } catch { return ""; } })();
       const logoUrl = getLogoUrl();
       const companyName = getCompanyName();
       const isUpdate = updateMode || selected.status === "Cotizado";
@@ -448,7 +446,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
               companyName,
               supportEmail:    companyEmail || "soporte@dropit.cl",
             }),
-            text: `${subjectPrefix} para ${selected.customerName}. Valor total: $${finalAmount.toLocaleString("es-CL")}${quoteForm.avionetaCount ? ` · Incluye ${quoteForm.avionetaCount} ayudante(s)` : ""}`,
+            text: `${subjectPrefix} para ${selected.customerName}. Valor total: $${finalAmount.toLocaleString("es-CL")}${quoteForm.avionetaCount ? ` · Incluye ${quoteForm.avionetaCount} peoneta(s)` : ""}`,
             // PDF adjunto como HTML imprimible
             attachments: [{
               filename: `Cotizacion-${selected.trackingCode}.html`,
@@ -783,8 +781,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                   const basePrice   = isRM ? calcRMPrice(km) : calcNationalBase(km);
                   const weightSurcharge = weight > 500 ? 0.35 : weight > 200 ? 0.25 : weight > 50 ? 0.15 : 0;
                   const baseFlete   = Math.round(basePrice * (1 + weightSurcharge) / 1000) * 1000;
-                  const peonetaCost = peonetaQty * 50000;
-                  const total       = baseFlete + peonetaCost;
+                  const total       = baseFlete;
                   const zone        = isRM ? "Santiago RM" : km > 500 ? "Larga distancia" : km > 100 ? "Regional" : "Local";
                   return (
                     <div className="md:col-span-2 rounded-xl border-2 border-dropit-accent/30 bg-gradient-to-br from-dropit-accent/5 to-dropit-accent/10 p-4">
@@ -820,8 +817,8 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                         )}
                         {peonetaQty > 0 && (
                           <div className="flex justify-between rounded-lg bg-white/70 px-3 py-2">
-                            <span className="text-slate-600">{peonetaQty} peoneta{peonetaQty > 1 ? "s" : ""} (× $50.000)</span>
-                            <strong className="text-slate-900">+${peonetaCost.toLocaleString("es-CL")}</strong>
+                            <span className="text-slate-600">🧑‍🏭 {peonetaQty} peoneta{peonetaQty > 1 ? "s" : ""} solicitada{peonetaQty > 1 ? "s" : ""}</span>
+                            <strong className="text-slate-500 text-xs italic">precio manual</strong>
                           </div>
                         )}
                       </div>
@@ -852,7 +849,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                   <div className="md:col-span-2">
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <p className="text-xs font-bold text-amber-700">
-                        🧑‍🏭 {selected.avionetaCount > 0 ? `${selected.avionetaCount} peoneta${selected.avionetaCount > 1 ? "s" : ""} solicitada${selected.avionetaCount > 1 ? "s" : ""} (+$${(selected.avionetaCount * 50000).toLocaleString("es-CL")})` : "Avioneta/Cargador solicitado (+$50.000)"}
+                        🧑‍🏭 {selected.avionetaCount > 0 ? `${selected.avionetaCount} peoneta${selected.avionetaCount > 1 ? "s" : ""} solicitada${selected.avionetaCount > 1 ? "s" : ""}` : "1 peoneta solicitada"}
                       </p>
                     </div>
                   </div>
@@ -956,7 +953,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                       <div>
                         <p className="text-xs font-bold text-dropit-700">💡 Precio calculado automáticamente</p>
                         <p className="text-2xl font-black text-dropit-accent">${suggested.toLocaleString("es-CL")}</p>
-                        {(selected.avionetaCount > 0 || selected.avioneta) && <p className="text-[10px] text-dropit-600">Incluye {selected.avionetaCount || 1} peoneta(s) +${((selected.avionetaCount || 1) * 50000).toLocaleString("es-CL")}</p>}
+                        {(selected.avionetaCount > 0 || selected.avioneta) && <p className="text-[10px] text-dropit-600">Incluye {selected.avionetaCount || 1} peoneta{(selected.avionetaCount || 1) > 1 ? "s" : ""}</p>}
                       </div>
                       <button type="button" onClick={() => setQuoteForm(f => ({ ...f, quotedAmount: String(suggested) }))}
                         className="rounded-lg bg-dropit-accent px-3 py-2 text-xs font-bold text-white hover:bg-dropit-accent-dark transition-all">
@@ -998,7 +995,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                       <div className="flex items-start gap-3">
                         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-lg">💪</div>
                         <div>
-                          <p className="text-sm font-bold text-slate-800">Ayudantes incluidos</p>
+                          <p className="text-sm font-bold text-slate-800">Peonetas incluidos</p>
                           <p className="text-xs text-slate-500">Se mencionarán en el correo enviado al cliente</p>
                         </div>
                       </div>
@@ -1072,7 +1069,7 @@ export default function AdminQuotesModule({ requests, onSendQuote }) {
                       <p className="font-bold text-emerald-800">Cotización enviada al cliente</p>
                       <p className="text-sm text-emerald-700">
                         Valor: <strong>${Number(selected.quotedAmount).toLocaleString("es-CL")}</strong> · {selected.serviceType}
-                        {(Number(selected.avionetaCount) > 0) && <> · <strong>{selected.avionetaCount} ayudante{selected.avionetaCount > 1 ? "s" : ""}</strong></>}
+                        {(Number(selected.avionetaCount) > 0) && <> · <strong>{selected.avionetaCount} peoneta{selected.avionetaCount > 1 ? "s" : ""}</strong></>}
                       </p>
                     </div>
                   </div>

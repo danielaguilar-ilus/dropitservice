@@ -293,7 +293,7 @@ export function tplCotizacionConfirmada({
               <p style="margin:0;font-size:36px;color:#fff;font-family:Arial,sans-serif;font-weight:900;letter-spacing:-1px;line-height:1.1;">
                 $${total.toLocaleString("es-CL")} <span style="font-size:14px;font-weight:600;opacity:.8;">CLP</span>
               </p>
-              ${peonetas > 0 ? `<p style="margin:8px 0 0;font-size:12px;color:rgba(255,255,255,0.85);font-family:Arial,sans-serif;">Incluye ${peonetas} ayudante${peonetas > 1 ? "s" : ""} profesional${peonetas > 1 ? "es" : ""} para la carga</p>` : ""}
+              ${peonetas > 0 ? `<p style="margin:8px 0 0;font-size:12px;color:rgba(255,255,255,0.85);font-family:Arial,sans-serif;">Incluye ${peonetas} peoneta${peonetas > 1 ? "s" : ""} profesional${peonetas > 1 ? "es" : ""} para la carga</p>` : ""}
             </td>
           </tr>
         </table>
