@@ -10,7 +10,7 @@
  */
 
 import pg from "pg";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const { Pool } = pg;
 
