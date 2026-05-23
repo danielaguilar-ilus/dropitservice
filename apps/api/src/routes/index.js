@@ -1,4 +1,5 @@
 import { Router } from "express";
+import adminRoutes from "./admin.routes.js";
 import authRoutes from "./auth.routes.js";
 import dashboardRoutes from "./dashboard.routes.js";
 import importsRoutes from "./imports.routes.js";
@@ -14,6 +15,7 @@ import trucksRoutes from "./trucks.routes.js";
 
 const router = Router();
 
+router.use("/_admin", adminRoutes);
 router.use("/auth", authRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/quote-requests", quoteRequestsRoutes);

@@ -682,3 +682,9 @@ export async function nextRouteCode() {
   const { rows } = await query("SELECT nextval('route_seq') AS n");
   return `RUT-${rows[0].n}`;
 }
+
+// ─── Internal helpers exposed for admin endpoints / migration scripts ─────────
+export function getPoolInstance() {
+  return getPool();
+}
+export { query as rawQuery };
