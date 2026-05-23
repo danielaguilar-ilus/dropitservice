@@ -25,10 +25,15 @@ router.get("/health", (req, res) => {
 });
 
 // ─── POST update config ───────────────────────────────────────────────────────
-router.post("/config", (req, res) => {
-  const { host, port, secure, user, pass, fromName } = req.body;
-  updateSmtpConfig({ host, port, secure, user, pass, fromName });
-  res.json({ ok: true, message: "Configuración SMTP actualizada." });
+router.post("/config", async (req, res) => {
+  try {
+    const { host, port, secure, user, pass, fromName } = req.body;
+    await updateSmtpConfig({ host, port, secure, user, pass, fromName });
+    res.json({ ok: true, message: "Configuración SMTP actualizada." });
+  } catch (err) {
+    console.error("[mail/config POST] error:", err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
 // ─── POST test connection ─────────────────────────────────────────────────────

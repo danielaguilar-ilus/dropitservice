@@ -4,11 +4,12 @@ import { createRoutePlan } from "../services/request.service.js";
 
 const router = Router();
 
-router.post("/routes", (req, res) => {
+router.post("/routes", async (req, res) => {
   try {
-    const route = createRoutePlan(req.body);
-    return res.status(201).json({ route, ...buildDashboardPayload() });
+    const route = await createRoutePlan(req.body);
+    return res.status(201).json({ route, ...(await buildDashboardPayload()) });
   } catch (error) {
+    console.error("[planning/routes] error:", error);
     return res.status(400).json({ message: error.message });
   }
 });

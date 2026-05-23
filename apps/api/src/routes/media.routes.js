@@ -11,8 +11,32 @@
 import { Router } from "express";
 import { uploadImage, uploadImages, isCloudinaryConfigured } from "../services/cloudinary.service.js";
 import { saveStore, store } from "../data/store.js";
+import * as db from "../data/db.js";
 
 const router = Router();
+const HAS_DB = !!process.env.DATABASE_URL;
+
+// ─── helpers para leer/escribir media en DB/store ────────────────────────────
+async function getMedia() {
+  if (HAS_DB) {
+    const dbMedia = await db.getSetting("media");
+    if (dbMedia) return dbMedia;
+  }
+  return store.media || {};
+}
+
+async function setMedia(patch) {
+  const current = await getMedia();
+  const next    = { ...current, ...patch };
+  if (HAS_DB) {
+    await db.setSetting("media", next);
+  }
+  // Mantener store en sync para compatibilidad legacy
+  if (!store.media) store.media = {};
+  Object.assign(store.media, next);
+  saveStore();
+  return next;
+}
 
 // ─── Single image upload ──────────────────────────────────────────────────────
 router.post("/upload", async (req, res) => {
@@ -41,39 +65,59 @@ router.post("/upload-batch", async (req, res) => {
 });
 
 // ─── Carousels (login + marketing) ───────────────────────────────────────────
-router.get("/carousels", (_req, res) => {
-  const media = store.media || {};
-  res.json({
-    login: media.loginCarousel || [],
-    marketing: media.marketingCarousel || [],
-  });
+router.get("/carousels", async (_req, res) => {
+  try {
+    const media = await getMedia();
+    res.json({
+      login: media.loginCarousel || [],
+      marketing: media.marketingCarousel || [],
+    });
+  } catch (err) {
+    console.error("[media/carousels GET] error:", err);
+    res.status(500).json({ message: "Error al leer carouseles" });
+  }
 });
 
-router.put("/carousels", (req, res) => {
-  if (!store.media) store.media = {};
-  if (req.body.login !== undefined)    store.media.loginCarousel     = req.body.login;
-  if (req.body.marketing !== undefined) store.media.marketingCarousel = req.body.marketing;
-  saveStore();
-  res.json({ ok: true, login: store.media.loginCarousel, marketing: store.media.marketingCarousel });
+router.put("/carousels", async (req, res) => {
+  try {
+    const patch = {};
+    if (req.body.login !== undefined)     patch.loginCarousel     = req.body.login;
+    if (req.body.marketing !== undefined) patch.marketingCarousel = req.body.marketing;
+    const next = await setMedia(patch);
+    res.json({ ok: true, login: next.loginCarousel, marketing: next.marketingCarousel });
+  } catch (err) {
+    console.error("[media/carousels PUT] error:", err);
+    res.status(500).json({ message: err.message || "Error al guardar carouseles" });
+  }
 });
 
 // ─── Branding (logo, company info) ───────────────────────────────────────────
-router.get("/branding", (_req, res) => {
-  const media = store.media || {};
-  res.json({
-    logoUrl: media.logoUrl || "/dropit-logo.jpeg",
-    companyName: media.companyName || "DropIt Service",
-    primaryColor: media.primaryColor || "#F97316",
-  });
+router.get("/branding", async (_req, res) => {
+  try {
+    const media = await getMedia();
+    res.json({
+      logoUrl: media.logoUrl || "/dropit-logo.jpeg",
+      companyName: media.companyName || "DropIt Service",
+      primaryColor: media.primaryColor || "#F97316",
+    });
+  } catch (err) {
+    console.error("[media/branding GET] error:", err);
+    res.status(500).json({ message: "Error al leer branding" });
+  }
 });
 
-router.put("/branding", (req, res) => {
-  if (!store.media) store.media = {};
-  if (req.body.logoUrl !== undefined)     store.media.logoUrl     = req.body.logoUrl;
-  if (req.body.companyName !== undefined) store.media.companyName = req.body.companyName;
-  if (req.body.primaryColor !== undefined) store.media.primaryColor = req.body.primaryColor;
-  saveStore();
-  res.json({ ok: true, ...store.media });
+router.put("/branding", async (req, res) => {
+  try {
+    const patch = {};
+    if (req.body.logoUrl !== undefined)     patch.logoUrl     = req.body.logoUrl;
+    if (req.body.companyName !== undefined) patch.companyName = req.body.companyName;
+    if (req.body.primaryColor !== undefined) patch.primaryColor = req.body.primaryColor;
+    const next = await setMedia(patch);
+    res.json({ ok: true, ...next });
+  } catch (err) {
+    console.error("[media/branding PUT] error:", err);
+    res.status(500).json({ message: err.message || "Error al guardar branding" });
+  }
 });
 
 // ─── Status ───────────────────────────────────────────────────────────────────

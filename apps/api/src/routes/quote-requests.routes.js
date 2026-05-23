@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { saveStore, store } from "../data/store.js";
+import * as db from "../data/db.js";
 import { buildDashboardPayload } from "../services/dashboard.service.js";
 import { createQuoteRequest, quoteRequest } from "../services/request.service.js";
 import { getSmtpConfig, sendMail } from "../services/mail.service.js";
 
 const router = Router();
+const HAS_DB = !!process.env.DATABASE_URL;
 
 // ─── Operator notification email (server-side, guaranteed delivery) ──────────
 function newQuoteEmailHtml(req) {
@@ -62,8 +64,14 @@ function newQuoteEmailHtml(req) {
 </div></body></html>`;
 }
 
-router.get("/", (_req, res) => {
-  res.json({ requests: store.requests });
+router.get("/", async (_req, res) => {
+  try {
+    const requests = HAS_DB ? await db.listRequests() : store.requests;
+    res.json({ requests });
+  } catch (err) {
+    console.error("[quote-requests/list] error:", err);
+    res.status(500).json({ message: "Error al listar solicitudes" });
+  }
 });
 
 router.post("/", async (req, res) => {
@@ -141,7 +149,7 @@ router.post("/", async (req, res) => {
         "· configura env vars en Railway o usa el panel Config. correo");
     }
 
-    res.status(201).json({ request, ...buildDashboardPayload() });
+    res.status(201).json({ request, ...(await buildDashboardPayload()) });
   } catch (err) {
     console.error("Error creating quote request:", err);
     res.status(500).json({ message: err.message || "Error al crear solicitud" });
@@ -149,30 +157,61 @@ router.post("/", async (req, res) => {
 });
 
 // Append photos to an existing request (called in background after form submit)
-router.patch("/:requestId/photos", (req, res) => {
-  const request = store.requests.find(r => r.id === req.params.requestId);
-  if (!request) return res.status(404).json({ ok: false, message: "No encontrado" });
-  const incoming = (req.body.photos || []).filter(Boolean);
-  request.photos = [...(request.photos || []), ...incoming].slice(0, 20);
-  saveStore();
-  res.json({ ok: true, photoCount: request.photos.length });
+router.patch("/:requestId/photos", async (req, res) => {
+  try {
+    const incoming = (req.body.photos || []).filter(Boolean);
+
+    if (HAS_DB) {
+      const request = await db.findRequest(req.params.requestId);
+      if (!request) return res.status(404).json({ ok: false, message: "No encontrado" });
+      const merged = [...(request.photos || []), ...incoming].slice(0, 20);
+      const updated = await db.updateRequest(req.params.requestId, { photos: merged });
+      return res.json({ ok: true, photoCount: updated.photos.length });
+    }
+
+    const request = store.requests.find(r => r.id === req.params.requestId);
+    if (!request) return res.status(404).json({ ok: false, message: "No encontrado" });
+    request.photos = [...(request.photos || []), ...incoming].slice(0, 20);
+    saveStore();
+    res.json({ ok: true, photoCount: request.photos.length });
+  } catch (err) {
+    console.error("[quote-requests/photos] error:", err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
 // Mark WhatsApp reminder sent
-router.patch("/:requestId/reminder", (req, res) => {
-  const request = store.requests.find(r => r.id === req.params.requestId);
-  if (!request) return res.status(404).json({ message: "No encontrado" });
-  if (!request.remindersSent) request.remindersSent = [];
-  request.remindersSent.push({ type: req.body.type, sentAt: new Date().toISOString() });
-  request.whatsappSent = true;
-  saveStore();
-  res.json({ ok: true, request });
+router.patch("/:requestId/reminder", async (req, res) => {
+  try {
+    if (HAS_DB) {
+      const request = await db.findRequest(req.params.requestId);
+      if (!request) return res.status(404).json({ message: "No encontrado" });
+      const reminders = Array.isArray(request.remindersSent) ? [...request.remindersSent] : [];
+      reminders.push({ type: req.body.type, sentAt: new Date().toISOString() });
+      const updated = await db.updateRequest(req.params.requestId, {
+        remindersSent: reminders,
+        whatsappSent: true,
+      });
+      return res.json({ ok: true, request: updated });
+    }
+
+    const request = store.requests.find(r => r.id === req.params.requestId);
+    if (!request) return res.status(404).json({ message: "No encontrado" });
+    if (!request.remindersSent) request.remindersSent = [];
+    request.remindersSent.push({ type: req.body.type, sentAt: new Date().toISOString() });
+    request.whatsappSent = true;
+    saveStore();
+    res.json({ ok: true, request });
+  } catch (err) {
+    console.error("[quote-requests/reminder] error:", err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
-router.patch("/:requestId/quote", (req, res) => {
+router.patch("/:requestId/quote", async (req, res) => {
   try {
-    const request = quoteRequest(req.params.requestId, req.body);
-    res.json({ request, ...buildDashboardPayload() });
+    const request = await quoteRequest(req.params.requestId, req.body);
+    res.json({ request, ...(await buildDashboardPayload()) });
   } catch (error) {
     res.status(404).json({ message: error.message });
   }

@@ -1,8 +1,11 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 import { saveStore, store } from "../data/store.js";
+import * as db from "../data/db.js";
 
-// ─── In-memory config — priority: env vars > db.json > defaults ──────────────
+const HAS_DB = !!process.env.DATABASE_URL;
+
+// ─── In-memory config — priority: env vars > DB > db.json > defaults ─────────
 // In Railway: set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM as
 // environment variables for permanent persistence across deploys.
 
@@ -10,6 +13,8 @@ function loadFromStore() {
   return store.media?.smtpConfig || null;
 }
 
+// Bootstrap config sincrónicamente con env vars + store fallback.
+// Si HAS_DB, intentamos hidratar desde Postgres en background.
 const saved = loadFromStore();
 let _cfg = {
   host:     env.smtpHost     || saved?.host     || "smtp.gmail.com",
@@ -20,14 +25,42 @@ let _cfg = {
   fromName: env.smtpFrom     || saved?.fromName || "DropIt Service",
 };
 
-export function updateSmtpConfig({ host, port, secure, user, pass, fromName }) {
+// Hidrata desde DB en background (no bloquea el module load).
+// Solo aplica los valores faltantes (env vars siguen ganando).
+if (HAS_DB) {
+  db.getSetting("smtp")
+    .then((dbCfg) => {
+      if (!dbCfg) return;
+      if (!env.smtpHost && dbCfg.host)         _cfg.host     = dbCfg.host;
+      if (!env.smtpPort && dbCfg.port)         _cfg.port     = dbCfg.port;
+      if (env.smtpSecure === undefined && dbCfg.secure !== undefined) _cfg.secure = dbCfg.secure;
+      if (!env.smtpUser && dbCfg.user)         _cfg.user     = dbCfg.user;
+      if (!env.smtpPass && dbCfg.pass)         _cfg.pass     = dbCfg.pass;
+      if (!env.smtpFrom && dbCfg.fromName)     _cfg.fromName = dbCfg.fromName;
+      console.log("[mail] config hidratada desde settings.smtp");
+    })
+    .catch((err) => console.warn("[mail] no se pudo leer settings.smtp:", err.message));
+}
+
+export async function updateSmtpConfig({ host, port, secure, user, pass, fromName }) {
   if (host !== undefined)     _cfg.host     = host;
   if (port !== undefined)     _cfg.port     = Number(port);
   if (secure !== undefined)   _cfg.secure   = secure;
   if (user !== undefined)     _cfg.user     = user;
   if (pass !== undefined)     _cfg.pass     = pass;
   if (fromName !== undefined) _cfg.fromName = fromName;
-  // Persist to db.json so it survives restarts (but env vars take priority on next boot)
+
+  // Persist to DB if available
+  if (HAS_DB) {
+    try {
+      await db.setSetting("smtp", { ..._cfg });
+    } catch (err) {
+      console.warn("[mail] no se pudo persistir settings.smtp:", err.message);
+    }
+  }
+
+  // Always also persist to store/db.json para mantener compatibilidad
+  // durante la transición (y por si DATABASE_URL desaparece después)
   if (!store.media) store.media = {};
   store.media.smtpConfig = { ..._cfg };
   saveStore();

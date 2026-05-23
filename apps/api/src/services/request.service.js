@@ -9,8 +9,13 @@ import {
   saveStore,
   store,
 } from "../data/store.js";
+import * as db from "../data/db.js";
 import { notify } from "./notification.service.js";
 import { uploadImage, isCloudinaryConfigured } from "./cloudinary.service.js";
+
+// ─── Dual-path guard ─────────────────────────────────────────────────────────
+// Cuando DATABASE_URL está set, usamos Postgres; si no, fallback a store.js + db.json.
+const HAS_DB = !!process.env.DATABASE_URL;
 
 // ─── Photo persistence helpers ────────────────────────────────────────────────
 // Uploads photos to Cloudinary if configured, otherwise saves locally.
@@ -71,12 +76,13 @@ const requiredImportFields = [
 
 export async function createQuoteRequest(payload) {
   const now = new Date().toISOString();
-  const requestId = nextReference();
-  // Upload photos to Cloudinary (or local fallback) before storing in db.json
+  const requestId    = HAS_DB ? await db.nextRequestId()    : nextReference();
+  const trackingCode = HAS_DB ? await db.nextTrackingCode() : nextTrackingCode();
+  // Upload photos to Cloudinary (or local fallback) before storing
   const photoUrls = await persistPhotos(payload.photos, requestId);
   const request = {
     id: requestId,
-    trackingCode: nextTrackingCode(),
+    trackingCode,
     source: "formulario_cliente",
     customerName: payload.customerName,
     customerRut: payload.customerRut || "",
@@ -117,88 +123,126 @@ export async function createQuoteRequest(payload) {
     approximateLocation: "Solicitud recibida",
   };
 
-  store.requests.unshift(request);
-  saveStore();
-  notify({ type: "quote_received", to: request.contactEmail, requestId: request.id });
-  notify({ type: "quote_internal", to: "admin@dropit.local", requestId: request.id });
-  return request;
+  let saved;
+  if (HAS_DB) {
+    saved = await db.createRequest(request);
+  } else {
+    store.requests.unshift(request);
+    saveStore();
+    saved = request;
+  }
+  await notify({ type: "quote_received", to: saved.contactEmail, requestId: saved.id });
+  await notify({ type: "quote_internal", to: "admin@dropit.local", requestId: saved.id });
+  return saved;
 }
 
-export function quoteRequest(requestId, payload) {
-  const request = store.requests.find((item) => item.id === requestId);
+export async function quoteRequest(requestId, payload) {
+  // Localizar request — desde DB o store según corresponda
+  let request = HAS_DB
+    ? await db.findRequest(requestId)
+    : store.requests.find((item) => item.id === requestId);
+
   if (!request) {
     throw new Error("Solicitud no encontrada");
   }
 
-  request.quotedAmount = Number(payload.quotedAmount);
-  request.serviceType = payload.serviceType;
-  request.internalNotes = payload.internalNotes || "";
+  // Construir actualización
+  const updates = {};
+  updates.quotedAmount  = Number(payload.quotedAmount);
+  updates.serviceType   = payload.serviceType;
+  updates.internalNotes = payload.internalNotes || "";
   if (payload.avionetaCount !== undefined) {
-    request.avionetaCount = Number(payload.avionetaCount) || 0;
-    request.avioneta = request.avionetaCount > 0;
+    updates.avionetaCount = Number(payload.avionetaCount) || 0;
+    updates.avioneta      = updates.avionetaCount > 0;
   }
-  // Persist editable pricing components (set by the admin wizard)
   if (payload.peonetaUnitCost !== undefined) {
-    request.peonetaUnitCost = Number(payload.peonetaUnitCost) || 0;
+    updates.peonetaUnitCost = Number(payload.peonetaUnitCost) || 0;
   }
   if (payload.discount !== undefined) {
-    request.discount = Number(payload.discount) || 0;
+    updates.discount = Number(payload.discount) || 0;
   }
-  // Persist updated addresses if operator edited them in the wizard
   if (payload.pickupAddress && payload.pickupAddress !== request.pickupAddress) {
-    request.pickupAddress = payload.pickupAddress;
+    updates.pickupAddress = payload.pickupAddress;
   }
   if (payload.deliveryAddress && payload.deliveryAddress !== request.deliveryAddress) {
-    request.deliveryAddress = payload.deliveryAddress;
+    updates.deliveryAddress = payload.deliveryAddress;
   }
-  // Track all quote revisions for audit trail
-  if (request.status === "Cotizado") {
-    request.quoteRevisions = request.quoteRevisions || [];
-    request.quoteRevisions.push({
-      revisedAt: new Date().toISOString(),
-      previousAmount: request.previousQuotedAmount ?? null,
-      newAmount: request.quotedAmount,
-      avionetaCount: request.avionetaCount || 0,
-      peonetaUnitCost: request.peonetaUnitCost || 0,
-      discount: request.discount || 0,
-    });
-  }
-  request.previousQuotedAmount = request.quotedAmount;
-  request.status = "Cotizado";
-  request.emailSent = true;
-  request.updatedAt = new Date().toISOString();
-  request.approximateLocation = "Cotizacion enviada";
-  saveStore();
 
-  notify({
+  // Track quote revisions
+  const newQuotedAmount = updates.quotedAmount;
+  if (request.status === "Cotizado") {
+    const revisions = Array.isArray(request.quoteRevisions) ? [...request.quoteRevisions] : [];
+    revisions.push({
+      revisedAt: new Date().toISOString(),
+      previousAmount: request.previousQuotedAmount ?? request.quotedAmount ?? null,
+      newAmount: newQuotedAmount,
+      avionetaCount: (updates.avionetaCount ?? request.avionetaCount) || 0,
+      peonetaUnitCost: (updates.peonetaUnitCost ?? request.peonetaUnitCost) || 0,
+      discount: (updates.discount ?? request.discount) || 0,
+    });
+    updates.quoteRevisions = revisions;
+  }
+
+  updates.previousQuotedAmount = newQuotedAmount;
+  updates.status               = "Cotizado";
+  updates.emailSent            = true;
+  updates.updatedAt            = new Date().toISOString();
+  updates.approximateLocation  = "Cotizacion enviada";
+
+  let updated;
+  if (HAS_DB) {
+    updated = await db.updateRequest(requestId, updates);
+  } else {
+    Object.assign(request, updates);
+    saveStore();
+    updated = request;
+  }
+
+  await notify({
     type: "quote_sent",
-    to: request.contactEmail,
-    requestId: request.id,
+    to: updated.contactEmail,
+    requestId: updated.id,
     payload: {
-      amount: request.quotedAmount,
-      serviceType: request.serviceType,
+      amount: updated.quotedAmount,
+      serviceType: updated.serviceType,
     },
   });
 
-  return request;
+  return updated;
 }
 
-export function updateRequestStatus(requestId, status, incidentDescription = "") {
-  const request = store.requests.find((item) => item.id === requestId);
+export async function updateRequestStatus(requestId, status, incidentDescription = "") {
+  let request = HAS_DB
+    ? await db.findRequest(requestId)
+    : store.requests.find((item) => item.id === requestId);
+
   if (!request) {
     throw new Error("Pedido no encontrado");
   }
 
-  request.status = status;
-  request.updatedAt = new Date().toISOString();
-  request.approximateLocation = status;
-  saveStore();
+  const updates = {
+    status,
+    updatedAt: new Date().toISOString(),
+    approximateLocation: status,
+  };
 
   if (status === incidentStatus) {
-    request.hasIncident = true;
-    request.incidentDescription = incidentDescription || "Incidencia registrada";
-    notify({ type: "order_incident", to: request.contactEmail, requestId: request.id });
-    return request;
+    updates.hasIncident = true;
+    updates.incidentDescription = incidentDescription || "Incidencia registrada";
+  }
+
+  let updated;
+  if (HAS_DB) {
+    updated = await db.updateRequest(requestId, updates);
+  } else {
+    Object.assign(request, updates);
+    saveStore();
+    updated = request;
+  }
+
+  if (status === incidentStatus) {
+    await notify({ type: "order_incident", to: updated.contactEmail, requestId: updated.id });
+    return updated;
   }
 
   const notificationByStatus = {
@@ -209,10 +253,10 @@ export function updateRequestStatus(requestId, status, incidentDescription = "")
   };
 
   if (notificationByStatus[status]) {
-    notify({ type: notificationByStatus[status], to: request.contactEmail, requestId: request.id });
+    await notify({ type: notificationByStatus[status], to: updated.contactEmail, requestId: updated.id });
   }
 
-  return request;
+  return updated;
 }
 
 export function validateImportRows(rows) {
@@ -233,7 +277,7 @@ export function validateImportRows(rows) {
   return errors;
 }
 
-export function importOrders(rows) {
+export async function importOrders(rows) {
   const errors = validateImportRows(rows);
   if (errors.length > 0) {
     return {
@@ -243,10 +287,14 @@ export function importOrders(rows) {
   }
 
   const now = new Date().toISOString();
-  const imported = rows.map((row) => {
+  const imported = [];
+
+  for (const row of rows) {
+    const id           = row.referenceId   || (HAS_DB ? await db.nextRequestId()    : nextReference());
+    const trackingCode = row.trackingCode  || (HAS_DB ? await db.nextTrackingCode() : nextTrackingCode());
     const request = {
-      id: row.referenceId || nextReference(),
-      trackingCode: row.trackingCode || nextTrackingCode(),
+      id,
+      trackingCode,
       source: "excel",
       customerName: row.customerName || row.contactPerson,
       contactPerson: row.contactPerson,
@@ -275,32 +323,45 @@ export function importOrders(rows) {
       approximateLocation: "Disponible para planificacion",
     };
 
-    store.requests.unshift(request);
-    return request;
-  });
+    if (HAS_DB) {
+      const saved = await db.createRequest(request);
+      imported.push(saved);
+    } else {
+      store.requests.unshift(request);
+      imported.push(request);
+    }
+  }
 
-  saveStore();
+  if (!HAS_DB) saveStore();
   return {
     imported,
     errors: [],
   };
 }
 
-export function createRoutePlan(payload) {
-  const truck = store.trucks.find((item) => item.id === payload.truckId);
+export async function createRoutePlan(payload) {
+  const truck = HAS_DB
+    ? await db.findTruck(payload.truckId)
+    : store.trucks.find((item) => item.id === payload.truckId);
   if (!truck) {
     throw new Error("Camion no encontrado");
   }
 
-  const selected = payload.requestIds
-    .map((id) => store.requests.find((request) => request.id === id))
-    .filter(Boolean);
+  // Load requests for the route — both code paths return canonical objects
+  const selected = [];
+  for (const id of payload.requestIds) {
+    const r = HAS_DB
+      ? await db.findRequest(id)
+      : store.requests.find((request) => request.id === id);
+    if (r) selected.push(r);
+  }
 
   if (selected.length === 0) {
     throw new Error("Selecciona al menos un pedido");
   }
 
-  const routeId = nextRouteCode();
+  const routeId = HAS_DB ? await db.nextRouteCode() : nextRouteCode();
+  const status  = payload.startRoute ? "En ruta" : "Agendado";
   const route = {
     id: routeId,
     name: payload.name || `Ruta ${routeId}`,
@@ -310,26 +371,41 @@ export function createRoutePlan(payload) {
     truckName: truck.name,
     driverName: payload.driverName || truck.driverName,
     driverPhone: payload.driverPhone || truck.driverPhone,
-    status: payload.startRoute ? "En ruta" : "Agendado",
+    status,
     plannedDate: payload.plannedDate,
     optimizationMode: payload.optimizationMode || "visual_manual",
     createdAt: new Date().toISOString(),
   };
 
-  store.routes.unshift(route);
-  truck.status = payload.startRoute ? "En ruta" : "Disponible";
-
-  // Update all selected requests without saving each time (batch save at end)
-  selected.forEach((request) => {
-    request.routeId = route.id;
-    request.truckId = truck.id;
-    request.truckName = truck.name;
-    request.driverName = route.driverName;
-    request.status = payload.startRoute ? "En ruta" : "Agendado";
-    request.updatedAt = new Date().toISOString();
-    request.approximateLocation = payload.startRoute ? "En ruta" : "Agendado";
-  });
-  saveStore(); // Single write for entire operation
+  if (HAS_DB) {
+    await db.createRoute(route);
+    await db.updateTruck(truck.id, { status: payload.startRoute ? "En ruta" : "Disponible" });
+    const reqStatus = payload.startRoute ? "En ruta" : "Agendado";
+    for (const request of selected) {
+      await db.updateRequest(request.id, {
+        routeId: route.id,
+        truckId: truck.id,
+        truckName: truck.name,
+        driverName: route.driverName,
+        status: reqStatus,
+        updatedAt: new Date().toISOString(),
+        approximateLocation: reqStatus,
+      });
+    }
+  } else {
+    store.routes.unshift(route);
+    truck.status = payload.startRoute ? "En ruta" : "Disponible";
+    selected.forEach((request) => {
+      request.routeId = route.id;
+      request.truckId = truck.id;
+      request.truckName = truck.name;
+      request.driverName = route.driverName;
+      request.status = status;
+      request.updatedAt = new Date().toISOString();
+      request.approximateLocation = status;
+    });
+    saveStore();
+  }
 
   return route;
 }
