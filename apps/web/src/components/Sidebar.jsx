@@ -88,6 +88,7 @@ const NAV_GROUPS = [
 
 const BOTTOM_ITEMS = [
   { id: "contenido", label: "Marketing", icon: Image, module: "contenido", roles: ["super_admin", "admin"] },
+  { id: "users", label: "Usuarios", icon: Users, module: "users", roles: ["super_admin"] },
   { id: "settings", label: "Ajustes", icon: Settings, module: "settings" },
 ];
 

@@ -1,5 +1,27 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
+// ─── Session helpers ─────────────────────────────────────────────────────────
+// El login persiste el email en localStorage para que las llamadas a /users
+// (que requieren X-User-Email) puedan identificar al actor sin estado global.
+const CURRENT_EMAIL_KEY = "dropit-current-email";
+
+export function getCurrentUserEmail() {
+  try {
+    return localStorage.getItem(CURRENT_EMAIL_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function setCurrentUserEmail(email) {
+  try {
+    if (email) localStorage.setItem(CURRENT_EMAIL_KEY, email);
+    else localStorage.removeItem(CURRENT_EMAIL_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
@@ -14,10 +36,18 @@ async function request(path, options = {}) {
   if (!response.ok) {
     const error = new Error(payload.message || "No fue posible completar la accion");
     error.details = payload.errors || [];
+    error.status = response.status;
     throw error;
   }
 
   return payload;
+}
+
+// ─── Helper: añade X-User-Email cuando hay sesión ────────────────────────────
+function withActor(headers = {}) {
+  const email = getCurrentUserEmail();
+  if (email) return { ...headers, "X-User-Email": email };
+  return headers;
 }
 
 export const api = {
@@ -65,4 +95,31 @@ export const api = {
     request("/mail/config", { method: "POST", body: JSON.stringify(payload) }),
   sendWhatsApp: (payload) =>
     request("/whatsapp/send", { method: "POST", body: JSON.stringify(payload) }),
+
+  // ─── Users management (require super_admin) ────────────────────────────────
+  listUsers: () =>
+    request("/users", { headers: withActor() }),
+  createUser: (payload) =>
+    request("/users", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: withActor(),
+    }),
+  updateUser: (id, payload) =>
+    request(`/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+      headers: withActor(),
+    }),
+  changePassword: (id, newPassword) =>
+    request(`/users/${id}/password`, {
+      method: "PATCH",
+      body: JSON.stringify({ newPassword }),
+      headers: withActor(),
+    }),
+  deactivateUser: (id) =>
+    request(`/users/${id}`, {
+      method: "DELETE",
+      headers: withActor(),
+    }),
 };

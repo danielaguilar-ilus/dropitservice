@@ -18,7 +18,8 @@ import SeguimientoModule from "./components/SeguimientoModule";
 import SettingsModule from "./components/SettingsModule";
 import Sidebar from "./components/Sidebar";
 import TrackingModule from "./components/TrackingModule";
-import { api } from "./lib/api";
+import UsersModule from "./components/UsersModule";
+import { api, setCurrentUserEmail } from "./lib/api";
 import useAutoReminders from "./lib/useAutoReminders";
 
 const initialCredentials = { email: "", password: "" };
@@ -115,12 +116,21 @@ function AppInner() {
     setLoadingLogin(true);
     setLoginError("");
     try {
-      setSession(await api.login(credentials));
+      const result = await api.login(credentials);
+      // Persist email para que /users (X-User-Email) pueda identificar al actor.
+      setCurrentUserEmail(result?.user?.email || credentials.email);
+      setSession(result);
     } catch (error) {
       setLoginError(error.message);
     } finally {
       setLoadingLogin(false);
     }
+  }
+
+  function handleLogout() {
+    setCurrentUserEmail("");
+    setSession(null);
+    setActiveModule("dashboard");
   }
 
   async function handleCreateRequest(payload) {
@@ -200,6 +210,8 @@ function AppInner() {
         return <ReportesModule requests={requests} routes={routes} />;
       case "settings":
         return <SettingsModule currentUser={session?.user} />;
+      case "users":
+        return <UsersModule currentUser={session?.user} />;
       case "com-email":
         return <ComunicacionesModule currentUser={session?.user} />;
       case "com-whatsapp":
@@ -261,10 +273,7 @@ function AppInner() {
         user={session.user}
         activeModule={activeModule}
         onChangeModule={setActiveModule}
-        onLogout={() => {
-          setSession(null);
-          setActiveModule("dashboard");
-        }}
+        onLogout={handleLogout}
         dark={dark}
         onToggleDark={() => setDark((d) => !d)}
       />
