@@ -376,6 +376,10 @@ export async function updateRequest(id, fields) {
   return fromRow(rows[0]);
 }
 
+export async function deleteRequest(id) {
+  await query("DELETE FROM quote_requests WHERE id = $1", [id]);
+}
+
 // ─── TRUCKS ───────────────────────────────────────────────────────────────────
 
 export async function listTrucks() {

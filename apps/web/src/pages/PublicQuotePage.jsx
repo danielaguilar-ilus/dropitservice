@@ -9,6 +9,7 @@ import { tplClienteNuevaCotizacion, tplEmpresaNuevaCotizacion, getLogoUrl, getCo
 import { calcPrice } from "../lib/pricing";
 import ChileCoverageMap from "../components/ChileCoverageMap";
 import SaulLoader from "../components/SaulLoader";
+import HeroAnimation from "../components/HeroAnimation";
 import StreetAutocomplete from "../components/StreetAutocomplete";
 import { COMUNAS, RM_COMUNAS } from "../lib/comunas";
 
@@ -151,16 +152,48 @@ function ComunaSelect({ value, onChange, placeholder = "Seleccionar comuna…" }
 }
 
 // ─── Reverse geocode coords → address string ────────────────────────────────
+// Primary: Nominatim (OpenStreetMap). Fallback: Google Maps Geocoding API.
+// If both fail, returns a placeholder so the form still captures coordinates.
 async function reverseGeocode(lat, lng) {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=es`;
-  const res = await fetch(url, { headers: { "Accept-Language": "es" } });
-  const data = await res.json();
-  if (!data.address) return null;
-  const a = data.address;
-  const street = [a.road || a.pedestrian || "", a.house_number || ""].filter(Boolean).join(" ");
-  const rawCity = a.city_district || a.suburb || a.city || a.town || a.village || a.municipality || "";
-  const commune = COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase()) || rawCity;
-  return { street: street || data.display_name.split(",")[0], commune, lat, lng };
+  // ── Attempt 1: Nominatim ──────────────────────────────────────────────────
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=es`;
+    const res = await fetch(url, { headers: { "Accept-Language": "es" } });
+    const data = await res.json();
+    if (data.address) {
+      const a = data.address;
+      const street = [a.road || a.pedestrian || "", a.house_number || ""].filter(Boolean).join(" ");
+      const rawCity = a.city_district || a.suburb || a.city || a.town || a.village || a.municipality || "";
+      const commune = COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase()) || rawCity;
+      return { street: street || data.display_name.split(",")[0], commune, lat, lng };
+    }
+  } catch { /* fall through to Google Maps */ }
+
+  // ── Attempt 2: Google Maps Geocoding API ──────────────────────────────────
+  const gmKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (gmKey) {
+    try {
+      const gmUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${gmKey}&language=es`;
+      const gmRes = await fetch(gmUrl);
+      const gmData = await gmRes.json();
+      if (gmData.results?.[0]) {
+        const result = gmData.results[0];
+        const formattedAddress = result.formatted_address || "";
+        // Extract commune from address_components
+        const localityComp = result.address_components?.find(
+          c => c.types.includes("locality") || c.types.includes("sublocality") || c.types.includes("sublocality_level_1")
+        );
+        const rawCity = localityComp?.long_name || "";
+        const commune = COMUNAS.find(c => c.toLowerCase() === rawCity.toLowerCase()) || rawCity;
+        // Use first part of formatted_address as street (before first comma)
+        const street = formattedAddress.split(",")[0] || formattedAddress;
+        return { street, commune, lat, lng };
+      }
+    } catch { /* fall through to coords-only fallback */ }
+  }
+
+  // ── Fallback: coords known but no street name ─────────────────────────────
+  return { street: "Ubicación detectada (sin dirección exacta)", commune: "", lat, lng };
 }
 
 // ─── Address pair — Google Maps-style vertical stack ──────────────────────────
@@ -169,10 +202,15 @@ function AddressPair({
   deliveryValue, onDeliveryChange, onDeliveryCommune, onDeliveryCoords,
 }) {
   const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState("");
 
   function useMyLocation() {
-    if (!navigator.geolocation) { alert("Tu navegador no soporta geolocalización"); return; }
+    if (!navigator.geolocation) {
+      setGeoError("Tu navegador no soporta geolocalización");
+      return;
+    }
     setGeoLoading(true);
+    setGeoError("");
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
@@ -182,11 +220,22 @@ function AddressPair({
             onPickupCommune?.(result.commune);
             onPickupCoords?.({ lat: result.lat, lng: result.lng });
           }
-        } catch { alert("No se pudo obtener la dirección"); }
+        } catch {
+          setGeoError("No se pudo obtener la dirección. Ingrésala manualmente.");
+        }
         setGeoLoading(false);
       },
-      () => { alert("Permiso de ubicación denegado. Actívalo en tu navegador."); setGeoLoading(false); },
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      (err) => {
+        if (err.code === 1) {
+          setGeoError("Permiso de ubicación denegado. Actívalo en la configuración de tu navegador.");
+        } else if (err.code === 3) {
+          setGeoError("Tiempo de espera agotado al obtener tu ubicación. Inténtalo de nuevo.");
+        } else {
+          setGeoError("No se pudo detectar tu ubicación. Ingrésala manualmente.");
+        }
+        setGeoLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   }
 
@@ -223,6 +272,12 @@ function AddressPair({
             dotColor="#10b981"
             required
           />
+          {geoError && (
+            <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-red-600">
+              <AlertCircle size={11} className="flex-shrink-0" />
+              {geoError}
+            </p>
+          )}
         </div>
       </div>
 
@@ -899,10 +954,8 @@ export default function PublicQuotePage() {
             <img src={src} className="absolute inset-0 h-full w-full object-contain opacity-55" alt="" />
           </div>
         )) : (
-          /* Logo fallback when no carousel images are loaded */
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-end pr-16 opacity-10">
-            <img src="/dropit-logo.jpeg" alt="" className="h-80 w-80 rounded-full object-contain" />
-          </div>
+          /* Animated illustration fallback when no carousel images are loaded */
+          <HeroAnimation />
         )}
         {/* Dark gradient overlay — stronger at bottom for text legibility */}
         <div className="pointer-events-none absolute inset-0" style={{
@@ -1180,7 +1233,7 @@ export default function PublicQuotePage() {
                   {geocoding && (
                     <div className="mt-3 flex items-center gap-2 text-sm text-dropit-700">
                       <Loader2 size={14} className="animate-spin text-dropit-accent" />
-                      Calculando ruta y precio estimado…
+                      Calculando ruta…
                     </div>
                   )}
                   {routeError && !geocoding && (

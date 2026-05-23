@@ -438,6 +438,27 @@ router.patch("/:requestId/accept", async (req, res) => {
   }
 });
 
+// ─── DELETE /:requestId — permanently remove a quote request ─────────────────
+router.delete("/:requestId", async (req, res) => {
+  try {
+    if (HAS_DB) {
+      const request = await db.findRequest(req.params.requestId);
+      if (!request) return res.status(404).json({ ok: false, message: "No encontrado" });
+      await db.deleteRequest(req.params.requestId);
+      return res.json({ ok: true, message: "Eliminada" });
+    }
+
+    const idx = store.requests.findIndex(r => r.id === req.params.requestId);
+    if (idx === -1) return res.status(404).json({ ok: false, message: "No encontrado" });
+    store.requests.splice(idx, 1);
+    saveStore();
+    res.json({ ok: true, message: "Eliminada" });
+  } catch (err) {
+    console.error("[quote-requests/delete] error:", err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
 // ─── PATCH /:requestId/accept-manual — admin marks as accepted manually ───────
 router.patch("/:requestId/accept-manual", async (req, res) => {
   try {

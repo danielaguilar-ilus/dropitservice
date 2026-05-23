@@ -1,7 +1,8 @@
 import {
   AlertTriangle, Camera, CheckCircle2, Clock, Download, FileText,
   Mail, MessageSquare, Phone, Send, Truck, User, X, Zap,
-  MapPin, Package, RefreshCw, Bell, ZoomIn, Eye, ThumbsUp,
+  MapPin, Package, RefreshCw, Bell, ZoomIn, Eye, ThumbsUp, Trash2,
+  ChevronLeft,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "../lib/messageLog";
@@ -285,8 +286,10 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
   // ─── On-demand distance calculation per request ─────────────────────────────
   // Caches computed km by requestId so we don't re-geocode every selection
   const [routeCache, setRouteCache] = useState({}); // { [requestId]: {km, durationMin, loading, error} }
+  const [deletingQuote, setDeletingQuote] = useState(false);
   const autoSentRef = useRef(new Set()); // tracks keys "requestId-type" sent this session
   const photoInputRef = useRef(null);
+  const detailRef = useRef(null);
 
   useEffect(() => {
     try { setWaConfig(JSON.parse(localStorage.getItem("dropit-whatsapp-config") || "null")); } catch {}
@@ -335,6 +338,18 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
 
   useEffect(() => {
     if (selected && !selected.distanceKm) calcRouteForRequest(selected);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // On mobile (<xl), auto-scroll to the detail panel when a quote is selected
+  useEffect(() => {
+    if (!selectedId) return;
+    const isDesktop = window.matchMedia("(min-width: 1280px)").matches;
+    if (!isDesktop && detailRef.current) {
+      setTimeout(() => {
+        detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80); // slight delay so the DOM has rendered
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
@@ -627,6 +642,32 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
     }
   }
 
+  async function handleDeleteQuote() {
+    if (!selected) return;
+    const confirmed = window.confirm(
+      `¿Eliminar esta cotización permanentemente? Esta acción no se puede deshacer.\n\nCliente: ${selected.customerName}\nCódigo: ${selected.trackingCode}`
+    );
+    if (!confirmed) return;
+    setDeletingQuote(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`${API_URL}/quote-requests/${selected.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || `Error ${res.status}`);
+      }
+      if (onRefresh) onRefresh();
+      setSelectedId(null);
+    } catch (err) {
+      setMessage({ ok: false, text: `Error al eliminar: ${err.message}` });
+    } finally {
+      setDeletingQuote(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* ── Lightbox ──────────────────────────────────────────────────────────── */}
@@ -710,7 +751,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
               const isPending = req.status === "Pendiente de cotizacion";
               return (
                 <button key={req.id} type="button" onClick={() => setSelectedId(req.id)}
-                  className={`block w-full p-4 text-left transition-all hover:bg-slate-50 ${selected?.id === req.id ? "bg-dropit-accent/5 border-l-2 border-dropit-accent" : "border-l-2 border-transparent"}`}>
+                  className={`block w-full p-4 text-left transition-all hover:bg-slate-50 ${selected?.id === req.id ? "bg-dropit-accent/10 border-l-4 border-dropit-accent" : "border-l-4 border-transparent"}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
@@ -733,6 +774,11 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     {req.urgent && <span className="flex items-center gap-1 rounded-full bg-red-50 border border-red-300 px-2 py-0.5 text-[10px] font-bold text-red-600 animate-pulse">⚡ Urgente</span>}
                     {(req.avionetaCount > 0 || req.avioneta) && <span className="flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-600">🧑‍🏭 {req.avionetaCount > 1 ? `${req.avionetaCount}× ` : ""}Peoneta</span>}
                     {req.distanceKm && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{req.distanceKm} km</span>}
+                    {selected?.id === req.id && (
+                      <span className="xl:hidden flex items-center gap-1 rounded-full bg-dropit-accent px-2 py-0.5 text-[10px] font-bold text-white">
+                        ▼ Ver detalle
+                      </span>
+                    )}
                   </div>
                 </button>
               );
@@ -742,7 +788,17 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
 
         {/* ── Detail ── */}
         {selected ? (
-          <div className="space-y-4">
+          <div className="space-y-4" ref={detailRef}>
+            {/* ── Mobile: back button ── */}
+            <div className="xl:hidden">
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition-colors"
+              >
+                <ChevronLeft size={16} /> Volver a lista
+              </button>
+            </div>
             {/* Urgency banner for pending */}
             {selected.status === "Pendiente de cotizacion" && (() => {
               const mins = getElapsedMinutes(selected.createdAt);
@@ -788,11 +844,20 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   </h3>
                   <p className="text-sm text-slate-500 mt-0.5">{selected.id} · {selected.trackingCode}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <StatusBadge status={selected.status} />
                   <button onClick={() => setPdfPreview(buildPDFHtml(selected, Number(quoteForm.quotedAmount) || selected.quotedAmount, selected.photos || []))}
                     className="flex items-center gap-1.5 rounded-lg border border-dropit-accent/30 bg-dropit-accent/5 px-3 py-2 text-sm font-semibold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all shadow-sm">
                     <Eye size={14} /> Vista previa PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteQuote}
+                    disabled={deletingQuote}
+                    className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {deletingQuote ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    {deletingQuote ? "Eliminando..." : "Eliminar"}
                   </button>
                 </div>
               </div>
@@ -1415,11 +1480,11 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-16 text-center">
+          <div className="hidden xl:flex items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-16 text-center">
             <div>
-              <Zap size={32} className="mx-auto mb-3 text-dropit-accent/40" />
-              <p className="font-semibold text-slate-600">Selecciona una solicitud</p>
-              <p className="mt-1 text-sm text-slate-400">para ver el detalle y cotizar</p>
+              <Truck size={40} className="mx-auto mb-4 text-dropit-accent/30" />
+              <p className="font-semibold text-slate-600">Selecciona una cotización de la lista</p>
+              <p className="mt-1 text-sm text-slate-400">para ver los detalles y cotizar</p>
             </div>
           </div>
         )}
