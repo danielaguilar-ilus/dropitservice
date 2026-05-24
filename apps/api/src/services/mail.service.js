@@ -1,9 +1,22 @@
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { env } from "../config/env.js";
 import { saveStore, store } from "../data/store.js";
 import * as db from "../data/db.js";
 
 const HAS_DB = !!process.env.DATABASE_URL;
+
+// ─── Resend (HTTPS API — bypasses port 587 blocked by Railway) ───────────────
+// Sign up free at https://resend.com — 3000 emails/mes + 100/día sin tarjeta.
+// Set RESEND_API_KEY in Railway. Optional: RESEND_FROM (default = SMTP_USER).
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const RESEND_FROM    = process.env.RESEND_FROM    || "";
+const _resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+if (_resend) {
+  console.log("[mail] Resend habilitado — usando HTTPS API");
+} else {
+  console.log("[mail] Resend NO configurado — fallback a SMTP (puede fallar en Railway por puerto 587 bloqueado)");
+}
 
 // ─── In-memory config — priority: env vars > DB > db.json > defaults ─────────
 // In Railway: set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM as
@@ -90,15 +103,75 @@ function createTransport() {
   });
 }
 
+// ─── Resend HTTPS sender — preferred path when RESEND_API_KEY is set ─────────
+async function sendViaResend({ to, subject, html, text, attachments }) {
+  // Resend requires a verified sender domain OR onboarding@resend.dev for free
+  // tier testing. We default to onboarding@resend.dev if RESEND_FROM not set —
+  // this works immediately but emails arrive as "via resend.dev".
+  // For production: verify your domain in Resend dashboard + set RESEND_FROM.
+  const fromAddress = RESEND_FROM
+    || `${_cfg.fromName} <onboarding@resend.dev>`;
+
+  console.log("[mail/resend] → enviando a:", to, "· from:", fromAddress, "· asunto:", subject);
+  const payload = {
+    from: fromAddress,
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    html,
+    text,
+  };
+  if (attachments && attachments.length > 0) {
+    payload.attachments = attachments.map(a => ({
+      filename: a.filename,
+      content: a.content,
+    }));
+  }
+  const { data, error } = await _resend.emails.send(payload);
+  if (error) {
+    console.error("[mail/resend] ✗ Resend API error:", error);
+    const err = new Error(error.message || "Resend API error");
+    err.code = error.name || "RESEND_ERROR";
+    err.statusCode = error.statusCode;
+    err.fullError = error;
+    throw err;
+  }
+  console.log("[mail/resend] ✓ enviado · id:", data?.id);
+  return {
+    messageId: data?.id || `resend-${Date.now()}`,
+    response: "250 OK via Resend",
+    accepted: [to],
+    rejected: [],
+    pending: [],
+    envelope: { from: fromAddress, to: [to] },
+    provider: "resend",
+  };
+}
+
 export async function sendMail({ to, subject, html, text, attachments = [] }) {
-  // Early diagnostics — fail fast with a clear message
+  // ─── 1. Try Resend first if configured (preferred — works on Railway) ──────
+  if (_resend) {
+    try {
+      return await sendViaResend({ to, subject, html, text, attachments });
+    } catch (resendErr) {
+      console.warn("[mail] Resend falló, intentando fallback SMTP:", resendErr.message);
+      // Only fall through to SMTP if it's an API/quota error, not auth.
+      // If SMTP is also broken (Railway port 587 blocked), this will fail too.
+      if (resendErr.statusCode === 401 || resendErr.statusCode === 403) {
+        // Bad API key — don't waste time on SMTP either; surface clearly.
+        throw resendErr;
+      }
+      // Continue to SMTP fallback for transient API errors.
+    }
+  }
+
+  // ─── 2. Fallback to SMTP (legacy path) ─────────────────────────────────────
   if (!_cfg.host || !_cfg.user || !_cfg.pass) {
     const missing = [
       !_cfg.host && "SMTP_HOST",
       !_cfg.user && "SMTP_USER",
       !_cfg.pass && "SMTP_PASS",
     ].filter(Boolean).join(", ");
-    const err = new Error(`SMTP no configurado · faltan: ${missing}`);
+    const err = new Error(`Ni Resend ni SMTP están configurados · SMTP faltan: ${missing}. Configura RESEND_API_KEY en Railway (recomendado)`);
     console.error("[mail] cannot send to", to, "→", err.message);
     throw err;
   }
@@ -151,6 +224,26 @@ export async function sendMail({ to, subject, html, text, attachments = [] }) {
 }
 
 export async function testConnection() {
+  // If Resend is configured, verify by listing API keys (lightest possible call)
+  if (_resend) {
+    try {
+      // Resend doesn't have a dedicated ping endpoint; we attempt a domains
+      // list which validates the API key without consuming the email quota.
+      await _resend.domains.list();
+      return { ok: true, provider: "resend" };
+    } catch (err) {
+      console.error("[mail/resend] testConnection falló:", err.message);
+      throw err;
+    }
+  }
+  // SMTP fallback
   const transporter = createTransport();
   await transporter.verify();
+  return { ok: true, provider: "smtp" };
+}
+
+// Public helper for the diagnostic UI — tells operator which provider is active
+export function getActiveProvider() {
+  if (_resend) return { provider: "resend", apiKeyLen: RESEND_API_KEY.length, fromConfigured: !!RESEND_FROM };
+  return { provider: "smtp", host: _cfg.host, port: _cfg.port, user: _cfg.user };
 }

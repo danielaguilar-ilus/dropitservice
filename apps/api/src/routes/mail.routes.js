@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { sendMail, testConnection, updateSmtpConfig, getSmtpConfig } from "../services/mail.service.js";
+import { sendMail, testConnection, updateSmtpConfig, getSmtpConfig, getActiveProvider } from "../services/mail.service.js";
 
 const router = Router();
 
@@ -13,14 +13,20 @@ router.get("/config", (req, res) => {
 router.get("/health", (req, res) => {
   const cfg = getSmtpConfig();
   const configured = !!(cfg.host && cfg.user && cfg.pass);
+  const active = getActiveProvider();
   res.json({
     ok: true,
-    configured,
+    activeProvider: active.provider,            // "resend" or "smtp"
+    activeDetail: active,
+    smtpConfigured: configured,
     host: cfg.host || null,
     user: cfg.user ? `${cfg.user.split("@")[0]}@***` : null,
     hasPassword: !!cfg.pass,
     fromName: cfg.fromName || null,
     source: cfg.pass ? "configured" : "missing",
+    note: active.provider === "smtp"
+      ? "Railway suele bloquear puerto 587 outbound → emails pueden timeout. Configura RESEND_API_KEY para HTTPS API."
+      : "Resend HTTPS API activo — confiable en Railway.",
   });
 });
 
