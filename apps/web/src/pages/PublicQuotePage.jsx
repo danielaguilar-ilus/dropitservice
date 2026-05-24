@@ -271,6 +271,7 @@ function AddressPair({
             placeholder="Calle y número de retiro"
             dotColor="#10b981"
             required
+            inputClassName={pickupValue && pickupValue.trim().length >= 4 ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300" : ""}
           />
           {geoError && (
             <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-red-600">
@@ -297,6 +298,7 @@ function AddressPair({
             placeholder="Calle y número de entrega"
             dotColor="#F97316"
             required
+            inputClassName={deliveryValue && deliveryValue.trim().length >= 4 ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300" : ""}
           />
         </div>
       </div>
@@ -311,6 +313,38 @@ const MOCK_TRACKING = {
 };
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+
+// ─── Validación por campo — devuelve true si el valor es válido ──────────────
+function isFieldValid(name, form) {
+  const v = String(form?.[name] ?? "").trim();
+  if (!v && name !== "observations" && name !== "requiredTime") return false;
+  switch (name) {
+    case "rut":               return validateRut(form.rut);
+    case "customerName":      return v.length >= 2;
+    case "contactPhone":      return v.replace(/\D/g, "").length >= 9;
+    case "contactEmail":      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    case "pickupAddress":     return v.length >= 4;
+    case "deliveryAddress":   return v.length >= 4;
+    case "pickupCommune":     return v.length >= 2;
+    case "deliveryCommune":   return v.length >= 2;
+    case "packages":          return Number(form.packages) > 0;
+    case "estimatedWeightKg": return Number(form.estimatedWeightKg) > 0;
+    case "cargoDescription":  return v.length >= 4;
+    case "requiredDate":      return /^\d{4}-\d{2}-\d{2}$/.test(v);
+    case "requiredTime":      return v === "" || /^\d{2}:\d{2}$/.test(v);
+    case "observations":      return true; // opcional
+    default:                  return v.length > 0;
+  }
+}
+
+// Devuelve clases adicionales para que el input se torne verde cuando es válido
+function fieldGreen(name, form) {
+  const v = String(form?.[name] ?? "").trim();
+  if (!v) return ""; // vacío = neutro, no marca rojo ni verde
+  return isFieldValid(name, form)
+    ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300 pr-9" // verde + espacio para el ✓
+    : "";
+}
 
 // ─── Pre-filled default form (test data) ─────────────────────────────────────
 function getInitialForm() {
@@ -1168,18 +1202,28 @@ export default function PublicQuotePage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="label-base">RUT <span className="text-red-500">*</span></label>
-                      <input className="input-base" placeholder="12.456.789-K" maxLength={12}
-                        value={form.rut}
-                        onChange={e => update("rut", formatRut(e.target.value))} />
+                      <div className="relative">
+                        <input className={`input-base ${fieldGreen("rut", form)}`} placeholder="12.456.789-K" maxLength={12}
+                          value={form.rut}
+                          onChange={e => update("rut", formatRut(e.target.value))} />
+                        {form.rut && isFieldValid("rut", form) && (
+                          <CheckCircle2 size={18} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-500" />
+                        )}
+                      </div>
                     </div>
                     <Field label="Empresa o Persona" field="customerName" form={form} update={update} placeholder="Nombre completo o razón social" />
                     <div>
                       <label className="label-base">Teléfono <span className="text-red-500">*</span></label>
-                      <input className="input-base" type="tel" placeholder="+56 9 1234 5678"
-                        value={form.contactPhone}
-                        onChange={e => update("contactPhone", e.target.value)}
-                        onBlur={e => { const fmt = formatPhone(e.target.value); if (fmt !== e.target.value) update("contactPhone", fmt); }}
-                      />
+                      <div className="relative">
+                        <input className={`input-base ${fieldGreen("contactPhone", form)}`} type="tel" placeholder="+56 9 1234 5678"
+                          value={form.contactPhone}
+                          onChange={e => update("contactPhone", e.target.value)}
+                          onBlur={e => { const fmt = formatPhone(e.target.value); if (fmt !== e.target.value) update("contactPhone", fmt); }}
+                        />
+                        {form.contactPhone && isFieldValid("contactPhone", form) && (
+                          <CheckCircle2 size={18} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-500" />
+                        )}
+                      </div>
                     </div>
                     <Field label="Correo electrónico" field="contactEmail" form={form} update={update} type="email" placeholder="juan@empresa.cl" />
                   </div>
@@ -1211,7 +1255,7 @@ export default function PublicQuotePage() {
                     <div>
                       <label className="label-base">Fecha requerida <span className="text-red-500">*</span></label>
                       <input
-                        className="input-base"
+                        className={`input-base ${fieldGreen("requiredDate", form)}`}
                         type="date"
                         value={form.requiredDate}
                         onChange={e => update("requiredDate", e.target.value)}
@@ -1222,7 +1266,7 @@ export default function PublicQuotePage() {
                     </div>
                     <div>
                       <label className="label-base">Hora de retiro</label>
-                      <input className="input-base" type="time" value={form.requiredTime}
+                      <input className={`input-base ${fieldGreen("requiredTime", form)}`} type="time" value={form.requiredTime}
                         onChange={e => update("requiredTime", e.target.value)}
                         max="21:00" />
                       <p className="mt-1 text-[10px] text-dropit-500">Hasta las 21:00 hrs</p>
@@ -1317,13 +1361,18 @@ export default function PublicQuotePage() {
                     <Field label="Peso estimado (kg)" field="estimatedWeightKg" form={form} update={update} type="number" placeholder="Ej: 250" />
                     <div className="md:col-span-2">
                       <label className="label-base">Descripción de la carga</label>
-                      <textarea
-                        className="input-base min-h-[88px] resize-none"
-                        value={form.cargoDescription}
-                        onChange={(e) => update("cargoDescription", e.target.value)}
-                        placeholder="Ej: Cajas de electrodomésticos, requieren cuidado especial..."
-                        required
-                      />
+                      <div className="relative">
+                        <textarea
+                          className={`input-base min-h-[88px] resize-none ${fieldGreen("cargoDescription", form)}`}
+                          value={form.cargoDescription}
+                          onChange={(e) => update("cargoDescription", e.target.value)}
+                          placeholder="Ej: Cajas de electrodomésticos, requieren cuidado especial..."
+                          required
+                        />
+                        {form.cargoDescription && isFieldValid("cargoDescription", form) && (
+                          <CheckCircle2 size={18} className="pointer-events-none absolute right-2.5 top-3 text-emerald-500" />
+                        )}
+                      </div>
                     </div>
                     <div className="md:col-span-2">
                       <label className="label-base">Observaciones (opcional)</label>
@@ -1656,17 +1705,27 @@ export default function PublicQuotePage() {
 }
 
 function Field({ label, field, form, update, type = "text", placeholder = "" }) {
+  const valid = isFieldValid(field, form);
+  const filled = String(form?.[field] ?? "").trim().length > 0;
   return (
     <div>
       <label className="label-base">{label}</label>
-      <input
-        className="input-base"
-        type={type}
-        value={form[field]}
-        onChange={(e) => update(field, e.target.value)}
-        placeholder={placeholder}
-        required={field !== "observations"}
-      />
+      <div className="relative">
+        <input
+          className={`input-base ${fieldGreen(field, form)}`}
+          type={type}
+          value={form[field]}
+          onChange={(e) => update(field, e.target.value)}
+          placeholder={placeholder}
+          required={field !== "observations"}
+        />
+        {filled && valid && (
+          <CheckCircle2
+            size={18}
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-500"
+          />
+        )}
+      </div>
     </div>
   );
 }
