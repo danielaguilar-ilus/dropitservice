@@ -1240,14 +1240,28 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                             <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Valor unitario por peoneta (CLP)</label>
                             <div className="relative mt-1">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
-                              <input className="input-base pl-7 font-bold" type="number" min="0" step="1000"
+                              <input className="input-base pl-7 font-bold" type="number" min="0" max="100000" step="1000"
                                 inputMode="numeric"
                                 value={quoteForm.peonetaUnitCost}
                                 onFocus={e => e.target.select()}
-                                onChange={e => setQuoteForm(f => ({ ...f, peonetaUnitCost: Number(e.target.value) || 0 }))}
+                                onChange={e => {
+                                  const raw = Number(e.target.value) || 0;
+                                  // Acepta 0 (metadata) o entre 10.000 y 100.000 (rango razonable)
+                                  const clamped = raw === 0 ? 0 : Math.min(100000, Math.max(0, raw));
+                                  setQuoteForm(f => ({ ...f, peonetaUnitCost: clamped }));
+                                }}
+                                onBlur={e => {
+                                  const v = Number(e.target.value) || 0;
+                                  // Al perder foco: si está entre 1 y 9.999 lo subimos a 10.000 (rango mínimo razonable)
+                                  if (v > 0 && v < 10000) {
+                                    setQuoteForm(f => ({ ...f, peonetaUnitCost: 10000 }));
+                                  }
+                                }}
                                 placeholder="0 = solo registrar cantidad" />
                             </div>
-                            <p className="mt-1 text-[10px] text-slate-500">Déjalo en 0 para registrar la cantidad sin afectar el precio</p>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              0 = solo registra cantidad sin afectar precio · Rango sugerido $10.000 – $100.000
+                            </p>
                           </div>
                           {peonetaCount > 0 && (
                             <div className="col-span-full flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white border-2 border-amber-200 px-3 py-2 shadow-sm">

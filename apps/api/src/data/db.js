@@ -333,8 +333,19 @@ export async function updateRequest(id, fields) {
         routeId:              "route_id",
         emailSent:            "email_sent",
         whatsappSent:         "whatsapp_sent",
+        // Defensive: these come from services as camelCase but we ignore them
+        // because db.js sets updated_at automatically below. Mapping them to
+        // _ignore_ silently drops them instead of injecting "updatedat" raw.
+        updatedAt:            "_ignore_",
+        createdAt:            "_ignore_",
+        id:                   "_ignore_",
       };
-      const col = snakeMap[k] || k;
+      const col = snakeMap[k];
+      if (col === "_ignore_") continue; // silently skip known-bogus keys
+      if (!col) {
+        console.warn(`[db.updateRequest] ignorando key desconocida: ${k}`);
+        continue; // skip unknown keys — never inject raw camelCase into SQL
+      }
       colUpdates[col] = v;
     }
   }
@@ -416,11 +427,16 @@ export async function updateTruck(id, fields) {
     driverName:   "driver_name",
     driverPhone:  "driver_phone",
     status:       "status",
+    updatedAt:    "_ignore_",
+    createdAt:    "_ignore_",
+    id:           "_ignore_",
   };
 
   const colUpdates = { updated_at: new Date() };
   for (const [k, v] of Object.entries(fields)) {
-    const col = snakeMap[k] || k;
+    const col = snakeMap[k];
+    if (col === "_ignore_") continue;
+    if (!col) { console.warn(`[db.updateTruck] ignorando key desconocida: ${k}`); continue; }
     colUpdates[col] = v;
   }
 
@@ -473,11 +489,16 @@ export async function updateRoute(id, fields) {
     optimizationMode:   "optimization_mode",
     requestIds:         "request_ids",
     orderedRequestIds:  "ordered_request_ids",
+    updatedAt:          "_ignore_",
+    createdAt:          "_ignore_",
+    id:                 "_ignore_",
   };
 
   const colUpdates = { updated_at: new Date() };
   for (const [k, v] of Object.entries(fields)) {
-    const col = snakeMap[k] || k;
+    const col = snakeMap[k];
+    if (col === "_ignore_") continue;
+    if (!col) { console.warn(`[db.updateRoute] ignorando key desconocida: ${k}`); continue; }
     colUpdates[col] = v;
   }
 
@@ -614,21 +635,26 @@ export async function createUser(data) {
 
 export async function updateUser(id, fields) {
   const snakeMap = {
-    email:    "email",
-    name:     "name",
-    role:     "role",
-    isActive: "is_active",
-    password: "_password_plain", // señal especial → hashear
+    email:     "email",
+    name:      "name",
+    role:      "role",
+    isActive:  "is_active",
+    password:  "_password_plain", // señal especial → hashear
+    updatedAt: "_ignore_",
+    createdAt: "_ignore_",
+    id:        "_ignore_",
   };
 
   const colUpdates = { updated_at: new Date() };
   for (const [k, v] of Object.entries(fields)) {
     if (k === "password") {
       colUpdates["password_hash"] = await bcrypt.hash(v, BCRYPT_ROUNDS);
-    } else {
-      const col = snakeMap[k] || k;
-      colUpdates[col] = v;
+      continue;
     }
+    const col = snakeMap[k];
+    if (col === "_ignore_") continue;
+    if (!col) { console.warn(`[db.updateUser] ignorando key desconocida: ${k}`); continue; }
+    colUpdates[col] = v;
   }
 
   const { setText, values } = buildSetClause(colUpdates, 1);
