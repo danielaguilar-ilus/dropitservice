@@ -46,6 +46,17 @@ async function compressImage(file, maxSide = 900, quality = 0.7) {
   return canvas.toDataURL("image/jpeg", quality);
 }
 
+// ─── Nominatim geocoder — used as fallback when Google Maps is unavailable ───
+// Returns raw Nominatim results so callers can access .lat / .lon as strings.
+async function nominatimSearch(q) {
+  const url =
+    `https://nominatim.openstreetmap.org/search?format=json` +
+    `&q=${encodeURIComponent(q)}` +
+    `&countrycodes=cl&addressdetails=1&limit=5&dedupe=1&accept-language=es`;
+  const res = await fetch(url, { headers: { "Accept-Language": "es" } });
+  return res.json();
+}
+
 // calcPrice is now imported from ../lib/pricing — works for RM + all of Chile
 
 // ─── Chilean phone formatter ─────────────────────────────────────────────────
@@ -519,6 +530,8 @@ export default function PublicQuotePage() {
       }
       return;
     }
+    // Snapshot extra delivery coords for use inside the async import
+    const extraWithCoords = extraDeliveries.filter(d => d.coords);
     // Small defer to ensure the newly rendered div is in the DOM
     const tid = setTimeout(() => {
     import("leaflet").then((L) => {
@@ -558,16 +571,31 @@ export default function PublicQuotePage() {
       const routeGeo = L.geoJSON(routeInfo.geometry, {
         style: { color: "#ea580c", weight: 6, opacity: 0.9, lineCap: "round", lineJoin: "round" }
       }).addTo(map);
-      const markerA = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: makeIcon("#10b981", "📦 Retiro") }).addTo(map);
-      const markerB = L.marker([deliveryCoords.lat, deliveryCoords.lng], { icon: makeIcon("#F97316", "🏁 Entrega") }).addTo(map);
 
-      routeLayersRef.current = [routeGeo, markerA, markerB];
+      // Marker for pickup (origin — always green)
+      const markerA = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: makeIcon("#10b981", "📦 Retiro") }).addTo(map);
+
+      // Marker for main delivery stop (Entrega 1 — always present)
+      const markerB = L.marker([deliveryCoords.lat, deliveryCoords.lng], { icon: makeIcon("#F97316", "🏁 Entrega 1") }).addTo(map);
+
+      const layers = [routeGeo, markerA, markerB];
+
+      // Additional delivery markers (Entrega 2, 3, …) — only those with resolved coords
+      extraWithCoords.forEach((d, idx) => {
+        const m = L.marker([d.coords.lat, d.coords.lng], {
+          icon: makeIcon("#F97316", `🏁 Entrega ${idx + 2}`),
+        }).addTo(map);
+        layers.push(m);
+      });
+
+      routeLayersRef.current = layers;
       // Fit to the full route geometry for best detail
       map.fitBounds(routeGeo.getBounds(), { padding: [50, 50], maxZoom: 15 });
     });
     }, 80);
     return () => clearTimeout(tid);
-  }, [routeInfo, pickupCoords, deliveryCoords]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeInfo, pickupCoords, deliveryCoords, JSON.stringify(extraDeliveries.map(d => d.coords))]);
 
   // Route map cleanup
   useEffect(() => {
@@ -579,13 +607,19 @@ export default function PublicQuotePage() {
     };
   }, []);
 
-  // ─── Auto-calculate route when both addresses are validated ──────────────────
+  // ─── Auto-calculate route when any waypoint coords change ────────────────────
+  // Re-runs whenever pickup, main delivery, or any extra-delivery coord changes.
   useEffect(() => {
-    if (pickupCoords && deliveryCoords) {
-      calculateRoute(pickupCoords, deliveryCoords);
-    }
+    if (!pickupCoords || !deliveryCoords) return;
+    // Build the ordered waypoints list: origin + main destination + extras with coords
+    const waypoints = [
+      pickupCoords,
+      deliveryCoords,
+      ...extraDeliveries.filter(d => d.coords).map(d => d.coords),
+    ];
+    calculateRoute(waypoints);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickupCoords, deliveryCoords]);
+  }, [pickupCoords, deliveryCoords, JSON.stringify(extraDeliveries.map(d => d.coords))]);
 
   // ─── Geocode fallback: if address typed manually (no suggestion picked) ───────
   const geocodeTimerRef = useRef({});
@@ -637,16 +671,53 @@ export default function PublicQuotePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.deliveryAddress]);
 
-  // ─── OSRM route calculation (coords already known from autocomplete) ──────────
-  async function calculateRoute(pc, dc) {
+  // ─── Geocode fallback for extra deliveries typed manually ────────────────────
+  // Mirrors the pickup/delivery fallback: Google → Nominatim, debounced 900 ms.
+  // Only fires when the entry has ≥6 chars but no coords yet.
+  useEffect(() => {
+    extraDeliveries.forEach((d, idx) => {
+      if (d.coords) return; // already resolved — skip
+      const addr = (d.address || "").trim();
+      if (addr.length < 6) return;
+      const timerKey = `extra_${idx}`;
+      clearTimeout(geocodeTimerRef.current[timerKey]);
+      geocodeTimerRef.current[timerKey] = setTimeout(async () => {
+        try {
+          const gm = window.google?.maps;
+          if (gm) {
+            new gm.Geocoder().geocode({ address: addr + ", Chile" }, (res, status) => {
+              if (status === "OK" && res[0]) {
+                const loc = res[0].geometry.location;
+                updateDelivery(idx, { coords: { lat: loc.lat(), lng: loc.lng() } });
+              }
+            });
+          } else {
+            const results = await nominatimSearch(addr + ", Chile");
+            if (results[0]) {
+              updateDelivery(idx, { coords: { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) } });
+            }
+          }
+        } catch { /* ignore — geocode is best-effort */ }
+      }, 900);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(extraDeliveries.map(d => ({ address: d.address, hasCoords: Boolean(d.coords) })))]);
+
+  // ─── OSRM multi-waypoint route calculation ────────────────────────────────────
+  // waypoints: ordered array of {lat, lng} — [pickup, mainDelivery, ...extras]
+  // OSRM accepts: /route/v1/driving/lng1,lat1;lng2,lat2;lng3,lat3?overview=full&geometries=geojson
+  // routes[0].distance = total metres across ALL legs; routes[0].geometry = full polyline.
+  async function calculateRoute(waypoints) {
     setGeocoding(true);
     setRouteInfo(null);
     setRouteError("");
     try {
-      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pc.lng},${pc.lat};${dc.lng},${dc.lat}?overview=full&geometries=geojson`;
+      const coordStr = waypoints.map(p => `${p.lng},${p.lat}`).join(";");
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
       const routeRes  = await fetch(osrmUrl);
       const routeData = await routeRes.json();
       if (routeData.routes?.[0]) {
+        // Sum of all legs = routes[0].distance (OSRM already sums all legs in this field)
         const distanceKm = Math.round((routeData.routes[0].distance / 1000) * 10) / 10;
         const isRM = RM_COMUNAS.has(form.pickupCommune) && RM_COMUNAS.has(form.deliveryCommune);
         const price = calcPrice(distanceKm, form.estimatedWeightKg, isRM, form.avionetaCount);
@@ -1270,6 +1341,9 @@ export default function PublicQuotePage() {
 
                   {/* Route result */}
                   {routeInfo && (() => {
+                    // Total stop count: main delivery + extra deliveries with coords
+                    const resolvedExtras = extraDeliveries.filter(d => d.coords).length;
+                    const totalDestinos = 1 + resolvedExtras; // 1 = main delivery
                     return (
                     <div className="mt-3 overflow-hidden rounded-xl border border-dropit-300 shadow-sm">
                       {/* Route info banner — price hidden to prevent scraping */}
@@ -1280,7 +1354,12 @@ export default function PublicQuotePage() {
                           </div>
                           <div>
                             <p className="text-[11px] font-bold uppercase tracking-wider text-dropit-600">Ruta calculada</p>
-                            <p className="text-2xl font-black text-dropit-950">{routeInfo.distanceKm} <span className="text-base font-bold">km</span></p>
+                            <p className="text-2xl font-black text-dropit-950">
+                              {routeInfo.distanceKm} <span className="text-base font-bold">km</span>
+                              {totalDestinos > 1 && (
+                                <span className="ml-2 text-sm font-semibold text-dropit-600">· {totalDestinos} destinos</span>
+                              )}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5">
