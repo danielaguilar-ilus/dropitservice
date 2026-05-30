@@ -2,7 +2,7 @@ import {
   AlertTriangle, Camera, CheckCircle2, Clock, Download, FileText,
   Mail, MessageSquare, Phone, Send, Truck, User, X, Zap,
   MapPin, Package, RefreshCw, Bell, ZoomIn, Eye, ThumbsUp, Trash2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Lock, Pencil, Check, Inbox, Wrench,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "../lib/messageLog";
@@ -836,15 +836,37 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
               );
             })()}
 
-            {/* Client + route info */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-hidden">
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            {/* ══════════════════════════════════════════════════════════
+                 ZONA A — DATOS DEL CLIENTE (solo lectura)
+                ══════════════════════════════════════════════════════════ */}
+            <div className="rounded-2xl border-2 border-slate-300 bg-slate-50 shadow-sm overflow-hidden">
+              {/* Header Zona A — fuerte y explícito */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-700 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-500/40">
+                    <Inbox size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Entrada</p>
+                    <h3 className="text-base font-black text-white leading-tight flex flex-wrap items-center gap-2">
+                      DATOS DEL CLIENTE
+                      {selected.urgent && <span className="inline-flex items-center gap-1 rounded-full bg-red-500 border border-red-400 px-2 py-0.5 text-[10px] font-black text-white animate-pulse">URGENTE</span>}
+                    </h3>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex items-center gap-1.5 rounded-lg bg-slate-600 border border-slate-500 px-2.5 py-1 text-[11px] font-bold text-slate-200">
+                    <Lock size={11} /> Solo lectura
+                  </span>
+                  <StatusBadge status={selected.status} />
+                </div>
+              </div>
+
+              {/* Sub-header con nombre + código + acciones */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-100 px-4 py-2.5">
                 <div className="min-w-0">
-                  <h3 className="text-xl font-black text-slate-950 flex flex-wrap items-center gap-2">
-                    <span className="break-words">{selected.customerName}</span>
-                    {selected.urgent && <span className="inline-flex items-center gap-1 rounded-full bg-red-100 border border-red-300 px-2.5 py-0.5 text-xs font-bold text-red-600 animate-pulse">⚡ Urgente</span>}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5 break-all">{selected.id} · {selected.trackingCode}</p>
+                  <h4 className="text-base font-black text-slate-800 break-words">{selected.customerName}</h4>
+                  <p className="text-[10px] text-slate-500 break-all font-mono">{selected.trackingCode} · {selected.id}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <StatusBadge status={selected.status} />
@@ -879,236 +901,226 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                 </div>
               </div>
 
-              {/* ── Bandeja de entrada: bloque de datos completo ───────────── */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                {/* RUT: campo dedicado, con fallback a observaciones para solicitudes antiguas */}
-                {(() => {
-                  const rut = selected.customerRut || (selected.observations || "").split("\n").find(l => l.startsWith("RUT:"))?.replace("RUT: ", "").trim();
-                  return rut ? (
-                    <InfoCard icon={User} label="RUT" value={<span className="font-mono font-bold text-slate-900">{rut}</span>} />
-                  ) : null;
-                })()}
-                <InfoCard icon={User}    label="Contacto"       value={selected.contactPerson || selected.customerName} />
-                <InfoCard icon={Phone}   label="Teléfono"       value={<a href={`tel:${selected.contactPhone}`} className="text-dropit-accent font-bold">{selected.contactPhone}</a>} />
-                <InfoCard icon={Mail}    label="Email cliente"  value={<a href={`mailto:${selected.contactEmail}`} className="text-dropit-accent font-bold break-all">{selected.contactEmail}</a>} />
-                <InfoCard icon={Clock}   label="Fecha / Hora"   value={`${selected.requiredDate || "—"}${selected.requiredTime ? ` a las ${selected.requiredTime}` : ""}`} />
-                <InfoCard icon={MapPin}  label="📦 Dirección retiro"  value={selected.pickupAddress} />
-                <InfoCard icon={MapPin}  label="🏁 Dirección entrega" value={selected.deliveryAddress} />
-                <InfoCard icon={Package} label="Carga"          value={`${selected.packages} bultos · ${selected.estimatedWeightKg} kg en total`} />
-                {(() => {
-                  const live    = routeCache[selected.id];
-                  const km      = selected.distanceKm || live?.km;
-                  const minutes = live?.durationMin;
-                  return (
-                    <InfoCard
-                      icon={Truck}
-                      label="Distancia ruta"
-                      value={
-                        km ? (
-                          <span>
-                            <strong className="text-dropit-accent">{km} km</strong>
-                            {minutes && <span className="text-xs text-slate-500"> · ~{minutes} min en auto</span>}
-                            {!selected.distanceKm && live?.km && (
-                              <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-600 border border-blue-200">CALCULADO</span>
-                            )}
-                          </span>
-                        ) : live?.loading ? (
-                          <span className="text-slate-500 text-sm flex items-center gap-1.5">
-                            <RefreshCw size={12} className="animate-spin" /> Calculando ruta…
-                          </span>
-                        ) : live?.error ? (
-                          <button
-                            onClick={() => { setRouteCache(p => ({...p, [selected.id]: undefined})); calcRouteForRequest(selected); }}
-                            className="text-amber-600 text-xs font-semibold hover:underline">
-                            ⚠ {live.error} — reintentar
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => calcRouteForRequest(selected)}
-                            className="text-dropit-accent text-xs font-bold hover:underline">
-                            📍 Calcular ruta ahora
-                          </button>
-                        )
-                      }
-                    />
-                  );
-                })()}
-
-                {/* ── Propuesta económica sugerida ────────────────────────────── */}
-                {(() => {
-                  const liveKm = routeCache[selected.id]?.km;
-                  const km     = Number(selected.distanceKm || liveKm) || 0;
-                  if (!km) return null;
-
-                  const weight      = Number(selected.estimatedWeightKg) || 0;
-                  const peonetaQty  = selected.avionetaCount ?? (selected.avioneta ? 1 : 0);
-                  const isRM        = RM_COMUNAS.has((selected.pickupAddress || "").split(",").pop()?.trim()) ||
-                                      RM_COMUNAS.has((selected.deliveryAddress || "").split(",").pop()?.trim());
-                  const basePrice   = isRM ? calcRMPrice(km) : calcNationalBase(km);
-                  const weightSurcharge = weight > 500 ? 0.35 : weight > 200 ? 0.25 : weight > 50 ? 0.15 : 0;
-                  const baseFlete   = Math.round(basePrice * (1 + weightSurcharge) / 1000) * 1000;
-                  const total       = baseFlete;
-                  const zone        = isRM ? "Santiago RM" : km > 500 ? "Larga distancia" : km > 100 ? "Regional" : "Local";
-                  return (
-                    <div className="sm:col-span-2 rounded-xl border-2 border-dropit-accent/30 bg-gradient-to-br from-dropit-accent/5 to-dropit-accent/10 p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Zap size={16} className="text-dropit-accent" />
-                          <p className="text-xs font-black uppercase tracking-wider text-dropit-accent">
-                            Propuesta económica sugerida
-                          </p>
-                        </div>
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
-                          {zone}
-                        </span>
-                      </div>
-                      <div className="grid gap-2 text-sm sm:grid-cols-2">
-                        <div className="flex justify-between rounded-lg bg-white/70 px-3 py-2">
-                          <span className="text-slate-600">Distancia</span>
-                          <strong className="text-slate-900">{km} km</strong>
-                        </div>
-                        <div className="flex justify-between rounded-lg bg-white/70 px-3 py-2">
-                          <span className="text-slate-600">Zona / Tarifa</span>
-                          <strong className="text-slate-900">{isRM ? "RM $750/km" : "Nacional tramos"}</strong>
-                        </div>
-                        <div className="flex justify-between rounded-lg bg-white/70 px-3 py-2">
-                          <span className="text-slate-600">Flete base</span>
-                          <strong className="text-slate-900">${basePrice.toLocaleString("es-CL")}</strong>
-                        </div>
-                        {weightSurcharge > 0 && (
-                          <div className="flex justify-between rounded-lg bg-white/70 px-3 py-2">
-                            <span className="text-slate-600">Recargo peso (+{Math.round(weightSurcharge*100)}%)</span>
-                            <strong className="text-slate-900">+${Math.round(basePrice * weightSurcharge).toLocaleString("es-CL")}</strong>
-                          </div>
-                        )}
-                        {peonetaQty > 0 && (
-                          <div className="flex justify-between rounded-lg bg-white/70 px-3 py-2">
-                            <span className="text-slate-600">🧑‍🏭 {peonetaQty} peoneta{peonetaQty > 1 ? "s" : ""} solicitada{peonetaQty > 1 ? "s" : ""}</span>
-                            <strong className="text-slate-500 text-xs italic">precio manual</strong>
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-3 flex items-center justify-between rounded-lg bg-dropit-accent px-4 py-3 text-white shadow-md shadow-dropit-accent/20">
-                        <span className="text-xs font-bold uppercase tracking-wider opacity-90">Total sugerido</span>
-                        <strong className="text-2xl font-black tracking-tight">${total.toLocaleString("es-CL")}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setQuoteForm(f => ({ ...f, quotedAmount: String(total) }))}
-                        className="mt-3 w-full rounded-lg border border-dropit-accent/30 bg-white px-3 py-2 text-xs font-bold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-colors"
-                      >
-                        ⚡ Usar este precio en la cotización
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                <div className="sm:col-span-2">
-                  <InfoCard icon={Package} label="Descripción" value={selected.cargoDescription} />
-                </div>
-                {selected.observations && (
+              {/* ── Cuerpo Zona A: datos read-only ─────────────────────────── */}
+              <div className="p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {/* RUT */}
+                  {(() => {
+                    const rut = selected.customerRut || (selected.observations || "").split("\n").find(l => l.startsWith("RUT:"))?.replace("RUT: ", "").trim();
+                    return rut ? (
+                      <ReadOnlyCard icon={User} label="RUT" value={<span className="font-mono font-bold text-slate-900">{rut}</span>} />
+                    ) : null;
+                  })()}
+                  <ReadOnlyCard icon={User}    label="Contacto"            value={selected.contactPerson || selected.customerName} />
+                  <ReadOnlyCard icon={Phone}   label="Teléfono"            value={<a href={`tel:${selected.contactPhone}`} className="text-dropit-accent font-bold">{selected.contactPhone}</a>} />
+                  <ReadOnlyCard icon={Mail}    label="Email cliente"       value={<a href={`mailto:${selected.contactEmail}`} className="text-dropit-accent font-bold break-all">{selected.contactEmail}</a>} />
+                  <ReadOnlyCard icon={Clock}   label="Fecha / Hora"        value={`${selected.requiredDate || "—"}${selected.requiredTime ? ` a las ${selected.requiredTime}` : ""}`} />
+                  <ReadOnlyCard icon={MapPin}  label="Retiro (origen)"     value={selected.pickupAddress} />
+                  <ReadOnlyCard icon={MapPin}  label="Entrega (destino)"   value={selected.deliveryAddress} />
+                  <ReadOnlyCard icon={Package} label="Carga"               value={`${selected.packages} bultos · ${selected.estimatedWeightKg} kg en total`} />
+                  {(() => {
+                    const live    = routeCache[selected.id];
+                    const km      = selected.distanceKm || live?.km;
+                    const minutes = live?.durationMin;
+                    return (
+                      <ReadOnlyCard
+                        icon={Truck}
+                        label="Distancia ruta"
+                        value={
+                          km ? (
+                            <span>
+                              <strong className="text-dropit-accent">{km} km</strong>
+                              {minutes && <span className="text-xs text-slate-500"> · ~{minutes} min en auto</span>}
+                              {!selected.distanceKm && live?.km && (
+                                <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-600 border border-blue-200">CALCULADO</span>
+                              )}
+                            </span>
+                          ) : live?.loading ? (
+                            <span className="text-slate-500 text-sm flex items-center gap-1.5">
+                              <RefreshCw size={12} className="animate-spin" /> Calculando ruta…
+                            </span>
+                          ) : live?.error ? (
+                            <button
+                              onClick={() => { setRouteCache(p => ({...p, [selected.id]: undefined})); calcRouteForRequest(selected); }}
+                              className="text-amber-600 text-xs font-semibold hover:underline">
+                              {live.error} — reintentar
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => calcRouteForRequest(selected)}
+                              className="text-dropit-accent text-xs font-bold hover:underline">
+                              Calcular ruta ahora
+                            </button>
+                          )
+                        }
+                      />
+                    );
+                  })()}
                   <div className="sm:col-span-2">
-                    <InfoCard icon={FileText} label="Observaciones" value={selected.observations} />
+                    <ReadOnlyCard icon={Package} label="Descripción" value={selected.cargoDescription} />
+                  </div>
+                  {selected.observations && (
+                    <div className="sm:col-span-2">
+                      <ReadOnlyCard icon={FileText} label="Observaciones" value={selected.observations} />
+                    </div>
+                  )}
+                  {(selected.avionetaCount > 0 || selected.avioneta) && (
+                    <div className="sm:col-span-2">
+                      <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-3">
+                        <p className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                          <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                          Peonetas solicitados por el cliente: {selected.avionetaCount > 0 ? `${selected.avionetaCount} peoneta${selected.avionetaCount > 1 ? "s" : ""}` : "1 peoneta"}
+                        </p>
+                        <p className="text-[10px] text-amber-700 mt-0.5">Cantidad definitiva la fijas tú en el Paso 2.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Fotos del cliente */}
+                {Array.isArray(selected.photos) && selected.photos.length > 0 && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Camera size={14} className="text-slate-500" />
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Fotos enviadas por el cliente ({selected.photos.length})
+                      </p>
+                      <span className="flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                        <Lock size={9} /> Solo lectura
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {selected.photos.map((src, idx) => {
+                        const url = photoUrl(src);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setLightboxPhoto(url)}
+                            className="group relative h-24 w-24 overflow-hidden rounded-xl border-2 border-slate-200 shadow-sm transition-all hover:border-slate-400 hover:shadow-md"
+                          >
+                            <img src={url} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">
+                              <ZoomIn size={18} className="text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
-                {(selected.avionetaCount > 0 || selected.avioneta) && (
-                  <div className="sm:col-span-2">
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <p className="text-xs font-bold text-amber-700">
-                        🧑‍🏭 {selected.avionetaCount > 0 ? `${selected.avionetaCount} peoneta${selected.avionetaCount > 1 ? "s" : ""} solicitada${selected.avionetaCount > 1 ? "s" : ""}` : "1 peoneta solicitada"}
+
+                {/* Detalle de bultos */}
+                {Array.isArray(selected.bultosDetail) && selected.bultosDetail.length > 0 && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Package size={14} className="text-slate-500" />
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Medidas por bulto ({selected.bultosDetail.length})
                       </p>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="min-w-full divide-y divide-slate-100 text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            <th className="px-3 py-2">Bulto</th>
+                            <th className="px-3 py-2">Largo (cm)</th>
+                            <th className="px-3 py-2">Ancho (cm)</th>
+                            <th className="px-3 py-2">Alto (cm)</th>
+                            <th className="px-3 py-2">Peso (kg)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50 bg-white">
+                          {selected.bultosDetail.map((b, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 font-semibold text-slate-700">#{idx + 1}</td>
+                              <td className="px-3 py-2 text-slate-600">{b.largo || "—"}</td>
+                              <td className="px-3 py-2 text-slate-600">{b.ancho || "—"}</td>
+                              <td className="px-3 py-2 text-slate-600">{b.alto || "—"}</td>
+                              <td className="px-3 py-2 text-slate-600">{b.peso || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* ── Fotos del cliente (enviadas en el formulario) ─────────────── */}
-              {Array.isArray(selected.photos) && selected.photos.length > 0 && (
-                <div className="mt-5 border-t border-slate-100 pt-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Camera size={14} className="text-dropit-accent" />
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Fotos del cliente ({selected.photos.length})
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {selected.photos.map((src, idx) => {
-                      const url = photoUrl(src);
-                      return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setLightboxPhoto(url)}
-                        className="group relative h-24 w-24 overflow-hidden rounded-xl border border-slate-200 shadow-sm transition-all hover:border-dropit-accent/50 hover:shadow-md"
-                      >
-                        <img src={url} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">
-                          <ZoomIn size={18} className="text-white opacity-0 transition-opacity group-hover:opacity-100" />
-                        </div>
-                      </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Detalle de bultos (largo/ancho/alto/peso) ──────────────────── */}
-              {Array.isArray(selected.bultosDetail) && selected.bultosDetail.length > 0 && (
-                <div className="mt-5 border-t border-slate-100 pt-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Package size={14} className="text-dropit-accent" />
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Medidas por bulto ({selected.bultosDetail.length})
-                    </p>
-                  </div>
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
-                    <table className="min-w-full divide-y divide-slate-100 text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                          <th className="px-3 py-2">Bulto</th>
-                          <th className="px-3 py-2">Largo (cm)</th>
-                          <th className="px-3 py-2">Ancho (cm)</th>
-                          <th className="px-3 py-2">Alto (cm)</th>
-                          <th className="px-3 py-2">Peso (kg)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50 bg-white">
-                        {selected.bultosDetail.map((b, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="px-3 py-2 font-semibold text-slate-700">#{idx + 1}</td>
-                            <td className="px-3 py-2 text-slate-600">{b.largo || "—"}</td>
-                            <td className="px-3 py-2 text-slate-600">{b.ancho || "—"}</td>
-                            <td className="px-3 py-2 text-slate-600">{b.alto || "—"}</td>
-                            <td className="px-3 py-2 text-slate-600">{b.peso || "—"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
             </div>
+            {/* ── FIN ZONA A ─────────────────────────────────────────────────── */}
 
             {/* Quote form */}
             {(selected.status === "Pendiente de cotizacion" || updateMode) && (
-              <form onSubmit={submitQuote} className="rounded-2xl border border-dropit-accent/20 bg-white p-5 shadow-sm">
-                <div className="mb-5 flex items-center justify-between gap-3">
+              <form onSubmit={submitQuote} className="rounded-2xl border-2 border-dropit-accent bg-white shadow-md overflow-hidden">
+                {/* ── ZONA B header ────────────────────────────────────────────── */}
+                <div className="bg-dropit-accent px-4 py-3 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-dropit-accent/10">
-                      <Send size={16} className="text-dropit-accent" />
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/20">
+                      <Wrench size={18} className="text-white" />
                     </div>
                     <div>
-                      <h4 className="font-black text-slate-950">{updateMode ? "Modificar cotización" : "Enviar cotización"}</h4>
-                      <p className="text-xs text-slate-500">{updateMode ? "Se reenviará al cliente con los cambios" : "Se enviará por email y WhatsApp al cliente"}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-orange-100">Tu trabajo</p>
+                      <h4 className="font-black text-white text-base leading-tight">
+                        {updateMode ? "MODIFICAR COTIZACIÓN" : "CONSTRUYE Y ENVÍA LA COTIZACIÓN"}
+                      </h4>
                     </div>
                   </div>
-                  {updateMode && (
-                    <button type="button" onClick={() => { setUpdateMode(false); setMessage(null); }}
-                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                      <X size={12} /> Cancelar
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-lg bg-white/20 border border-white/30 px-2.5 py-1 text-[11px] font-bold text-white">
+                      3 pasos
+                    </span>
+                    {updateMode && (
+                      <button type="button" onClick={() => { setUpdateMode(false); setMessage(null); }}
+                        className="flex items-center gap-1.5 rounded-lg bg-white/20 border border-white/30 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/30 transition-colors">
+                        <X size={12} /> Cancelar
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* ── STEPPER de proceso ───────────────────────────────────────── */}
+                {(() => {
+                  const liveKmStep = routeCache[selected.id]?.km;
+                  const kmStep = Number(selected.distanceKm || liveKmStep) || 0;
+                  const step1Done = kmStep > 0;
+                  const step2Done = true; // siempre configurable, se puede avanzar
+                  const step3Done = getFinalAmount() > 0;
+                  const steps = [
+                    { num: 1, label: "Ruta", done: step1Done },
+                    { num: 2, label: "Peonetas", done: step2Done },
+                    { num: 3, label: "Precio", done: step3Done },
+                    { num: null, label: "Enviar", done: step3Done, isFinal: true },
+                  ];
+                  return (
+                    <div className="flex items-center gap-0 border-b border-dropit-accent/20 bg-orange-50 px-4 py-3 overflow-x-auto">
+                      {steps.map((s, i) => (
+                        <div key={i} className="flex items-center flex-shrink-0">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black border-2 transition-colors ${
+                              s.isFinal
+                                ? (s.done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-slate-400")
+                                : (s.done ? "border-emerald-500 bg-emerald-500 text-white" : "border-dropit-accent bg-dropit-accent text-white")
+                            }`}>
+                              {s.done ? <Check size={14} strokeWidth={3} /> : (s.isFinal ? <Send size={13} /> : s.num)}
+                            </div>
+                            <span className={`text-[10px] font-bold whitespace-nowrap ${
+                              s.done ? "text-emerald-700" : (s.isFinal ? "text-slate-400" : "text-dropit-accent")
+                            }`}>
+                              {s.label}
+                            </span>
+                          </div>
+                          {i < steps.length - 1 && (
+                            <div className={`mx-2 h-0.5 w-8 sm:w-12 flex-shrink-0 rounded-full transition-colors ${
+                              s.done ? "bg-emerald-400" : "bg-slate-200"
+                            }`} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                <div className="p-5">
 
                 {/* ─── Constructor paso a paso ────────────────────────────── */}
                 {(() => {
@@ -1132,25 +1144,31 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     : calculatedTotal;
 
                   return (
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                       {/* STEP 1 — Ruta */}
-                      <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/30 overflow-hidden">
-                        <div className="flex items-center gap-3 bg-blue-100/60 px-4 py-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white shadow-md shadow-blue-300">1</div>
+                      <div className="rounded-2xl border-2 border-blue-600 bg-white overflow-hidden shadow-sm">
+                        <div className="flex items-center gap-3 bg-blue-600 px-4 py-3">
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-blue-600 text-base font-black shadow">1</div>
                           <div className="flex-1">
-                            <h5 className="text-sm font-black text-blue-900">Confirma la ruta</h5>
-                            <p className="text-[11px] text-blue-700">Edita las direcciones si necesitas y recalcula la distancia</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">Paso 1 de 3</p>
+                            <h5 className="text-sm font-black text-white">RUTA — Confirma y recalcula</h5>
                           </div>
-                          {km > 0 && (
-                            <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white">
+                          {km > 0 ? (
+                            <span className="rounded-full bg-white/20 border border-white/30 px-2.5 py-1 text-[11px] font-bold text-white">
                               {km} km
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-yellow-400/90 px-2.5 py-1 text-[11px] font-bold text-yellow-900">
+                              Sin km
                             </span>
                           )}
                         </div>
-                        <div className="space-y-3 p-4">
+                        <div className="space-y-3 p-4 bg-blue-50/40">
                           <div className="grid gap-3 md:grid-cols-2">
                             <div>
-                              <label className="mb-1 text-[11px] font-bold text-slate-600 uppercase tracking-wider block">📦 Origen</label>
+                              <label className="mb-1 flex items-center gap-1 text-[11px] font-bold text-blue-900 uppercase tracking-wider">
+                                <Pencil size={10} className="text-blue-500" /> Origen (editable)
+                              </label>
                               <StreetAutocomplete
                                 value={quoteForm.pickupOverride || selected.pickupAddress || ""}
                                 onChange={v => setQuoteForm(f => ({ ...f, pickupOverride: v, pickupCoords: null }))}
@@ -1160,7 +1178,9 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                               />
                             </div>
                             <div>
-                              <label className="mb-1 text-[11px] font-bold text-slate-600 uppercase tracking-wider block">🏁 Destino</label>
+                              <label className="mb-1 flex items-center gap-1 text-[11px] font-bold text-blue-900 uppercase tracking-wider">
+                                <Pencil size={10} className="text-blue-500" /> Destino (editable)
+                              </label>
                               <StreetAutocomplete
                                 value={quoteForm.deliveryOverride || selected.deliveryAddress || ""}
                                 onChange={v => setQuoteForm(f => ({ ...f, deliveryOverride: v, deliveryCoords: null }))}
@@ -1207,24 +1227,22 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                       </div>
 
                       {/* STEP 2 — Peonetas */}
-                      <div className="rounded-2xl border-2 border-amber-100 bg-amber-50/30 overflow-hidden">
-                        <div className="flex items-center gap-3 bg-amber-100/60 px-4 py-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-600 text-sm font-black text-white shadow-md shadow-amber-300">2</div>
+                      <div className="rounded-2xl border-2 border-amber-500 bg-white overflow-hidden shadow-sm">
+                        <div className="flex items-center gap-3 bg-amber-500 px-4 py-3">
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-amber-600 text-base font-black shadow">2</div>
                           <div className="flex-1">
-                            <h5 className="text-sm font-black text-amber-900">Peonetas requeridos</h5>
-                            <p className="text-[11px] text-amber-700">
-                              Cliente solicitó <strong>{selected.avionetaCount || 0}</strong>. Tú decides cuántos incluir y el costo unitario.
-                            </p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-100">Paso 2 de 3</p>
+                            <h5 className="text-sm font-black text-white">PEONETAS — Cantidad y costo</h5>
                           </div>
-                          {peonetaCount > 0 && (
-                            <span className="rounded-full bg-amber-600 px-2.5 py-1 text-[11px] font-bold text-white">
-                              🧑‍🏭 {peonetaCount}
-                            </span>
-                          )}
+                          <span className="rounded-full bg-white/20 border border-white/30 px-2.5 py-1 text-[11px] font-bold text-white">
+                            Cliente pidio: {selected.avionetaCount || 0}
+                          </span>
                         </div>
-                        <div className="grid gap-4 p-4 md:grid-cols-2">
+                        <div className="grid gap-4 p-4 bg-amber-50/40 md:grid-cols-2">
                           <div>
-                            <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Cantidad</label>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                              <Pencil size={10} className="text-amber-600" /> Cantidad (editable)
+                            </label>
                             <div className="mt-1 flex items-center gap-2 rounded-xl border-2 border-amber-200 bg-white px-2 py-1.5">
                               <button type="button"
                                 onClick={() => setQuoteForm(f => ({ ...f, avionetaCount: Math.max(0, Number(f.avionetaCount) - 1) }))}
@@ -1237,7 +1255,9 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                             </div>
                           </div>
                           <div>
-                            <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Valor unitario por peoneta (CLP)</label>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                              <Pencil size={10} className="text-amber-600" /> Valor unitario (CLP, editable)
+                            </label>
                             <div className="relative mt-1">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
                               <input className="input-base pl-7 font-bold" type="number" min="0" max="100000" step="1000"
@@ -1273,18 +1293,75 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                       </div>
 
                       {/* STEP 3 — Precio final + detalles */}
-                      <div className="rounded-2xl border-2 border-dropit-accent/30 bg-gradient-to-br from-dropit-accent/5 to-dropit-accent/10 overflow-hidden">
-                        <div className="flex items-center gap-3 bg-dropit-accent/15 px-4 py-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-dropit-accent text-sm font-black text-white shadow-md shadow-dropit-accent/40">3</div>
+                      <div className="rounded-2xl border-2 border-orange-600 bg-white overflow-hidden shadow-sm">
+                        <div className="flex items-center gap-3 bg-orange-600 px-4 py-3">
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-orange-600 text-base font-black shadow">3</div>
                           <div className="flex-1">
-                            <h5 className="text-sm font-black text-dropit-accent">Precio final</h5>
-                            <p className="text-[11px] text-dropit-700">Desglose transparente — puedes ajustar el descuento o sobrescribir el total</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-orange-100">Paso 3 de 3</p>
+                            <h5 className="text-sm font-black text-white">PRECIO — Desglose y total final</h5>
                           </div>
-                          <span className="rounded-full bg-dropit-accent px-2.5 py-1 text-[11px] font-bold text-white">
+                          <span className="rounded-full bg-white/20 border border-white/30 px-2.5 py-1 text-[11px] font-bold text-white">
                             ${finalTotal.toLocaleString("es-CL")}
                           </span>
                         </div>
-                        <div className="space-y-3 p-4">
+                        <div className="space-y-3 p-4 bg-orange-50/30">
+                          {/* Panel "Sugerencia del sistema" — referencial, dentro del Paso 3 */}
+                          {(() => {
+                            const liveKmS = routeCache[selected.id]?.km;
+                            const kmS     = Number(selected.distanceKm || liveKmS) || 0;
+                            if (!kmS) return null;
+                            const weightS    = Number(selected.estimatedWeightKg) || 0;
+                            const peonetaQty = selected.avionetaCount ?? (selected.avioneta ? 1 : 0);
+                            const isRMS      = RM_COMUNAS.has((selected.pickupAddress || "").split(",").pop()?.trim()) ||
+                                               RM_COMUNAS.has((selected.deliveryAddress || "").split(",").pop()?.trim());
+                            const basePriceS   = isRMS ? calcRMPrice(kmS) : calcNationalBase(kmS);
+                            const weightSurchargeS = weightS > 500 ? 0.35 : weightS > 200 ? 0.25 : weightS > 50 ? 0.15 : 0;
+                            const baseFleteS   = Math.round(basePriceS * (1 + weightSurchargeS) / 1000) * 1000;
+                            const zoneS        = isRMS ? "Santiago RM" : kmS > 500 ? "Larga distancia" : kmS > 100 ? "Regional" : "Local";
+                            return (
+                              <div className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-3">
+                                <div className="mb-2 flex items-center justify-between flex-wrap gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <Zap size={14} className="text-indigo-600" />
+                                    <p className="text-[11px] font-black uppercase tracking-wider text-indigo-700">
+                                      Sugerencia del sistema
+                                    </p>
+                                  </div>
+                                  <span className="rounded-full bg-indigo-100 border border-indigo-300 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                                    {zoneS}
+                                  </span>
+                                </div>
+                                <div className="grid gap-1.5 text-xs sm:grid-cols-2">
+                                  <div className="flex justify-between rounded-lg bg-white/80 px-2.5 py-1.5">
+                                    <span className="text-slate-600">Distancia</span>
+                                    <strong className="text-slate-900">{kmS} km</strong>
+                                  </div>
+                                  <div className="flex justify-between rounded-lg bg-white/80 px-2.5 py-1.5">
+                                    <span className="text-slate-600">Tarifa</span>
+                                    <strong className="text-slate-900">{isRMS ? "RM" : "Nacional"}</strong>
+                                  </div>
+                                  {weightSurchargeS > 0 && (
+                                    <div className="flex justify-between rounded-lg bg-white/80 px-2.5 py-1.5 sm:col-span-2">
+                                      <span className="text-slate-600">Recargo peso (+{Math.round(weightSurchargeS*100)}%)</span>
+                                      <strong className="text-slate-900">incluido</strong>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="mt-2 flex items-center justify-between rounded-lg bg-indigo-600 px-3 py-2 text-white">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">Flete sugerido</span>
+                                  <strong className="text-lg font-black">${baseFleteS.toLocaleString("es-CL")}</strong>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setQuoteForm(f => ({ ...f, quotedAmount: String(baseFleteS), manualOverride: true }))}
+                                  className="mt-2 w-full rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-600 hover:text-white transition-colors"
+                                >
+                                  Usar este precio como punto de partida
+                                </button>
+                                <p className="mt-1 text-center text-[9px] text-indigo-500">Calculado por formula — adjustalo libremente en los campos de abajo</p>
+                              </div>
+                            );
+                          })()}
                           {/* Breakdown */}
                           <div className="space-y-1.5 rounded-xl bg-white/80 p-3 text-sm shadow-inner">
                             <div className="flex justify-between">
@@ -1355,7 +1432,9 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                           {/* Tipo de servicio + comentarios */}
                           <div className="grid gap-3 md:grid-cols-2 pt-1">
                             <div>
-                              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Tipo de servicio</label>
+                              <label className="flex items-center gap-1 text-[11px] font-bold text-orange-900 uppercase tracking-wider">
+                                <Pencil size={10} className="text-orange-500" /> Tipo de servicio
+                              </label>
                               <select className="input-base mt-1" value={quoteForm.serviceType}
                                 onChange={e => setQuoteForm(f => ({ ...f, serviceType: e.target.value }))}>
                                 {serviceTypes.map(t => <option key={t} value={t}>{t}</option>)}
@@ -1369,7 +1448,9 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                             </div>
                           </div>
                           <div>
-                            <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Comentarios para el cliente (visibles en el correo)</label>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-orange-900 uppercase tracking-wider">
+                              <Pencil size={10} className="text-orange-500" /> Comentarios para el cliente
+                            </label>
                             <textarea className="input-base mt-1 min-h-[64px] resize-none text-sm"
                               value={quoteForm.internalNotes}
                               onChange={e => setQuoteForm(f => ({ ...f, internalNotes: e.target.value }))}
@@ -1426,6 +1507,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     {message.text}
                   </div>
                 )}
+                </div>{/* /p-5 Zona B body */}
               </form>
             )}
 
@@ -1577,6 +1659,19 @@ function InfoCard({ icon: Icon, label, value }) {
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
       </div>
       <div className="text-sm font-medium text-slate-800 break-words">{value}</div>
+    </div>
+  );
+}
+
+// Zona A — tarjeta de solo lectura con paleta neutra/fría
+function ReadOnlyCard({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3 min-w-0">
+      <div className="flex items-center gap-1.5 mb-1">
+        <Icon size={11} className="text-slate-400 flex-shrink-0" />
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      </div>
+      <div className="text-sm font-medium text-slate-700 break-words">{value}</div>
     </div>
   );
 }
