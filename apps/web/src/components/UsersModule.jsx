@@ -1,17 +1,73 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
+  Copy,
   Edit2,
+  Eye,
+  EyeOff,
   Key,
   Plus,
   RefreshCw,
   Search,
   Shield,
+  Sparkles,
   Trash2,
   User,
   X,
 } from "lucide-react";
 import { api } from "../lib/api";
+
+// ─── Password helpers ─────────────────────────────────────────────────────────
+
+// Genera una contraseña fuerte usando crypto (sin caracteres ambiguos: l, I, O, 0, 1)
+function generateStrongPassword(length = 16) {
+  const lower = "abcdefghijkmnpqrstuvwxyz";
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const nums  = "23456789";
+  const syms  = "!@#$%&*?-_+";
+  const all   = lower + upper + nums + syms;
+
+  const pick = (set) => set[randomInt(set.length)];
+  // Garantiza al menos uno de cada categoría
+  const chars = [pick(lower), pick(upper), pick(nums), pick(syms)];
+  for (let i = chars.length; i < length; i++) chars.push(pick(all));
+
+  // Fisher-Yates shuffle con aleatoriedad criptográfica
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+function randomInt(max) {
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] % max;
+  }
+  return Math.floor(Math.random() * max);
+}
+
+// Devuelve { score 0-4, label, color, bar } para el medidor de fortaleza
+function passwordStrength(pwd) {
+  if (!pwd) return { score: 0, label: "", color: "", pct: 0 };
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (pwd.length >= 12) score++;
+  if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
+  if (/\d/.test(pwd)) score++;
+  if (/[^a-zA-Z0-9]/.test(pwd)) score++;
+  const clamped = Math.min(4, score);
+  const levels = [
+    { label: "Muy débil", color: "bg-red-500",    text: "text-red-600",    pct: 20 },
+    { label: "Débil",     color: "bg-orange-500", text: "text-orange-600", pct: 40 },
+    { label: "Aceptable", color: "bg-amber-500",  text: "text-amber-600",  pct: 60 },
+    { label: "Fuerte",    color: "bg-lime-500",   text: "text-lime-600",   pct: 80 },
+    { label: "Excelente", color: "bg-emerald-500",text: "text-emerald-600",pct: 100 },
+  ];
+  return { score: clamped, ...levels[clamped] };
+}
 
 const ROLE_OPTIONS = [
   { value: "super_admin", label: "Super Admin", color: "bg-red-100 text-red-700 border-red-200" },
@@ -55,6 +111,102 @@ function Field({ label, error, children }) {
     <div>
       <label className="mb-1 block text-xs font-semibold text-slate-700">{label}</label>
       {children}
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+// ─── PasswordField — input seguro con ojo, generar, copiar y medidor ─────────
+// autoComplete="new-password" activa el sugeridor nativo de Chrome/Google.
+function PasswordField({
+  label,
+  value,
+  onChange,
+  error,
+  placeholder = "Mínimo 6 caracteres",
+  showStrength = true,
+  autoFocus = false,
+}) {
+  const [visible, setVisible] = useState(false);
+  const [copied, setCopied]   = useState(false);
+  const strength = passwordStrength(value);
+
+  function handleGenerate() {
+    const pwd = generateStrongPassword(16);
+    onChange(pwd);
+    setVisible(true); // mostrar para que el operador la vea/copie
+  }
+
+  async function handleCopy() {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard puede estar bloqueado — ignorar silenciosamente */
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <label className="block text-xs font-semibold text-slate-700">{label}</label>
+        <button
+          type="button"
+          onClick={handleGenerate}
+          className="inline-flex items-center gap-1 rounded-md bg-dropit-accent/10 px-2 py-0.5 text-[11px] font-bold text-dropit-accent hover:bg-dropit-accent/20"
+        >
+          <Sparkles size={11} /> Generar segura
+        </button>
+      </div>
+      <div className="relative">
+        <input
+          className={`w-full rounded-lg border px-3 py-2 pr-20 text-sm focus:outline-none focus:ring-2 ${
+            error ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:ring-dropit-accent/30"
+          }`}
+          type={visible ? "text" : "password"}
+          autoComplete="new-password"
+          autoFocus={autoFocus}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+          {value && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              title="Copiar"
+              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              {copied ? <CheckCircle2 size={15} className="text-emerald-500" /> : <Copy size={15} />}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setVisible((v) => !v)}
+            title={visible ? "Ocultar" : "Mostrar"}
+            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            {visible ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+      </div>
+
+      {showStrength && value && (
+        <div className="mt-2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
+              style={{ width: `${strength.pct}%` }}
+            />
+          </div>
+          <p className={`mt-1 text-[11px] font-semibold ${strength.text}`}>
+            Seguridad: {strength.label}
+          </p>
+        </div>
+      )}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
@@ -152,16 +304,24 @@ function UserModal({ user, onClose, onSubmit }) {
           </Field>
 
           {!isEdit && (
-            <Field label="Contraseña inicial" error={errors.password}>
+            <>
+              {/* username oculto: ayuda a Chrome a asociar la contraseña al usuario */}
               <input
-                className={inputCls(errors.password)}
                 type="text"
-                placeholder="Mínimo 6 caracteres"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                name="username"
+                autoComplete="username"
+                value={form.email}
+                readOnly
+                hidden
               />
-              <p className="mt-1 text-[11px] text-slate-400">El usuario podrá cambiarla luego del primer login.</p>
-            </Field>
+              <PasswordField
+                label="Contraseña inicial"
+                value={password}
+                onChange={setPassword}
+                error={errors.password}
+              />
+              <p className="-mt-2 text-[11px] text-slate-400">El usuario podrá cambiarla luego del primer login.</p>
+            </>
           )}
 
           {isEdit && (
@@ -199,21 +359,28 @@ function UserModal({ user, onClose, onSubmit }) {
 // ─── Modal: Reset password ───────────────────────────────────────────────────
 
 function PasswordModal({ user, onClose, onSubmit }) {
-  const [pwd, setPwd]     = useState("");
-  const [pwd2, setPwd2]   = useState("");
-  const [error, setError] = useState("");
+  const [pwd, setPwd]       = useState("");
+  const [pwd2, setPwd2]     = useState("");
+  const [error, setError]   = useState("");
   const [saving, setSaving] = useState(false);
+  const [done, setDone]     = useState(false);
 
-  async function handleSave() {
-    if (!pwd || pwd.length < 6) return setError("Mínimo 6 caracteres");
-    if (pwd !== pwd2) return setError("Las contraseñas no coinciden");
+  const matches    = pwd.length > 0 && pwd === pwd2;
+  const longEnough = pwd.length >= 6;
+  const canSubmit  = matches && longEnough && !saving;
+
+  async function handleSubmit(e) {
+    e?.preventDefault();
+    if (!longEnough) return setError("La contraseña debe tener al menos 6 caracteres");
+    if (!matches)    return setError("Las contraseñas no coinciden");
     setSaving(true);
     setError("");
     try {
       await onSubmit(pwd);
-      onClose();
+      setDone(true);
+      setTimeout(() => onClose(), 1200);
     } catch (err) {
-      setError(err.message || "Error al cambiar password");
+      setError(err.message || "Error al cambiar la contraseña");
     } finally {
       setSaving(false);
     }
@@ -221,50 +388,94 @@ function PasswordModal({ user, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <form
+        className="w-full max-w-md rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleSubmit}
+      >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h3 className="text-base font-bold text-slate-800">Resetear contraseña</h3>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+              <Key size={16} />
+            </span>
+            <h3 className="text-base font-bold text-slate-800">Cambiar contraseña</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
             <X size={18} />
           </button>
         </div>
 
-        <div className="space-y-4 p-5">
-          <p className="text-sm text-slate-600">
-            Cambiando contraseña de <strong>{user.name}</strong> ({user.email}).
-          </p>
-          <Field label="Nueva contraseña">
-            <input
-              className={inputCls(false)}
-              type="text"
-              placeholder="Mínimo 6 caracteres"
-              value={pwd}
-              onChange={(e) => setPwd(e.target.value)}
-            />
-          </Field>
-          <Field label="Confirmar contraseña">
-            <input
-              className={inputCls(false)}
-              type="text"
-              placeholder="Repite la contraseña"
-              value={pwd2}
-              onChange={(e) => setPwd2(e.target.value)}
-            />
-          </Field>
-          {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
-        </div>
+        {done ? (
+          <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <CheckCircle2 size={30} />
+            </span>
+            <p className="text-sm font-semibold text-slate-700">Contraseña actualizada correctamente</p>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4 p-5">
+              <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                Usuario: <strong className="text-slate-800">{user.name}</strong>
+                <br />
+                <span className="text-xs text-slate-500">{user.email}</span>
+              </p>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-dropit-accent px-5 py-2 text-sm font-bold text-white hover:bg-dropit-accent-dark disabled:opacity-60"
-          >
-            {saving ? "Guardando..." : "Cambiar"}
-          </button>
-        </div>
-      </div>
+              {/* username oculto: Chrome asocia la nueva contraseña al usuario */}
+              <input type="text" name="username" autoComplete="username" value={user.email} readOnly hidden />
+
+              <PasswordField
+                label="Nueva contraseña"
+                value={pwd}
+                onChange={(v) => { setPwd(v); setError(""); }}
+                autoFocus
+              />
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Confirmar contraseña</label>
+                <div className="relative">
+                  <input
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                      pwd2 && !matches
+                        ? "border-red-300 focus:ring-red-200"
+                        : pwd2 && matches
+                          ? "border-emerald-300 focus:ring-emerald-200"
+                          : "border-slate-200 focus:ring-dropit-accent/30"
+                    }`}
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Repite la contraseña"
+                    value={pwd2}
+                    onChange={(e) => { setPwd2(e.target.value); setError(""); }}
+                  />
+                  {pwd2 && matches && (
+                    <CheckCircle2 size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500" />
+                  )}
+                </div>
+                {pwd2 && !matches && <p className="mt-1 text-xs text-red-600">Las contraseñas no coinciden</p>}
+              </div>
+
+              {error && (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4">
+              <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={!canSubmit}
+                className="inline-flex items-center gap-2 rounded-lg bg-dropit-accent px-5 py-2 text-sm font-bold text-white hover:bg-dropit-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? <RefreshCw size={14} className="animate-spin" /> : <Key size={14} />}
+                {saving ? "Guardando..." : "Cambiar contraseña"}
+              </button>
+            </div>
+          </>
+        )}
+      </form>
     </div>
   );
 }
