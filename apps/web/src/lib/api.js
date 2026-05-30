@@ -23,12 +23,17 @@ export function setCurrentUserEmail(email) {
 }
 
 async function request(path, options = {}) {
+  // IMPORTANTE: extraer headers de options ANTES del spread. Si hacemos
+  // `{ headers: {...}, ...options }`, el spread re-inyecta options.headers y
+  // pisa el merge — perdiendo Content-Type cuando el caller pasa headers
+  // (p.ej. withActor()). Eso dejaba el body sin parsear en el backend.
+  const { headers: callerHeaders, ...rest } = options;
   const response = await fetch(`${API_URL}${path}`, {
+    ...rest,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(callerHeaders || {}),
     },
-    ...options,
   });
 
   const payload = await response.json().catch(() => ({}));
