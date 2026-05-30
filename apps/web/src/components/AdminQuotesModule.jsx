@@ -153,17 +153,34 @@ function buildPDFHtml(request, finalAmount, photos = []) {
 
     <div class="section">
       <div class="section-title">Ruta de servicio</div>
-      <div class="route-box">
-        <div class="route-point">
-          <div class="route-point-label">📦 Retiro</div>
-          <div class="route-point-value">${request.pickupAddress}</div>
-        </div>
-        <div class="route-arrow">→</div>
-        <div class="route-point">
-          <div class="route-point-label">🏁 Entrega</div>
-          <div class="route-point-value">${request.deliveryAddress}</div>
-        </div>
-      </div>
+      ${(() => {
+        const stops = Array.isArray(request.deliveryStops) ? request.deliveryStops : [];
+        if (stops.length > 1) {
+          // 1 retiro → varias entregas: listar todas las paradas numeradas
+          const items = stops.map((s, i) => `
+            <div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="display:inline-flex;width:18px;height:18px;flex-shrink:0;align-items:center;justify-content:center;border-radius:50%;background:#F97316;color:#fff;font-size:10px;font-weight:800;">${i + 1}</span>
+              <span style="font-size:12px;color:#111827;font-weight:600;">${s.address}${s.commune ? `, ${s.commune}` : ""}</span>
+            </div>`).join("");
+          return `<div class="route-box" style="display:block;">
+            <div class="route-point-label" style="margin-bottom:4px;">📦 Retiro</div>
+            <div class="route-point-value" style="margin-bottom:10px;">${request.pickupAddress}</div>
+            <div class="route-point-label" style="margin-bottom:4px;">🏁 Entregas (${stops.length})</div>
+            ${items}
+          </div>`;
+        }
+        return `<div class="route-box">
+          <div class="route-point">
+            <div class="route-point-label">📦 Retiro</div>
+            <div class="route-point-value">${request.pickupAddress}</div>
+          </div>
+          <div class="route-arrow">→</div>
+          <div class="route-point">
+            <div class="route-point-label">🏁 Entrega</div>
+            <div class="route-point-value">${request.deliveryAddress}</div>
+          </div>
+        </div>`;
+      })()}
       ${request.distanceKm ? `<p style="margin-top:7px;font-size:11px;color:#6b7280;">Distancia calculada: <strong style="color:#F97316;">${request.distanceKm} km</strong></p>` : ""}
     </div>
 
@@ -916,7 +933,31 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   <ReadOnlyCard icon={Mail}    label="Email cliente"       value={<a href={`mailto:${selected.contactEmail}`} className="text-dropit-accent font-bold break-all">{selected.contactEmail}</a>} />
                   <ReadOnlyCard icon={Clock}   label="Fecha / Hora"        value={`${selected.requiredDate || "—"}${selected.requiredTime ? ` a las ${selected.requiredTime}` : ""}`} />
                   <ReadOnlyCard icon={MapPin}  label="Retiro (origen)"     value={selected.pickupAddress} />
-                  <ReadOnlyCard icon={MapPin}  label="Entrega (destino)"   value={selected.deliveryAddress} />
+                  {(() => {
+                    const stops = Array.isArray(selected.deliveryStops) ? selected.deliveryStops : [];
+                    // Si hay más de una entrega, listarlas todas; si no, mostrar el destino único.
+                    if (stops.length > 1) {
+                      return (
+                        <div className="sm:col-span-2">
+                          <ReadOnlyCard
+                            icon={MapPin}
+                            label={`Entregas (${stops.length} destinos)`}
+                            value={
+                              <ol className="mt-0.5 space-y-1">
+                                {stops.map((s, i) => (
+                                  <li key={i} className="flex gap-2 text-slate-700">
+                                    <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600">{i + 1}</span>
+                                    <span className="break-words">{s.address}{s.commune ? `, ${s.commune}` : ""}</span>
+                                  </li>
+                                ))}
+                              </ol>
+                            }
+                          />
+                        </div>
+                      );
+                    }
+                    return <ReadOnlyCard icon={MapPin} label="Entrega (destino)" value={selected.deliveryAddress} />;
+                  })()}
                   <ReadOnlyCard icon={Package} label="Carga"               value={`${selected.packages} bultos · ${selected.estimatedWeightKg} kg en total`} />
                   {(() => {
                     const live    = routeCache[selected.id];

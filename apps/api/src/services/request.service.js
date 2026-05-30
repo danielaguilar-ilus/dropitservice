@@ -92,6 +92,9 @@ export async function createQuoteRequest(payload) {
     contactEmail: payload.contactEmail,
     pickupAddress: payload.pickupAddress,
     deliveryAddress: payload.deliveryAddress,
+    // Lista completa de entregas (1 retiro → varias entregas). La primera es el
+    // destino principal (= deliveryAddress). Vacío/1 si es entrega única.
+    deliveryStops: Array.isArray(payload.deliveryStops) ? payload.deliveryStops : [],
     destinationCity: payload.destinationCity,
     packages: Number(payload.packages || 0),
     estimatedWeightKg: Number(payload.estimatedWeightKg || 0),

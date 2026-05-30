@@ -424,6 +424,9 @@ export default function PublicQuotePage() {
   // Route & geo
   const [pickupCoords, setPickupCoords] = useState(null);
   const [deliveryCoords, setDeliveryCoords] = useState(null);
+  // Entregas ADICIONALES (1 retiro → varias entregas). El destino principal
+  // sigue en form.deliveryAddress; estas son las paradas extra del cliente.
+  const [extraDeliveries, setExtraDeliveries] = useState([]); // [{ address, commune, coords }]
   const [routeInfo, setRouteInfo] = useState(null); // {distanceKm, price, isRM, geometry}
   const [geocoding, setGeocoding] = useState(false);
   const [routeError, setRouteError] = useState("");
@@ -480,6 +483,17 @@ export default function PublicQuotePage() {
       if (mock) { setTrackingResult(mock); }
       else { setTrackingError(`No se encontró el envío "${code}". Verifica el código.`); }
     }
+  }
+
+  // ─── Entregas adicionales (1 retiro → varias entregas) ──────────────────────
+  function addDelivery() {
+    setExtraDeliveries((d) => [...d, { address: "", commune: "", coords: null }]);
+  }
+  function removeDelivery(idx) {
+    setExtraDeliveries((d) => d.filter((_, i) => i !== idx));
+  }
+  function updateDelivery(idx, patch) {
+    setExtraDeliveries((d) => d.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
   }
 
   function addBulto() {
@@ -683,6 +697,20 @@ export default function PublicQuotePage() {
       }
     }
 
+    // ─── Entregas adicionales: validar las que tengan texto ───────────────────
+    const cleanExtra = extraDeliveries
+      .map(d => ({ address: (d.address || "").trim(), commune: d.commune || "", coords: d.coords || null }))
+      .filter(d => d.address.length > 0);
+    if (cleanExtra.some(d => d.address.length < 4)) {
+      setError("Hay una entrega adicional incompleta — escribe la dirección o quítala");
+      return;
+    }
+    // Lista completa de entregas: destino principal + adicionales
+    const deliveryStops = [
+      { address: form.deliveryAddress.trim(), commune: form.deliveryCommune || "", coords: deliveryCoords },
+      ...cleanExtra,
+    ];
+
     setLoading(true);
     setError("");
     // Minimum loader duration so the SaulLoader animation completes all 4 steps
@@ -697,6 +725,7 @@ export default function PublicQuotePage() {
         contactEmail: form.contactEmail,
         pickupAddress: form.pickupAddress,
         deliveryAddress: form.deliveryAddress,
+        deliveryStops,
         destinationCity: form.deliveryCommune || form.deliveryAddress.split(",")[1]?.trim() || "",
         packages: form.packages,
         estimatedWeightKg: form.estimatedWeightKg,
@@ -730,6 +759,7 @@ export default function PublicQuotePage() {
       setRouteInfo(null);
       setPickupCoords(null);
       setDeliveryCoords(null);
+      setExtraDeliveries([]);
       const capturedImages = [...images];
       setImages([]);
       // Scroll to top of page so user sees the success screen
@@ -1161,6 +1191,46 @@ export default function PublicQuotePage() {
                     onDeliveryCommune={v => update("deliveryCommune", v)}
                     onDeliveryCoords={coords => setDeliveryCoords(coords)}
                   />
+
+                  {/* ── Entregas adicionales (1 retiro → varias entregas) ───────── */}
+                  {extraDeliveries.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {extraDeliveries.map((d, idx) => (
+                        <div key={idx} className="rounded-2xl border border-dropit-200 bg-dropit-50/60 p-3">
+                          <div className="mb-1.5 flex items-center justify-between">
+                            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-dropit-accent">
+                              <MapPin size={11} /> Entrega {idx + 2}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => removeDelivery(idx)}
+                              className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                              title="Quitar esta entrega"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                          <StreetAutocomplete
+                            value={d.address}
+                            onChange={v => updateDelivery(idx, { address: v, coords: null })}
+                            onComunaChange={v => updateDelivery(idx, { commune: v })}
+                            onCoordsChange={coords => updateDelivery(idx, { coords })}
+                            placeholder={`Calle y número de la entrega ${idx + 2}`}
+                            dotColor="#F97316"
+                            inputClassName={d.address && d.address.trim().length >= 4 ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300" : ""}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={addDelivery}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-dropit-accent/30 bg-dropit-accent/5 px-3 py-2 text-sm font-semibold text-dropit-accent hover:bg-dropit-accent/10 transition-colors"
+                  >
+                    <Plus size={15} />
+                    Agregar otra entrega
+                  </button>
 
                   {/* Date + time */}
                   <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">

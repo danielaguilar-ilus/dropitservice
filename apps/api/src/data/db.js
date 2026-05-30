@@ -109,6 +109,7 @@ function fromRow(row) {
     quoteRevisions:         raw.quoteRevisions || [],
     avioneta:               raw.avioneta       || false,
     avionetaCount:          raw.avionetaCount  || 0,
+    deliveryStops:          raw.deliveryStops  || [],
   };
 }
 
@@ -124,6 +125,7 @@ function toRow(data) {
     quoteRevisions: data.quoteRevisions ?? [],
     avioneta:       data.avioneta       ?? false,
     avionetaCount:  data.avionetaCount  ?? 0,
+    deliveryStops:  data.deliveryStops  ?? [],
   };
 
   return {
@@ -286,7 +288,7 @@ export async function createRequest(data) {
 
 export async function updateRequest(id, fields) {
   // Separate raw_data fields from top-level columns
-  const RAW_KEYS = ["photos", "bultosDetail", "remindersSent", "quoteRevisions", "avioneta", "avionetaCount"];
+  const RAW_KEYS = ["photos", "bultosDetail", "remindersSent", "quoteRevisions", "avioneta", "avionetaCount", "deliveryStops"];
 
   const rawUpdates = {};
   const colUpdates = {};

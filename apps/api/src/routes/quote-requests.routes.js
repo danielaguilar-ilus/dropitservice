@@ -41,7 +41,9 @@ function clientConfirmationEmailHtml(req) {
     <p style="font-size:15px;color:#111;margin:0 0 8px">Tu código de seguimiento:</p>
     <span class="tracking">${req.trackingCode}</span>
     <div class="row"><span>Retiro</span><span>${req.pickupAddress}</span></div>
-    <div class="row"><span>Entrega</span><span>${req.deliveryAddress}</span></div>
+    ${Array.isArray(req.deliveryStops) && req.deliveryStops.length > 1
+      ? `<div class="row"><span>Entregas (${req.deliveryStops.length})</span><span>${req.deliveryStops.map((s, i) => `${i + 1}. ${s.address}${s.commune ? `, ${s.commune}` : ""}`).join("<br>")}</span></div>`
+      : `<div class="row"><span>Entrega</span><span>${req.deliveryAddress}</span></div>`}
     <div class="row"><span>Bultos / Peso</span><span>${req.packages} bultos · ${req.estimatedWeightKg} kg</span></div>
     ${req.requiredDate ? `<div class="row"><span>Fecha requerida</span><span>${req.requiredDate}</span></div>` : ""}
     <div class="note">
@@ -218,7 +220,9 @@ function newQuoteEmailHtml(req) {
     <div class="row"><span>Teléfono</span><span>${req.contactPhone || "—"}</span></div>
     <div class="row"><span>Email</span><span>${req.contactEmail || "—"}</span></div>
     <div class="row"><span>📦 Retiro</span><span>${req.pickupAddress}</span></div>
-    <div class="row"><span>🏁 Entrega</span><span>${req.deliveryAddress}</span></div>
+    ${Array.isArray(req.deliveryStops) && req.deliveryStops.length > 1
+      ? `<div class="row"><span>🏁 Entregas (${req.deliveryStops.length})</span><span>${req.deliveryStops.map((s, i) => `${i + 1}. ${s.address}${s.commune ? `, ${s.commune}` : ""}`).join("<br>")}</span></div>`
+      : `<div class="row"><span>🏁 Entrega</span><span>${req.deliveryAddress}</span></div>`}
     <div class="row"><span>Bultos / Peso</span><span>${req.packages} bultos · ${req.estimatedWeightKg} kg</span></div>
     ${req.cargoDescription ? `<div class="row"><span>Carga</span><span>${req.cargoDescription}</span></div>` : ""}
     ${req.avionetaCount > 0 ? `<div class="row"><span>Peonetas</span><span>${req.avionetaCount} peoneta${req.avionetaCount > 1 ? "s" : ""} solicitada${req.avionetaCount > 1 ? "s" : ""}</span></div>` : ""}
