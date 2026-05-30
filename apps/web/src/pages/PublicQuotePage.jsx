@@ -345,31 +345,32 @@ function fieldGreen(name, form) {
     : "";
 }
 
-// ─── Pre-filled default form (test data) ─────────────────────────────────────
+// ─── Formulario inicial — campos vacíos para el cliente ──────────────────────
+// Solo se sugiere fecha/hora (mañana 10:00, siempre ≥ 4h y ≤ 21:00) por comodidad;
+// el cliente puede cambiarlas. Ningún dato personal viene pre-cargado.
 function getInitialForm() {
-  // Auto-set date to tomorrow at 10:00 (always ≥ 4h from now and ≤ 21:00)
   const d = new Date();
   d.setDate(d.getDate() + 1);
   const yyyy = d.getFullYear();
   const mm   = String(d.getMonth() + 1).padStart(2, "0");
   const dd   = String(d.getDate()).padStart(2, "0");
   return {
-    rut: "12.456.789-K",
-    customerName: "Comercial San Martín",
-    contactPhone: "+56 9 7746 8766",
-    contactEmail: "juandaniel.aguilar17@gmail.com",
-    pickupAddress: "Av. Irarrázaval 2401",
-    pickupCommune: "Ñuñoa",
-    deliveryAddress: "Caupolican 960",
-    deliveryCommune: "Providencia",
-    packages: "8",
-    estimatedWeightKg: "120",
-    cargoDescription: "Cajas de material de oficina selladas, frágil",
+    rut: "",
+    customerName: "",
+    contactPhone: "",
+    contactEmail: "",
+    pickupAddress: "",
+    pickupCommune: "",
+    deliveryAddress: "",
+    deliveryCommune: "",
+    packages: "",
+    estimatedWeightKg: "",
+    cargoDescription: "",
     requiredDate: `${yyyy}-${mm}-${dd}`,
     requiredTime: "10:00",
     avionetaCount: 0,
     urgent: false,
-    observations: "Favor tocar timbre, preguntar por Valeria",
+    observations: "",
   };
 }
 const initialForm = getInitialForm();
