@@ -1,12 +1,15 @@
+# ─── Railway deploy config — monorepo con npm workspaces ──────────────────────
+# La fase de install la define nixpacks.toml (npm install --include=dev desde
+# la raíz, que instala TODOS los workspaces — web + api — con sus devDeps).
+# Aquí solo definimos build (compilar el frontend) y start (arrancar la API que
+# sirve apps/web/dist en producción).
+
 [build]
 builder = "nixpacks"
-# --include=dev forces vite + plugins (devDependencies) to install even when
-# NODE_ENV=production is set in Railway. Without it, `vite build` returns
-# exit code 127 (command not found).
-buildCommand = "cd apps/web && npm install --include=dev && npm run build && cd ../api && npm install --omit=dev"
+buildCommand = "npm run build"
 
 [deploy]
-startCommand = "cd apps/api && node src/server.js"
+startCommand = "npm run start"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 

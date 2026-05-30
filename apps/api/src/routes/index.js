@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAuthorized } from "../middleware/auth.js";
 import adminRoutes from "./admin.routes.js";
 import authRoutes from "./auth.routes.js";
 import dashboardRoutes from "./dashboard.routes.js";
@@ -26,9 +27,10 @@ router.use("/imports", importsRoutes);
 router.use("/planning", planningRoutes);
 router.use("/trucks", trucksRoutes);
 router.use("/tracking", trackingRoutes);
-router.use("/mail", mailRoutes);
+// Endpoints sensibles — protegidos: requieren ADMIN_TOKEN o sesión admin
+router.use("/mail", requireAuthorized, mailRoutes);
+router.use("/whatsapp", requireAuthorized, whatsappRoutes);
 router.use("/media", mediaRoutes);
-router.use("/whatsapp", whatsappRoutes);
 router.use("/users", usersRoutes);
 
 export default router;

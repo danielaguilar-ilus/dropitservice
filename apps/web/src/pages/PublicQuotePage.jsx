@@ -5,7 +5,6 @@ import {
   ArrowRight, Send, Navigation, AlertCircle, Search, X,
   Plus, Trash2, Camera, Route as RouteIcon, Loader2,
 } from "lucide-react";
-import { tplClienteNuevaCotizacion, tplEmpresaNuevaCotizacion, getLogoUrl, getCompanyName } from "../lib/emailTemplates";
 import { calcPrice } from "../lib/pricing";
 import ChileCoverageMap from "../components/ChileCoverageMap";
 import SaulLoader from "../components/SaulLoader";
@@ -735,13 +734,13 @@ export default function PublicQuotePage() {
       // Scroll to top of page so user sees the success screen
       window.scrollTo({ top: 0, behavior: "smooth" });
 
-      // ─── Background: upload photos + send notifications (non-blocking) ───
-      const savedForm = { ...form };
-      const savedRouteInfo = routeInfo;
+      // ─── Background: subir fotos (no bloqueante) ─────────────────────────
+      // Las notificaciones por email (cliente + operador) las envía el SERVIDOR
+      // automáticamente en POST /quote-requests vía Resend/SMTP. El formulario
+      // público ya NO llama /mail/send ni /whatsapp/send (endpoints protegidos).
       const savedImages = capturedImages;
       (async () => {
         try {
-          // Upload photos first (deferred for fast first response)
           if (savedImages.length > 0 && data.request?.id) {
             fetch(`${API_URL}/quote-requests/${data.request.id}/photos`, {
               method: "PATCH",
@@ -749,95 +748,7 @@ export default function PublicQuotePage() {
               body: JSON.stringify({ photos: savedImages }),
             }).catch(() => {});
           }
-
-          let companyEmail = "";
-          let waConfig = null;
-          try { companyEmail = JSON.parse(localStorage.getItem("dropit-smtp-config") || "{}").user || ""; } catch {}
-          try { waConfig = JSON.parse(localStorage.getItem("dropit-whatsapp-config") || "null"); } catch {}
-
-          const trackingCode = data.request?.trackingCode || "N/A";
-          const logoUrl = getLogoUrl();
-          const companyName = getCompanyName();
-          const imagesSent = savedImages.filter(Boolean).length;
-
-          const promises = [];
-
-          // Email to client
-          promises.push(
-            fetch(`${API_URL}/mail/send`, {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                to: savedForm.contactEmail,
-                subject: `Solicitud de cotización recibida — ${companyName}`,
-                html: tplClienteNuevaCotizacion({
-                  customerName: savedForm.customerName, rut: savedForm.rut, trackingCode,
-                  pickupAddress: savedForm.pickupAddress, pickupCommune: savedForm.pickupCommune,
-                  deliveryAddress: savedForm.deliveryAddress, deliveryCommune: savedForm.deliveryCommune,
-                  packages: savedForm.packages, estimatedWeightKg: savedForm.estimatedWeightKg,
-                  requiredDate: savedForm.requiredDate, requiredTime: savedForm.requiredTime,
-                  supportEmail: companyEmail || "soporte@dropit.cl", logoUrl, companyName,
-                }),
-                text: `Hola ${savedForm.customerName}, recibimos tu solicitud. Código: ${trackingCode}`,
-              }),
-            }).catch(() => {})
-          );
-
-          // Email to company
-          if (companyEmail) {
-            promises.push(
-              fetch(`${API_URL}/mail/send`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  to: companyEmail,
-                  subject: `🚛 Nueva cotización — ${savedForm.rut} | ${savedForm.customerName}`,
-                  html: tplEmpresaNuevaCotizacion({
-                    customerName: savedForm.customerName, rut: savedForm.rut,
-                    contactPhone: savedForm.contactPhone, contactEmail: savedForm.contactEmail,
-                    pickupAddress: savedForm.pickupAddress, pickupCommune: savedForm.pickupCommune,
-                    deliveryAddress: savedForm.deliveryAddress, deliveryCommune: savedForm.deliveryCommune,
-                    packages: savedForm.packages, estimatedWeightKg: savedForm.estimatedWeightKg,
-                    cargoDescription: savedForm.cargoDescription, requiredDate: savedForm.requiredDate,
-                    requiredTime: savedForm.requiredTime,
-                    observations: savedForm.observations, trackingCode, logoUrl, companyName,
-                    distanceKm: savedRouteInfo?.distanceKm,
-                    imageCount: imagesSent,
-                  }),
-                  text: `Nueva cotización de ${savedForm.customerName} (${savedForm.rut}). Código: ${trackingCode}`,
-                }),
-              }).catch(() => {})
-            );
-          }
-
-          // WhatsApp to company
-          if (waConfig?.authToken && waConfig?.accountSid && waConfig?.businessNumber) {
-            promises.push(
-              fetch(`${API_URL}/whatsapp/send`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  accountSid: waConfig.accountSid,
-                  authToken: waConfig.authToken,
-                  from: waConfig.fromNumber || "whatsapp:+14155238886",
-                  to: waConfig.businessNumber,
-                  body:
-                    `🚛 *Nueva cotización — ${companyName}*\n\n` +
-                    `📋 *Código:* ${trackingCode}\n` +
-                    `👤 *Cliente:* ${savedForm.customerName}\n` +
-                    `🪪 *RUT:* ${savedForm.rut}\n` +
-                    `📞 *Teléfono:* ${savedForm.contactPhone || "—"}\n` +
-                    `📧 *Email:* ${savedForm.contactEmail || "—"}\n` +
-                    `📦 *Bultos:* ${savedForm.packages || "—"} · ${savedForm.estimatedWeightKg || "—"} kg\n` +
-                    `📍 *Retiro:* ${savedForm.pickupAddress}${savedForm.pickupCommune ? `, ${savedForm.pickupCommune}` : ""}\n` +
-                    `🏁 *Entrega:* ${savedForm.deliveryAddress}${savedForm.deliveryCommune ? `, ${savedForm.deliveryCommune}` : ""}\n` +
-                    `📅 *Fecha:* ${savedForm.requiredDate || "—"}${savedForm.requiredTime ? ` a las ${savedForm.requiredTime}` : ""}\n` +
-                    `📏 *Distancia:* ${savedRouteInfo ? `${savedRouteInfo.distanceKm} km` : "—"}\n` +
-                    `📸 *Fotos:* ${imagesSent}`,
-                }),
-              }).catch(() => {})
-            );
-          }
-
-          await Promise.allSettled(promises);
-        } catch { /* all notifications are best-effort */ }
+        } catch { /* upload de fotos es best-effort */ }
       })();
 
     } catch (err) {

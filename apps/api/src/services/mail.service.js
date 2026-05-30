@@ -247,3 +247,17 @@ export function getActiveProvider() {
   if (_resend) return { provider: "resend", apiKeyLen: RESEND_API_KEY.length, fromConfigured: !!RESEND_FROM };
   return { provider: "smtp", host: _cfg.host, port: _cfg.port, user: _cfg.user };
 }
+
+// True si HAY algún proveedor de correo capaz de enviar (Resend O SMTP completo).
+// Los handlers deben usar esto en lugar de chequear sólo SMTP — así Resend
+// funciona aunque no exista configuración SMTP.
+export function isMailConfigured() {
+  if (_resend) return true;
+  return !!(_cfg.host && _cfg.user && _cfg.pass);
+}
+
+// Dirección "from" efectiva — usada como destino por defecto de notificaciones
+// internas al operador cuando no hay una bandeja de operador explícita.
+export function getOperatorInbox() {
+  return process.env.OPERATOR_EMAIL || _cfg.user || RESEND_FROM || "";
+}

@@ -1,2 +1,5 @@
+# Install desde la raíz con workspaces. --include=dev fuerza que vite y plugins
+# (devDependencies de apps/web) se instalen aunque NODE_ENV=production, evitando
+# el "exit code 127: vite not found" al compilar el frontend.
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm install --include=dev"]

@@ -97,13 +97,13 @@ export const api = {
     request(`/quote-requests/${requestId}/accept`, { method: "PATCH", body: JSON.stringify({ token }) }),
 
   sendEmail: (payload) =>
-    request("/mail/send", { method: "POST", body: JSON.stringify(payload) }),
-  getMailHealth: () => request("/mail/health"),
-  testSmtp: () => request("/mail/test", { method: "POST" }),
+    request("/mail/send", { method: "POST", body: JSON.stringify(payload), headers: withActor() }),
+  getMailHealth: () => request("/mail/health", { headers: withActor() }),
+  testSmtp: () => request("/mail/test", { method: "POST", headers: withActor() }),
   updateSmtpConfig: (payload) =>
-    request("/mail/config", { method: "POST", body: JSON.stringify(payload) }),
+    request("/mail/config", { method: "POST", body: JSON.stringify(payload), headers: withActor() }),
   sendWhatsApp: (payload) =>
-    request("/whatsapp/send", { method: "POST", body: JSON.stringify(payload) }),
+    request("/whatsapp/send", { method: "POST", body: JSON.stringify(payload), headers: withActor() }),
 
   // ─── Users management (require super_admin) ────────────────────────────────
   listUsers: () =>

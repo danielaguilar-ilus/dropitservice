@@ -12,10 +12,35 @@ const __dirname  = dirname(__filename);
 const UPLOADS_DIR = join(__dirname, "../uploads");
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 
+// ─── CORS ────────────────────────────────────────────────────────────────────
+// En producción restringimos al origen del frontend (PUBLIC_URL) y al dominio
+// público que asigna Railway. En desarrollo permitimos cualquier origen para
+// agilizar el trabajo local. Como la API sirve el SPA desde el mismo dominio,
+// la mayoría de las peticiones en prod son same-origin de todas formas.
+function buildCorsOptions() {
+  if (!IS_PROD) return {}; // dev: abierto
+  const allowed = new Set();
+  if (process.env.PUBLIC_URL) allowed.add(process.env.PUBLIC_URL.replace(/\/$/, ""));
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+  // Sin allowlist configurada → reflejar el origen (no romper), pero avisar.
+  if (allowed.size === 0) {
+    console.warn("[cors] PUBLIC_URL no configurado en producción — CORS abierto. Configúralo para restringir.");
+    return {};
+  }
+  return {
+    origin(origin, cb) {
+      // Permite peticiones sin Origin (curl, same-origin, health checks)
+      if (!origin || allowed.has(origin.replace(/\/$/, ""))) return cb(null, true);
+      return cb(new Error(`Origen no permitido por CORS: ${origin}`));
+    },
+    credentials: true,
+  };
+}
+
 export function createApp() {
   const app = express();
 
-  app.use(cors());
+  app.use(cors(buildCorsOptions()));
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 

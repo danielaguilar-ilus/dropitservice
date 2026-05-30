@@ -26,12 +26,20 @@ export const workflow = [
 
 export const incidentStatus = "No conforme / incidencia";
 
+// Usuario administrador semilla (solo para el fallback local sin Postgres).
+// La contraseña NUNCA va hardcodeada: se lee de env. Si no está definida, se usa
+// "changeme" para forzar al operador a cambiarla. En producción la fuente de
+// verdad es PostgreSQL (sembrado vía /_admin/seed-users con bcrypt).
+const SEED_ADMIN_EMAIL    = process.env.SEED_ADMIN_EMAIL    || "admin@dropit.local";
+const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || "changeme";
+const SEED_ADMIN_NAME     = process.env.SEED_ADMIN_NAME     || "Administrador Dropit";
+
 const users = [
   {
     id: "usr-super-admin",
-    name: "Juandaniel Aguilar",
-    email: "Juandaniel.aguilar17@gmail.com",
-    password: "19109364Daniel",
+    name: SEED_ADMIN_NAME,
+    email: SEED_ADMIN_EMAIL,
+    password: SEED_ADMIN_PASSWORD,
     role: "super_admin",
   },
 ];

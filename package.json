@@ -8,10 +8,16 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
     "dev:web": "npm --workspace @dropit/web run dev",
     "dev:api": "npm --workspace @dropit/api run dev",
+    "build": "npm --workspace @dropit/web run build",
     "build:web": "npm --workspace @dropit/web run build",
+    "start": "node apps/api/src/server.js",
     "start:api": "npm --workspace @dropit/api run start",
     "lint": "echo Configurar linting en la siguiente iteracion"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
   }
 }

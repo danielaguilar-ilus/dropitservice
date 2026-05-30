@@ -3,7 +3,7 @@ import { saveStore, store } from "../data/store.js";
 import * as db from "../data/db.js";
 import { buildDashboardPayload } from "../services/dashboard.service.js";
 import { createQuoteRequest, quoteRequest, acceptQuoteRequest } from "../services/request.service.js";
-import { getSmtpConfig, sendMail } from "../services/mail.service.js";
+import { sendMail, isMailConfigured, getOperatorInbox } from "../services/mail.service.js";
 
 const router = Router();
 const HAS_DB = !!process.env.DATABASE_URL;
@@ -266,24 +266,20 @@ router.post("/", async (req, res) => {
     const request = await createQuoteRequest(req.body);
 
     // ─── Email notifications on EVERY new quote (fire-and-forget) ──────────
-    const smtpCfg = getSmtpConfig();
-    console.log("[new-quote-mail] SMTP state →", {
-      host: smtpCfg.host || "(vacío)",
-      port: smtpCfg.port,
-      user: smtpCfg.user || "(vacío)",
-      hasPass: !!smtpCfg.pass,
-      trackingCode: request.trackingCode,
-    });
-    if (smtpCfg.user && smtpCfg.host && smtpCfg.pass) {
+    // No exigimos SMTP: mail.service decide el proveedor (Resend > SMTP).
+    if (isMailConfigured()) {
+      const operatorInbox = getOperatorInbox();
       const isUrgent = !!req.body.urgent;
       const operatorSubject = isUrgent
         ? `[${request.trackingCode}] ⚡ URGENTE — NUEVA COTIZACIÓN — ${request.customerName}`
         : `[${request.trackingCode}] Nueva cotización — ${request.customerName}`;
 
       // 1) Email al OPERADOR/SUPERADMIN
-      sendMail({ to: smtpCfg.user, subject: operatorSubject, html: newQuoteEmailHtml(request) })
-        .then(info => console.log("[new-quote-mail/operator] OK", info.messageId, request.trackingCode))
-        .catch(err => console.error("[new-quote-mail/operator] FALLO", err.message, err.code));
+      if (operatorInbox) {
+        sendMail({ to: operatorInbox, subject: operatorSubject, html: newQuoteEmailHtml(request) })
+          .then(info => console.log("[new-quote-mail/operator] OK", info.messageId, request.trackingCode))
+          .catch(err => console.error("[new-quote-mail/operator] FALLO", err.message, err.code));
+      }
 
       // 2) Email de CONFIRMACIÓN al CLIENTE
       if (request.contactEmail) {
@@ -293,13 +289,8 @@ router.post("/", async (req, res) => {
           .catch(err => console.error("[new-quote-mail/client] FALLO", err.message, err.code));
       }
     } else {
-      const missing = [
-        !smtpCfg.host && "SMTP_HOST",
-        !smtpCfg.user && "SMTP_USER",
-        !smtpCfg.pass && "SMTP_PASS",
-      ].filter(Boolean).join(", ");
-      console.warn("[new-quote-mail] OMITIDO — SMTP incompleto, faltan:", missing,
-        "· configura env vars en Railway o usa el panel Config. correo");
+      console.warn("[new-quote-mail] OMITIDO — no hay proveedor de correo (ni Resend ni SMTP). " +
+        "Configura RESEND_API_KEY (recomendado) o SMTP_* en Railway.");
     }
 
     res.status(201).json({ request, ...(await buildDashboardPayload()) });
@@ -366,12 +357,12 @@ router.patch("/:requestId/quote", async (req, res) => {
     const updated = await quoteRequest(req.params.requestId, req.body);
 
     // ─── Server-side notification to OPERATOR/SUPERADMIN when quote is sent ──
-    const smtpCfg = getSmtpConfig();
-    if (smtpCfg.user && smtpCfg.host && smtpCfg.pass) {
+    const operatorInbox = getOperatorInbox();
+    if (isMailConfigured() && operatorInbox) {
       const confirmUrl = `${getPublicUrl()}/confirmar?id=${updated.id}&token=${updated.acceptanceToken || ""}`;
       const subject = `[${updated.trackingCode}] Cotización enviada — $${Number(updated.quotedAmount).toLocaleString("es-CL")} — ${updated.customerName}`;
       sendMail({
-        to: smtpCfg.user,
+        to: operatorInbox,
         subject,
         html: adminQuoteSentEmailHtml(updated, updated.quotedAmount, updated.serviceType, confirmUrl),
       }).then(info => console.log("[quote-sent-mail/admin] OK", info.messageId))
@@ -412,8 +403,8 @@ router.patch("/:requestId/accept", async (req, res) => {
     const updated = await acceptQuoteRequest(req.params.requestId, token);
 
     // Send emails (fire-and-forget)
-    const smtpCfg = getSmtpConfig();
-    if (smtpCfg.user && smtpCfg.host && smtpCfg.pass) {
+    const operatorInbox = getOperatorInbox();
+    if (isMailConfigured()) {
       // Email to CLIENT
       if (updated.contactEmail) {
         sendMail({
@@ -423,11 +414,13 @@ router.patch("/:requestId/accept", async (req, res) => {
         }).catch(err => console.error("[accept-mail/client] FALLO", err.message));
       }
       // Email to OPERATOR/SUPERADMIN
-      sendMail({
-        to: smtpCfg.user,
-        subject: `[${updated.trackingCode}] ✅ ACEPTADO — ${updated.customerName} confirmó la cotización`,
-        html: quoteAcceptedAdminEmailHtml(updated),
-      }).catch(err => console.error("[accept-mail/admin] FALLO", err.message));
+      if (operatorInbox) {
+        sendMail({
+          to: operatorInbox,
+          subject: `[${updated.trackingCode}] ✅ ACEPTADO — ${updated.customerName} confirmó la cotización`,
+          html: quoteAcceptedAdminEmailHtml(updated),
+        }).catch(err => console.error("[accept-mail/admin] FALLO", err.message));
+      }
     }
 
     res.json({ ok: true, request: updated, ...(await buildDashboardPayload()) });
@@ -464,8 +457,8 @@ router.patch("/:requestId/accept-manual", async (req, res) => {
   try {
     const updated = await acceptQuoteRequest(req.params.requestId, null); // no token check
 
-    const smtpCfg = getSmtpConfig();
-    if (smtpCfg.user && smtpCfg.host && smtpCfg.pass) {
+    const operatorInbox = getOperatorInbox();
+    if (isMailConfigured()) {
       if (updated.contactEmail) {
         sendMail({
           to: updated.contactEmail,
@@ -473,11 +466,13 @@ router.patch("/:requestId/accept-manual", async (req, res) => {
           html: quoteAcceptedClientEmailHtml(updated),
         }).catch(err => console.error("[accept-manual-mail/client] FALLO", err.message));
       }
-      sendMail({
-        to: smtpCfg.user,
-        subject: `[${updated.trackingCode}] ✅ ACEPTADO manualmente — ${updated.customerName}`,
-        html: quoteAcceptedAdminEmailHtml(updated),
-      }).catch(err => console.error("[accept-manual-mail/admin] FALLO", err.message));
+      if (operatorInbox) {
+        sendMail({
+          to: operatorInbox,
+          subject: `[${updated.trackingCode}] ✅ ACEPTADO manualmente — ${updated.customerName}`,
+          html: quoteAcceptedAdminEmailHtml(updated),
+        }).catch(err => console.error("[accept-manual-mail/admin] FALLO", err.message));
+      }
     }
 
     res.json({ ok: true, request: updated, ...(await buildDashboardPayload()) });

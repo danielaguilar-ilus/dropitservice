@@ -1,6 +1,7 @@
 import { store } from "../data/store.js";
 import * as db from "../data/db.js";
 import { createId } from "../lib/id.js";
+import { isMailConfigured } from "./mail.service.js";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 
@@ -16,8 +17,14 @@ const notificationTemplates = {
   order_incident: "Pedido no conforme / incidencia",
 };
 
-export async function notify({ type, to, requestId, payload = {} }) {
+// status real de la notificación:
+//   - "sent"      → hay proveedor de correo y el envío se despachó
+//   - "failed"    → el caller informó que el envío falló
+//   - "simulated" → no hay proveedor configurado (solo se registra, no se envía)
+// El caller puede forzar el status (p.ej. "failed") vía el parámetro `status`.
+export async function notify({ type, to, requestId, payload = {}, status } = {}) {
   const id = createId("not");
+  const resolvedStatus = status || (isMailConfigured() ? "sent" : "simulated");
   const notification = {
     id,
     type,
@@ -25,7 +32,7 @@ export async function notify({ type, to, requestId, payload = {} }) {
     to,
     requestId,
     payload,
-    status: "simulada",
+    status: resolvedStatus,
     createdAt: new Date().toISOString(),
   };
 

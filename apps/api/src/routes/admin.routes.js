@@ -3,27 +3,13 @@ import { readFileSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
+import { requireAdminToken } from "../middleware/auth.js";
 
 const router = Router();
 
-// ─── Lightweight gate ─────────────────────────────────────────────────────────
-// All endpoints here require a secret token to avoid accidental exposure.
-// Set ADMIN_TOKEN in Railway env vars; default is a random-ish string that
-// the operator should rotate. Pass as ?token=... or header X-Admin-Token.
-const ADMIN_TOKEN =
-  process.env.ADMIN_TOKEN ||
-  "dropit-migrate-2026-CHANGE-ME-IN-RAILWAY";
-
-function requireAdmin(req, res, next) {
-  const provided = req.query.token || req.headers["x-admin-token"];
-  if (!provided || provided !== ADMIN_TOKEN) {
-    return res.status(401).json({
-      ok: false,
-      message: "Token admin requerido. Pasa ?token=... o header X-Admin-Token.",
-    });
-  }
-  next();
-}
+// Todos los endpoints /_admin/* requieren ADMIN_TOKEN (sin default inseguro:
+// si ADMIN_TOKEN no está configurado en el server, devuelve 503).
+const requireAdmin = requireAdminToken;
 
 // ─── GET /api/_admin/db-status ────────────────────────────────────────────────
 // Inspects whether Postgres is configured + reachable.
