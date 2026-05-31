@@ -1,5 +1,6 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
+import * as db from "./data/db.js";
 
 // Build marker: 2026-05-23 — google maps env vars now configured
 // Graceful error handling — prevent crashes from unhandled rejections
