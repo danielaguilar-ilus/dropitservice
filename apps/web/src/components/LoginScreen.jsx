@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { MapPin, Clock, Zap, Shield, ChevronRight, Truck, Eye, EyeOff } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
@@ -74,7 +74,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-dropit-accent">DropIt Service</p>
-            <p className="text-sm text-dropit-400">GestiÃ³n logÃ­stica de Ãºltima milla</p>
+            <p className="text-sm text-dropit-400">Gestión logística de última milla</p>
           </div>
         </div>
 
@@ -93,7 +93,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
             {[
               { icon: MapPin, value: "Todo Chile", label: "Cobertura" },
               { icon: Clock, value: "24/7", label: "Tracking en vivo" },
-              { icon: Zap, value: "<1 hora", label: "CotizaciÃ³n" },
+              { icon: Zap, value: "<1 hora", label: "Cotización" },
               { icon: Shield, value: "100%", label: "Carga asegurada" },
             ].map(({ icon: Icon, value, label }) => (
               <div
@@ -114,7 +114,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
             href="/cotizar"
             className="inline-flex items-center gap-2 text-sm font-semibold text-dropit-accent hover:underline"
           >
-            Â¿Eres cliente? Solicita una cotizaciÃ³n
+            ¿Eres cliente? Solicita una Cotización
             <ChevronRight size={16} />
           </a>
           {hasCarousel && images.length > 1 && (
@@ -147,7 +147,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
 
           <form className="space-y-5" onSubmit={onSubmit}>
             <div>
-              <label className="label-base" htmlFor="email">Correo electrÃ³nico</label>
+              <label className="label-base" htmlFor="email">Correo electrónico</label>
               <input
                 id="email"
                 type="email"
@@ -162,13 +162,13 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <label className="label-base mb-0" htmlFor="password">ContraseÃ±a</label>
+                <label className="label-base mb-0" htmlFor="password">Contraseña</label>
                 <button
                   type="button"
                   className="text-xs font-semibold text-dropit-accent hover:underline"
-                  onClick={() => alert("PrÃ³ximamente: recuperaciÃ³n de contraseÃ±a")}
+                  onClick={() => alert("Próximamente: recuperación de Contraseña")}
                 >
-                  Â¿Olvidaste tu contraseÃ±a?
+                  ¿Olvidaste tu Contraseña?
                 </button>
               </div>
               <div className="relative">
@@ -217,7 +217,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
 
           <p className="text-center text-xs text-dropit-600">
             Al ingresar aceptas los{" "}
-            <a href="#" className="font-semibold text-dropit-accent hover:underline">tÃ©rminos de uso</a>{" "}
+            <a href="#" className="font-semibold text-dropit-accent hover:underline">términos de uso</a>{" "}
             de DropIt Service
           </p>
         </div>
