@@ -28,7 +28,8 @@
   }
 
   .input-base {
-    @apply w-full rounded-md border border-dropit-400 bg-white px-3.5 py-2.5 text-sm text-dropit-950 outline-none transition-all focus:border-dropit-accent focus:ring-2 focus:ring-dropit-accent/20 disabled:bg-dropit-200 disabled:cursor-not-allowed;
+    /* text-base (16px) en movil evita el auto-zoom de iOS al enfocar; sm:text-sm (14px) en desktop. */
+    @apply w-full rounded-md border border-dropit-400 bg-white px-3.5 py-2.5 text-base sm:text-sm text-dropit-950 outline-none transition-all focus:border-dropit-accent focus:ring-2 focus:ring-dropit-accent/20 disabled:bg-dropit-200 disabled:cursor-not-allowed;
   }
 
   .input-base::placeholder {
