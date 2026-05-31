@@ -18,7 +18,7 @@ export default function ConfirmQuotePage() {
   const [confirmed, setConfirmed]   = useState(false);
 
   useEffect(() => {
-    if (!id) { setError("Link invÃ¡lido â€” falta el ID de la solicitud."); setLoading(false); return; }
+    if (!id) { setError("Link inválido â€” falta el ID de la solicitud."); setLoading(false); return; }
     fetch(`${API_URL}/quote-requests/${id}/public?token=${encodeURIComponent(token || "")}`)
       .then(r => r.json())
       .then(data => {
@@ -26,10 +26,10 @@ export default function ConfirmQuotePage() {
           setQuote(data.request);
           if (data.request.status === "Aceptado por cliente") setConfirmed(true);
         } else {
-          setError(data.message || "No se pudo cargar la cotizaciÃ³n.");
+          setError(data.message || "No se pudo cargar la cotización.");
         }
       })
-      .catch(() => setError("No se pudo conectar con el servidor. Intenta mÃ¡s tarde."))
+      .catch(() => setError("No se pudo conectar con el servidor. Intenta más tarde."))
       .finally(() => setLoading(false));
   }, [id, token]);
 
@@ -70,7 +70,7 @@ export default function ConfirmQuotePage() {
             href="/cotizar"
             className="flex items-center gap-1 text-sm font-semibold text-dropit-accent hover:underline"
           >
-            Nueva cotizaciÃ³n <ChevronRight size={14} />
+            Nueva cotización <ChevronRight size={14} />
           </a>
         </div>
       </header>
@@ -80,7 +80,7 @@ export default function ConfirmQuotePage() {
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Loader2 size={40} className="animate-spin text-dropit-accent mb-4" />
-            <p className="text-dropit-700 font-medium">Cargando tu cotizaciÃ³n...</p>
+            <p className="text-dropit-700 font-medium">Cargando tu cotización...</p>
           </div>
         )}
 
@@ -103,12 +103,12 @@ export default function ConfirmQuotePage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-dropit-success text-white">
                 <CheckCircle2 size={32} />
               </div>
-              <h2 className="text-2xl font-black text-dropit-950">Â¡CotizaciÃ³n confirmada!</h2>
+              <h2 className="text-2xl font-black text-dropit-950">¡Cotización confirmada!</h2>
               <p className="mt-2 text-dropit-700">
-                Recibimos tu confirmaciÃ³n. Nuestro equipo coordinarÃ¡ el retiro contigo.
+                Recibimos tu confirmación. Nuestro equipo coordinará el retiro contigo.
               </p>
               <div className="mt-6 grid gap-3 md:grid-cols-2 text-left">
-                <InfoBlock label="CÃ³digo de seguimiento" value={<span className="font-mono text-lg font-black text-dropit-accent">{quote.trackingCode}</span>} />
+                <InfoBlock label="Código de seguimiento" value={<span className="font-mono text-lg font-black text-dropit-accent">{quote.trackingCode}</span>} />
                 <InfoBlock label="Valor confirmado" value={<span className="text-lg font-black text-dropit-success">${Number(quote.quotedAmount).toLocaleString("es-CL")}</span>} />
               </div>
             </div>
@@ -117,7 +117,7 @@ export default function ConfirmQuotePage() {
               <h3 className="text-sm font-bold text-dropit-700 uppercase tracking-wider mb-4">Detalle del servicio</h3>
               <InfoRow icon={MapPin} label="Retiro" value={quote.pickupAddress} />
               <InfoRow icon={MapPin} label="Entrega" value={quote.deliveryAddress} accent />
-              <InfoRow icon={Package} label="Carga" value={`${quote.packages} bultos Â· ${quote.estimatedWeightKg} kg`} />
+              <InfoRow icon={Package} label="Carga" value={`${quote.packages} bultos · ${quote.estimatedWeightKg} kg`} />
               {quote.requiredDate && <InfoRow icon={Clock} label="Fecha" value={quote.requiredDate} />}
               {quote.serviceType && <InfoRow icon={Truck} label="Servicio" value={quote.serviceType} />}
             </div>
@@ -142,7 +142,7 @@ export default function ConfirmQuotePage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-dropit-accent/10">
                 <Truck size={28} className="text-dropit-accent" />
               </div>
-              <h1 className="text-3xl font-black text-dropit-950">Tu cotizaciÃ³n estÃ¡ lista</h1>
+              <h1 className="text-3xl font-black text-dropit-950">Tu cotización está lista</h1>
               <p className="mt-2 text-dropit-700">Revisa los detalles y confirma para agendar el retiro</p>
             </div>
 
@@ -158,7 +158,7 @@ export default function ConfirmQuotePage() {
               </div>
               <div className="px-6 py-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-dropit-500 text-xs uppercase tracking-wider mb-0.5">CÃ³digo</p>
+                  <p className="text-dropit-500 text-xs uppercase tracking-wider mb-0.5">Código</p>
                   <p className="font-mono font-bold text-dropit-accent">{quote.trackingCode}</p>
                 </div>
                 <div>
@@ -171,11 +171,11 @@ export default function ConfirmQuotePage() {
             {/* Service details */}
             <div className="rounded-2xl bg-white border border-dropit-300 p-6 space-y-3">
               <h3 className="text-sm font-bold text-dropit-700 uppercase tracking-wider mb-4">Detalle del servicio</h3>
-              <InfoRow icon={MapPin} label="DirecciÃ³n de retiro" value={quote.pickupAddress} />
-              <InfoRow icon={MapPin} label="DirecciÃ³n de entrega" value={quote.deliveryAddress} accent />
-              <InfoRow icon={Package} label="Carga" value={`${quote.packages} bultos Â· ${quote.estimatedWeightKg} kg`} />
+              <InfoRow icon={MapPin} label="Dirección de retiro" value={quote.pickupAddress} />
+              <InfoRow icon={MapPin} label="Dirección de entrega" value={quote.deliveryAddress} accent />
+              <InfoRow icon={Package} label="Carga" value={`${quote.packages} bultos · ${quote.estimatedWeightKg} kg`} />
               {quote.requiredDate && (
-                <InfoRow icon={Clock} label="Fecha requerida" value={`${quote.requiredDate}${quote.requiredTime ? ` Â· ${quote.requiredTime}` : ""}`} />
+                <InfoRow icon={Clock} label="Fecha requerida" value={`${quote.requiredDate}${quote.requiredTime ? ` · ${quote.requiredTime}` : ""}`} />
               )}
               {quote.distanceKm && (
                 <InfoRow icon={Truck} label="Distancia" value={`${quote.distanceKm} km`} />
@@ -191,9 +191,9 @@ export default function ConfirmQuotePage() {
             {/* Terms */}
             <div className="rounded-xl bg-dropit-200/50 border border-dropit-300 p-4 text-xs text-dropit-700">
               <p>
-                â± Esta cotizaciÃ³n tiene <strong>validez de 24 horas</strong> desde su emisiÃ³n.
+                â± Esta cotización tiene <strong>validez de 24 horas</strong> desde su emisión.
                 El precio final puede variar si cambian las condiciones de acceso o la carga.
-                Al confirmar, aceptas los tÃ©rminos de servicio de DropIt Service.
+                Al confirmar, aceptas los términos de servicio de DropIt Service.
               </p>
             </div>
 
@@ -207,11 +207,11 @@ export default function ConfirmQuotePage() {
                 {confirming ? (
                   <><Loader2 size={22} className="animate-spin" /> Confirmando...</>
                 ) : (
-                  <><CheckCircle2 size={22} /> Confirmar cotizaciÃ³n</>
+                  <><CheckCircle2 size={22} /> Confirmar cotización</>
                 )}
               </button>
               <a
-                href={`mailto:soporte@dropit.cl?subject=Consulta cotizaciÃ³n ${quote.trackingCode}`}
+                href={`mailto:soporte@dropit.cl?subject=Consulta cotización ${quote.trackingCode}`}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dropit-400 bg-white px-8 py-4 text-sm font-semibold text-dropit-950 hover:bg-dropit-100 transition-colors"
               >
                 Tengo dudas â€” contactar al equipo

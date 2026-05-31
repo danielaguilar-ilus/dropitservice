@@ -11,13 +11,13 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 // â”€â”€â”€ Razones de fallo (editables por admin en localStorage) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DEFAULT_FAILURE_REASONS = [
   "Local cerrado",
-  "DirecciÃ³n incorrecta / no encontrada",
+  "Dirección incorrecta / no encontrada",
   "Cliente desconoce el pedido",
   "Cliente no se encontraba",
   "Acceso no permitido al edificio",
-  "El cliente rechazÃ³ el pedido",
+  "El cliente rechazó el pedido",
   "Problema con el pago",
-  "Carga daÃ±ada en trÃ¡nsito",
+  "Carga dañada en tránsito",
   "Otro (especificar en observaciones)",
 ];
 
@@ -103,7 +103,7 @@ function SignaturePad({ onChange }) {
         {!hasSignature && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <p className="flex items-center gap-1.5 text-sm text-slate-300">
-              <Pen size={14} />Firme aquÃ­
+              <Pen size={14} />Firme aquí
             </p>
           </div>
         )}
@@ -225,7 +225,7 @@ function DeliveryModal({ stop, onClose, onConfirm }) {
             <textarea
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
               rows={2}
-              placeholder="Ej: Dejado en conserjerÃ­a, entregado a portero..."
+              placeholder="Ej: Dejado en conserjería, entregado a portero..."
               value={observations}
               onChange={e => setObservations(e.target.value)}
             />
@@ -463,7 +463,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
         <div className="flex-1">
           <h3 className="font-bold text-slate-800">{route.name || route.id}</h3>
           <p className="text-xs text-slate-500">
-            {route.truckName} Â· {route.driverName} Â· {stops.length} paradas Â· {route.plannedDate}
+            {route.truckName} · {route.driverName} · {stops.length} paradas · {route.plannedDate}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -483,12 +483,12 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold text-slate-800">
-              {routeStarted ? "ðŸš› Ruta en progreso" : "Â¿Listo para salir?"}
+              {routeStarted ? "ðŸš› Ruta en progreso" : "¿Listo para salir?"}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
               {routeStarted
                 ? `${completedCount}/${stops.length} paradas completadas`
-                : `${stops.length} paradas Â· GPS en tiempo real`}
+                : `${stops.length} paradas · GPS en tiempo real`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -553,7 +553,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
                   </div>
 
                   <div className="mt-1.5 flex gap-3 text-[10px] text-slate-400">
-                    <span><Package size={9} className="inline mr-0.5" />{stop.packages} bultos Â· {stop.estimatedWeightKg} kg</span>
+                    <span><Package size={9} className="inline mr-0.5" />{stop.packages} bultos · {stop.estimatedWeightKg} kg</span>
                     {stop.cargoDescription && <span className="truncate max-w-[200px]">{stop.cargoDescription}</span>}
                   </div>
 
@@ -562,7 +562,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
                     <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
                       <CheckCircle2 size={12} />Entregado confirmado
                       {stopStatuses[stop.id]?.deliveryData?.recipientName && (
-                        <span className="text-emerald-500"> Â· RecibiÃ³: {stopStatuses[stop.id].deliveryData.recipientName}</span>
+                        <span className="text-emerald-500"> · Recibió: {stopStatuses[stop.id].deliveryData.recipientName}</span>
                       )}
                     </div>
                   )}
@@ -601,7 +601,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
       {allDone && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
           <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-500" />
-          <p className="font-bold text-emerald-800">Â¡Ruta completada!</p>
+          <p className="font-bold text-emerald-800">¡Ruta completada!</p>
           <p className="text-sm text-emerald-600">{completedCount} de {stops.length} entregas exitosas</p>
         </div>
       )}
@@ -629,7 +629,7 @@ function RouteCard({ route, requests, onOpen }) {
           <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
           <div>
             <p className="font-bold text-slate-800">{route.name || route.id}</p>
-            <p className="text-xs text-slate-500">{route.plannedDate} Â· {route.driverName}</p>
+            <p className="text-xs text-slate-500">{route.plannedDate} · {route.driverName}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -654,7 +654,7 @@ function RouteCard({ route, requests, onOpen }) {
               {stop.status === "Entregado" && <CheckCircle2 size={10} className="flex-shrink-0 text-emerald-500" />}
             </div>
           ))}
-          {stops.length > 3 && <p className="text-[10px] text-slate-400">+{stops.length - 3} paradas mÃ¡s</p>}
+          {stops.length > 3 && <p className="text-[10px] text-slate-400">+{stops.length - 3} paradas más</p>}
         </div>
       </div>
     </div>
@@ -711,7 +711,7 @@ export default function DriversRouteView({ currentUser, routes = [], requests = 
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-dropit-accent">LogÃ­stica</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-dropit-accent">Logística</p>
         <h2 className="text-2xl font-black text-slate-800">Rutas de conductores</h2>
       </div>
 
@@ -756,7 +756,7 @@ export default function DriversRouteView({ currentUser, routes = [], requests = 
         <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white">
           <Truck size={28} className="mb-3 text-slate-300" />
           <p className="text-sm font-bold text-slate-500">Sin rutas para los filtros seleccionados</p>
-          <p className="text-xs text-slate-400 mt-1">Las rutas aparecen aquÃ­ al planificarlas en el mÃ³dulo de Rutas</p>
+          <p className="text-xs text-slate-400 mt-1">Las rutas aparecen aquí al planificarlas en el módulo de Rutas</p>
         </div>
       ) : (
         <div className="space-y-3">

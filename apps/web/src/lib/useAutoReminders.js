@@ -1,13 +1,13 @@
 ﻿/**
  * useAutoReminders
  * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
- * Hook global que corre SIEMPRE, independiente del mÃ³dulo activo.
- * Escanea cada 30s las solicitudes pendientes y envÃ­a recordatorios
- * automÃ¡ticos a los 30, 45 y 60 minutos por:
+ * Hook global que corre SIEMPRE, independiente del módulo activo.
+ * Escanea cada 30s las solicitudes pendientes y envía recordatorios
+ * automáticos a los 30, 45 y 60 minutos por:
  *   â€¢ WhatsApp (Twilio) â†’ al cliente
  *   â€¢ Email (SMTP)      â†’ al operador / admin
  *
- * Montado en App.jsx â†’ nunca se desmonta al cambiar de mÃ³dulo.
+ * Montado en App.jsx â†’ nunca se desmonta al cambiar de módulo.
  */
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "./messageLog";
@@ -35,7 +35,7 @@ async function sendEmailReminder(req, type, adminEmail, smtpConfig) {
   const icon   = icons[type];
   const now    = new Date().toLocaleString("es-CL");
 
-  const subject = `${icon} CotizaciÃ³n sin respuesta (${label}) â€” ${req.customerName}`;
+  const subject = `${icon} Cotización sin respuesta (${label}) â€” ${req.customerName}`;
 
   const html = `
 <!DOCTYPE html>
@@ -61,26 +61,26 @@ async function sendEmailReminder(req, type, adminEmail, smtpConfig) {
 <body>
 <div class="wrap">
   <div class="header">
-    <h1>${icon} Alerta â€” cotizaciÃ³n pendiente</h1>
+    <h1>${icon} Alerta â€” cotización pendiente</h1>
     <p>Han pasado <strong>${label}</strong> sin responder esta solicitud</p>
   </div>
   <div class="body">
     <div class="alert">
-      <p>âš¡ AcciÃ³n requerida: cotiza de inmediato para no perder al cliente</p>
+      <p>âš¡ Acción requerida: cotiza de inmediato para no perder al cliente</p>
     </div>
-    <div class="row"><span>CÃ³digo</span><span><strong style="font-family:monospace;">${req.trackingCode}</strong></span></div>
+    <div class="row"><span>Código</span><span><strong style="font-family:monospace;">${req.trackingCode}</strong></span></div>
     <div class="row"><span>Cliente</span><span>${req.customerName}</span></div>
-    <div class="row"><span>TelÃ©fono</span><span>${req.contactPhone}</span></div>
+    <div class="row"><span>Teléfono</span><span>${req.contactPhone}</span></div>
     <div class="row"><span>Email cliente</span><span>${req.contactEmail}</span></div>
     <div class="row"><span>ðŸ“¦ Retiro</span><span>${req.pickupAddress}</span></div>
     <div class="row"><span>ðŸ Entrega</span><span>${req.deliveryAddress}</span></div>
-    <div class="row"><span>Bultos / Peso</span><span>${req.packages} bultos Â· ${req.estimatedWeightKg} kg</span></div>
+    <div class="row"><span>Bultos / Peso</span><span>${req.packages} bultos · ${req.estimatedWeightKg} kg</span></div>
     ${req.distanceKm ? `<div class="row"><span>Distancia</span><span><strong style="color:#F97316;">${req.distanceKm} km</strong></span></div>` : ""}
     <div class="row"><span>Recibida</span><span>${new Date(req.createdAt).toLocaleString("es-CL")}</span></div>
     <div class="row"><span>Alerta generada</span><span>${now}</span></div>
     <a href="http://localhost:5173" class="btn">Ir al panel â†’ Cotizar ahora</a>
   </div>
-  <div class="footer">Dropit Service Â· Alerta automÃ¡tica Â· No responder este correo</div>
+  <div class="footer">Dropit Service · Alerta automática · No responder este correo</div>
 </div>
 </body>
 </html>`;
@@ -164,7 +164,7 @@ export default function useAutoReminders(requests = []) {
           if (anyOk) {
             // Build toast text showing which channels fired
             const channels = [waOk && "WA", emailOk && "Email"].filter(Boolean).join(" + ");
-            setToast({ ok: true, text: `âš¡ Recordatorio (${label}) â†’ ${req.customerName} Â· ${channels}` });
+            setToast({ ok: true, text: `âš¡ Recordatorio (${label}) â†’ ${req.customerName} · ${channels}` });
             setTimeout(() => setToast(null), 7000);
             console.log(`[AutoReminder] âœ… ${type} OK â†’ ${req.customerName} (${channels})`);
           } else {

@@ -48,7 +48,7 @@ async function request(path, options = {}) {
   return payload;
 }
 
-// â”€â”€â”€ Helper: aÃ±ade X-User-Email cuando hay sesiÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Helper: añade X-User-Email cuando hay sesión â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function withActor(headers = {}) {
   const email = getCurrentUserEmail();
   if (email) return { ...headers, "X-User-Email": email };

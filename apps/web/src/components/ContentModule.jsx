@@ -46,10 +46,10 @@ function CarouselSection({ title, desc, carouselKey, max, images, setImages, onS
       if (data.ok && data.urls) {
         setImages((prev) => [...prev, ...data.urls]);
       } else {
-        alert("Error al subir imÃ¡genes: " + (data.message || ""));
+        alert("Error al subir imágenes: " + (data.message || ""));
       }
     } catch (err) {
-      alert("Error de conexiÃ³n al subir: " + err.message);
+      alert("Error de conexión al subir: " + err.message);
     } finally {
       setUploading(false);
     }
@@ -106,7 +106,7 @@ function CarouselSection({ title, desc, carouselKey, max, images, setImages, onS
               <p className="text-sm font-medium text-slate-600">
                 Arrastra o <span className="text-dropit-accent underline">selecciona archivos</span>
               </p>
-              <p className="text-xs text-slate-400">PNG, JPG, WEBP â€” hasta {max - images.length} mÃ¡s</p>
+              <p className="text-xs text-slate-400">PNG, JPG, WEBP â€” hasta {max - images.length} más</p>
             </>
           )}
           <input
@@ -168,7 +168,7 @@ function CarouselSection({ title, desc, carouselKey, max, images, setImages, onS
             }`}
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle2 size={14} /> : <Cloud size={14} />}
-            {saving ? "Guardando..." : saved ? "Â¡Guardado en la nube!" : "Guardar y aplicar"}
+            {saving ? "Guardando..." : saved ? "¡Guardado en la nube!" : "Guardar y aplicar"}
           </button>
         </div>
       )}
@@ -237,15 +237,15 @@ export default function ContentModule() {
         )}
       </div>
 
-      {/* Banner de advertencia si Cloudinary no estÃ¡ configurado */}
+      {/* Banner de advertencia si Cloudinary no está configurado */}
       {cloudStatus === false && (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl flex-shrink-0">âš ï¸</span>
             <div>
-              <p className="font-bold text-amber-900">Cloudinary no configurado â€” las fotos se perderÃ¡n al redesplegar</p>
+              <p className="font-bold text-amber-900">Cloudinary no configurado â€” las fotos se perderán al redesplegar</p>
               <p className="mt-1 text-sm text-amber-700">
-                Las imÃ¡genes se guardan localmente en el servidor. En Railway, <strong>se borran con cada deploy</strong>.
+                Las imágenes se guardan localmente en el servidor. En Railway, <strong>se borran con cada deploy</strong>.
                 Para persistencia permanente, configura estas variables de entorno en Railway:
               </p>
               <div className="mt-3 rounded-lg bg-white border border-amber-200 p-3 font-mono text-xs space-y-1">
@@ -263,7 +263,7 @@ export default function ContentModule() {
 
       <CarouselSection
         title="Fotos de pantalla de login"
-        desc="MÃ¡x. 5 imÃ¡genes. Aparecen en el login con transiciÃ³n automÃ¡tica cada 5 s."
+        desc="Máx. 5 imágenes. Aparecen en el login con transición automática cada 5 s."
         carouselKey="login"
         max={5}
         images={loginImages}
@@ -274,8 +274,8 @@ export default function ContentModule() {
       />
 
       <CarouselSection
-        title="Carrusel hero en cotizador pÃºblico"
-        desc="MÃ¡x. 15 imÃ¡genes. Aparecen como fondo en el hero de la pÃ¡gina /cotizar."
+        title="Carrusel hero en cotizador público"
+        desc="Máx. 15 imágenes. Aparecen como fondo en el hero de la página /cotizar."
         carouselKey="marketing"
         max={15}
         images={marketingImages}

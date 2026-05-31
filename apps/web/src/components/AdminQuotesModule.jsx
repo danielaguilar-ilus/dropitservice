@@ -26,13 +26,13 @@ function photoUrl(p) {
   return API_BASE + (p.startsWith("/") ? p : "/" + p);
 }
 const RM_COMUNAS = new Set([
-  "AlhuÃ©","Buin","Calera de Tango","Cerrillos","Cerro Navia","Colina","ConchalÃ­",
-  "CuracavÃ­","El Bosque","El Monte","EstaciÃ³n Central","Huechuraba","Independencia",
+  "Alhué","Buin","Calera de Tango","Cerrillos","Cerro Navia","Colina","Conchalí",
+  "Curacaví","El Bosque","El Monte","Estación Central","Huechuraba","Independencia",
   "Isla de Maipo","La Cisterna","La Florida","La Granja","La Pintana","La Reina",
-  "Lampa","Las Condes","Lo Barnechea","Lo Espejo","Lo Prado","Macul","MaipÃº",
-  "MarÃ­a Pinto","Melipilla","Ã‘uÃ±oa","Padre Hurtado","Paine","Pedro Aguirre Cerda",
-  "PeÃ±aflor","PeÃ±alolÃ©n","Pirque","Providencia","Pudahuel","Puente Alto","Quilicura",
-  "Quinta Normal","Recoleta","Renca","San Bernardo","San JoaquÃ­n","San JosÃ© de Maipo",
+  "Lampa","Las Condes","Lo Barnechea","Lo Espejo","Lo Prado","Macul","Maipú",
+  "María Pinto","Melipilla","Ã‘uñoa","Padre Hurtado","Paine","Pedro Aguirre Cerda",
+  "Peñaflor","Peñalolén","Pirque","Providencia","Pudahuel","Puente Alto","Quilicura",
+  "Quinta Normal","Recoleta","Renca","San Bernardo","San Joaquín","San José de Maipo",
   "San Miguel","San Pedro","Santiago","Talagante","Tiltil","Vitacura",
 ]);
 
@@ -86,7 +86,7 @@ function buildPDFHtml(request, finalAmount, photos = []) {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CotizaciÃ³n ${request.trackingCode}</title>
+<title>Cotización ${request.trackingCode}</title>
 <style>
   @page { size: A4; margin: 12mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -133,11 +133,11 @@ function buildPDFHtml(request, finalAmount, photos = []) {
         : `<span class="logo-fallback">DROPIT SERVICE</span>`}
       <div>
         <div class="company-name">${companyName}</div>
-        <div class="company-sub">Transportes &amp; LogÃ­stica</div>
+        <div class="company-sub">Transportes &amp; Logística</div>
       </div>
     </div>
-    <div class="doc-title">Propuesta de cotizaciÃ³n</div>
-    <div class="doc-subtitle">${now} Â· Ref. ${request.trackingCode}</div>
+    <div class="doc-title">Propuesta de cotización</div>
+    <div class="doc-subtitle">${now} · Ref. ${request.trackingCode}</div>
   </div>
 
   <div class="body">
@@ -146,7 +146,7 @@ function buildPDFHtml(request, finalAmount, photos = []) {
       <div class="grid-2">
         <div class="info-card"><div class="info-label">Empresa / Persona</div><div class="info-value">${request.customerName}</div></div>
         ${(request.customerRut || (() => { const m = (request.observations || "").split("\n").find(l => l.startsWith("RUT:")); return m ? m.replace("RUT: ", "").trim() : ""; })()) ? `<div class="info-card"><div class="info-label">RUT</div><div class="info-value" style="font-family:monospace;">${request.customerRut || (request.observations || "").split("\n").find(l => l.startsWith("RUT:"))?.replace("RUT: ", "").trim() || "â€”"}</div></div>` : ""}
-        <div class="info-card"><div class="info-label">TelÃ©fono</div><div class="info-value">${request.contactPhone}</div></div>
+        <div class="info-card"><div class="info-label">Teléfono</div><div class="info-value">${request.contactPhone}</div></div>
         <div class="info-card"><div class="info-label">Email</div><div class="info-value">${request.contactEmail}</div></div>
       </div>
     </div>
@@ -187,9 +187,9 @@ function buildPDFHtml(request, finalAmount, photos = []) {
     <div class="section">
       <div class="section-title">Detalle de carga</div>
       <div class="grid-2">
-        <div class="info-card"><div class="info-label">Bultos / Peso total</div><div class="info-value">${request.packages} bultos Â· ${request.estimatedWeightKg} kg en total</div></div>
+        <div class="info-card"><div class="info-label">Bultos / Peso total</div><div class="info-value">${request.packages} bultos · ${request.estimatedWeightKg} kg en total</div></div>
         <div class="info-card"><div class="info-label">Fecha requerida</div><div class="info-value">${request.requiredDate || "â€”"}${request.requiredTime ? ` a las ${request.requiredTime}` : ""}</div></div>
-        <div class="info-card" style="grid-column:1/-1"><div class="info-label">DescripciÃ³n</div><div class="info-value">${request.cargoDescription}</div></div>
+        <div class="info-card" style="grid-column:1/-1"><div class="info-label">Descripción</div><div class="info-value">${request.cargoDescription}</div></div>
         ${(request.avionetaCount > 0 || request.avioneta) ? `<div class="info-card" style="grid-column:1/-1"><div class="info-label">Peonetas</div><div class="info-value">âœ“ ${request.avionetaCount > 0 ? `${request.avionetaCount} peoneta${request.avionetaCount > 1 ? "s" : ""} incluida${request.avionetaCount > 1 ? "s" : ""}` : "1 peoneta incluida"}</div></div>` : ""}
       </div>
     </div>
@@ -198,14 +198,14 @@ function buildPDFHtml(request, finalAmount, photos = []) {
     <div class="price-box">
       <div class="price-label">Valor del servicio</div>
       <div class="price-amount">$${Number(price).toLocaleString("es-CL")}</div>
-      <div class="price-note">Precio referencial Â· Los valores pueden variar segÃºn dificultad del flete</div>
+      <div class="price-note">Precio referencial · Los valores pueden variar según dificultad del flete</div>
     </div>
     ` : ""}
 
     <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;margin-top:8px;">
       <p style="font-size:11px;color:#6b7280;line-height:1.6;">
-        Esta cotizaciÃ³n es referencial y tiene validez de <strong>24 horas</strong> desde su emisiÃ³n.
-        El precio final puede variar segÃºn condiciones del acceso, dificultad de maniobra o cambios en la carga.
+        Esta cotización es referencial y tiene validez de <strong>24 horas</strong> desde su emisión.
+        El precio final puede variar según condiciones del acceso, dificultad de maniobra o cambios en la carga.
         Para confirmar el servicio, responda este documento a <strong style="color:#F97316;">${getCompanyName()}</strong>.
       </p>
     </div>
@@ -220,7 +220,7 @@ function buildPDFHtml(request, finalAmount, photos = []) {
   </div>
 
   <div class="footer">
-    Documento generado por <strong>${companyName}</strong> Â· ${now}
+    Documento generado por <strong>${companyName}</strong> · ${now}
   </div>
 </div>
 <script>window.onload = () => window.print();</script>
@@ -249,9 +249,9 @@ export async function sendWAReminder(request, type, waConfig) {
 
   const companyName = getCompanyName();
   const msgs = {
-    "30min": `â° *Recordatorio â€” ${companyName}*\n\nHan pasado 30 minutos desde que recibimos tu solicitud.\n\nðŸ“‹ *CÃ³digo:* ${request.trackingCode}\nðŸ‘¤ *Cliente:* ${request.customerName}\n\nEstamos preparando tu cotizaciÃ³n. Te respondemos pronto.`,
-    "45min": `âš ï¸ *Aviso urgente â€” ${companyName}*\n\nHan pasado 45 minutos. Tu cotizaciÃ³n estÃ¡ a punto de vencer.\n\nðŸ“‹ *CÃ³digo:* ${request.trackingCode}\nðŸ‘¤ *Cliente:* ${request.customerName}\nðŸ“ž ${request.contactPhone}\n\nÂ¡Responderemos antes de que se cumpla la hora!`,
-    "60min": `ðŸ”´ *CotizaciÃ³n vencida â€” ${companyName}*\n\nSe ha cumplido 1 hora desde tu solicitud y aÃºn no hemos enviado cotizaciÃ³n formal.\n\nðŸ“‹ *CÃ³digo:* ${request.trackingCode}\nNos disculpamos por la demora. Te contactaremos de inmediato.`,
+    "30min": `â° *Recordatorio â€” ${companyName}*\n\nHan pasado 30 minutos desde que recibimos tu solicitud.\n\nðŸ“‹ *Código:* ${request.trackingCode}\nðŸ‘¤ *Cliente:* ${request.customerName}\n\nEstamos preparando tu cotización. Te respondemos pronto.`,
+    "45min": `âš ï¸ *Aviso urgente â€” ${companyName}*\n\nHan pasado 45 minutos. Tu cotización está a punto de vencer.\n\nðŸ“‹ *Código:* ${request.trackingCode}\nðŸ‘¤ *Cliente:* ${request.customerName}\nðŸ“ž ${request.contactPhone}\n\n¡Responderemos antes de que se cumpla la hora!`,
+    "60min": `ðŸ”´ *Cotización vencida â€” ${companyName}*\n\nSe ha cumplido 1 hora desde tu solicitud y aún no hemos enviado cotización formal.\n\nðŸ“‹ *Código:* ${request.trackingCode}\nNos disculpamos por la demora. Te contactaremos de inmediato.`,
   };
   try {
     const [waRes] = await Promise.all([
@@ -319,7 +319,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
 
   // â”€â”€â”€ Geocode + OSRM route â†’ live km calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // req puede incluir pickupCoords/deliveryCoords (pre-resueltos por autocomplete)
-  // para omitir la fase de geocodificaciÃ³n y ir directo a OSRM.
+  // para omitir la fase de geocodificación y ir directo a OSRM.
   async function calcRouteForRequest(req, overrideCoords = {}) {
     if (!req || routeCache[req.id]?.km || routeCache[req.id]?.loading) return;
     if (!req.pickupAddress || !req.deliveryAddress) return;
@@ -328,12 +328,12 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
 
     const timeout = (ms, msg = "Timeout") => new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms));
 
-    // Si el autocomplete ya resolviÃ³ coords, Ãºsalas; de lo contrario geocodificar vÃ­a Nominatim
+    // Si el autocomplete ya resolvió coords, úsalas; de lo contrario geocodificar vía Nominatim
     const nominatimGeocode = async (addr) => {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + ", Chile")}&limit=1`;
       const res = await Promise.race([fetch(url, { headers: { "Accept-Language": "es" } }), timeout(7000, "Geocode timeout")]);
       const data = await res.json();
-      if (!data[0]) throw new Error("DirecciÃ³n no encontrada");
+      if (!data[0]) throw new Error("Dirección no encontrada");
       return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
     };
 
@@ -506,7 +506,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
       const logoUrl = getLogoUrl();
       const companyName = getCompanyName();
       const isUpdate = updateMode || selected.status === "Cotizado";
-      const subjectPrefix = isUpdate ? "CotizaciÃ³n actualizada" : "CotizaciÃ³n confirmada";
+      const subjectPrefix = isUpdate ? "Cotización actualizada" : "Cotización confirmada";
       // Build confirmation URL (client clicks to accept online)
       const confirmUrl = `${window.location.origin}/confirmar?id=${selected.id}&token=${request.acceptanceToken || selected.acceptanceToken || ""}`;
       try {
@@ -515,7 +515,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             to: selected.contactEmail,
-            subject: `${subjectPrefix} â€” ${companyName} Â· Ref. ${selected.trackingCode}`,
+            subject: `${subjectPrefix} â€” ${companyName} · Ref. ${selected.trackingCode}`,
             html: tplCotizacionConfirmada({
               customerName:    selected.customerName,
               trackingCode:    selected.trackingCode,
@@ -536,7 +536,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
               supportEmail:    companyEmail || "soporte@dropit.cl",
               confirmUrl,
             }),
-            text: `${subjectPrefix} para ${selected.customerName}. Valor total: $${finalAmount.toLocaleString("es-CL")}${quoteForm.avionetaCount ? ` Â· Incluye ${quoteForm.avionetaCount} peoneta(s)` : ""}`,
+            text: `${subjectPrefix} para ${selected.customerName}. Valor total: $${finalAmount.toLocaleString("es-CL")}${quoteForm.avionetaCount ? ` · Incluye ${quoteForm.avionetaCount} peoneta(s)` : ""}`,
             // PDF adjunto como HTML imprimible
             attachments: [{
               filename: `Cotizacion-${selected.trackingCode}.html`,
@@ -560,12 +560,12 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
               from: waConfig.fromNumber || "whatsapp:+14155238886",
               to:   selected.contactPhone,
               body:
-                `âœ… *CotizaciÃ³n lista â€” ${companyName}*\n\n` +
-                `ðŸ“‹ *CÃ³digo:* ${selected.trackingCode}\n` +
+                `âœ… *Cotización lista â€” ${companyName}*\n\n` +
+                `ðŸ“‹ *Código:* ${selected.trackingCode}\n` +
                 `ðŸ’° *Valor del servicio:* $${Number(quoteForm.quotedAmount).toLocaleString("es-CL")}\n` +
                 `ðŸš› *Servicio:* ${quoteForm.serviceType}\n\n` +
-                `Revisa tu correo (${selected.contactEmail}) para ver la cotizaciÃ³n completa.\n` +
-                `Para confirmar, responde este mensaje o escrÃ­benos.`,
+                `Revisa tu correo (${selected.contactEmail}) para ver la cotización completa.\n` +
+                `Para confirmar, responde este mensaje o escríbenos.`,
             }),
           });
         } catch {}
@@ -599,8 +599,8 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
       }
 
       const successText = (updateMode || selected.status === "Cotizado")
-        ? `âœ… CotizaciÃ³n actualizada y reenviada a ${selected.customerName}`
-        : `âœ… CotizaciÃ³n enviada a ${selected.customerName}`;
+        ? `âœ… Cotización actualizada y reenviada a ${selected.customerName}`
+        : `âœ… Cotización enviada a ${selected.customerName}`;
       setMessage({ ok: true, text: successText });
       setQuoteForm({
         quotedAmount: "",
@@ -647,7 +647,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
 
   async function handleAcceptManual() {
     if (!selected || acceptingManual) return;
-    if (!window.confirm(`Â¿Marcar la cotizaciÃ³n de ${selected.customerName} como aceptada por el cliente? Se enviarÃ¡n emails de confirmaciÃ³n.`)) return;
+    if (!window.confirm(`¿Marcar la cotización de ${selected.customerName} como aceptada por el cliente? Se enviarán emails de confirmación.`)) return;
     setAcceptingManual(true);
     try {
       await fetch(`${API_URL}/quote-requests/${selected.id}/accept-manual`, {
@@ -655,7 +655,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      setMessage({ ok: true, text: `âœ… CotizaciÃ³n marcada como aceptada â€” emails enviados a ${selected.contactEmail} y al equipo` });
+      setMessage({ ok: true, text: `âœ… Cotización marcada como aceptada â€” emails enviados a ${selected.contactEmail} y al equipo` });
       if (onRefresh) onRefresh();
     } catch (err) {
       setMessage({ ok: false, text: `Error al marcar como aceptado: ${err.message}` });
@@ -729,7 +729,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
         }`}>
           <span className="text-xl leading-none">{autoToast.ok ? "âš¡" : "âš ï¸"}</span>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider opacity-60 mb-0.5">Recordatorio automÃ¡tico</p>
+            <p className="text-xs font-bold uppercase tracking-wider opacity-60 mb-0.5">Recordatorio automático</p>
             <p className="text-sm font-semibold">{autoToast.text}</p>
           </div>
           <button onClick={() => setAutoToast(null)} className="text-current opacity-50 hover:opacity-80 flex-shrink-0">
@@ -741,7 +741,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-dropit-accent">GestiÃ³n</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-dropit-accent">Gestión</p>
           <h2 className="text-2xl font-black text-slate-800">Cotizaciones</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -827,7 +827,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   <div className="flex flex-wrap items-center gap-2">
                     <Clock size={15} className={u.color} />
                     <span className={`text-sm font-bold ${u.color}`}>
-                      {mins >= 60 ? "CotizaciÃ³n vencida" : `${formatElapsed(mins)} transcurridos`}
+                      {mins >= 60 ? "Cotización vencida" : `${formatElapsed(mins)} transcurridos`}
                     </span>
                     <span className={`text-xs ${u.color} opacity-70`}>
                       Recibida: {new Date(selected.createdAt).toLocaleString("es-CL")}
@@ -857,7 +857,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                  ZONA A â€” DATOS DEL CLIENTE (solo lectura)
                 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             <div className="rounded-2xl border-2 border-slate-300 bg-slate-50 shadow-sm overflow-hidden">
-              {/* Header Zona A â€” fuerte y explÃ­cito */}
+              {/* Header Zona A â€” fuerte y explícito */}
               <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-700 px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-500/40">
@@ -879,11 +879,11 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                 </div>
               </div>
 
-              {/* Sub-header con nombre + cÃ³digo + acciones */}
+              {/* Sub-header con nombre + código + acciones */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-100 px-4 py-2.5">
                 <div className="min-w-0">
                   <h4 className="text-base font-black text-slate-800 break-words">{selected.customerName}</h4>
-                  <p className="text-[10px] text-slate-500 break-all font-mono">{selected.trackingCode} Â· {selected.id}</p>
+                  <p className="text-[10px] text-slate-500 break-all font-mono">{selected.trackingCode} · {selected.id}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <StatusBadge status={selected.status} />
@@ -891,13 +891,13 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     className="flex items-center gap-1.5 rounded-lg border border-dropit-accent/30 bg-dropit-accent/5 px-3 py-2 text-sm font-semibold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all shadow-sm">
                     <Eye size={14} /> Vista previa PDF
                   </button>
-                  {/* â”€â”€ Eliminar con confirmaciÃ³n inline (sin window.confirm) â”€â”€ */}
+                  {/* â”€â”€ Eliminar con confirmación inline (sin window.confirm) â”€â”€ */}
                   {confirmDeleteOpen ? (
                     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 w-full sm:w-auto">
-                      <span className="text-xs font-semibold text-red-700">Â¿Eliminar permanentemente?</span>
+                      <span className="text-xs font-semibold text-red-700">¿Eliminar permanentemente?</span>
                       <button type="button" onClick={handleDeleteQuote} disabled={deletingQuote}
                         className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50">
-                        {deletingQuote ? "..." : "SÃ­, eliminar"}
+                        {deletingQuote ? "..." : "Sí, eliminar"}
                       </button>
                       <button type="button" onClick={() => setConfirmDeleteOpen(false)}
                         className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
@@ -929,13 +929,13 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     ) : null;
                   })()}
                   <ReadOnlyCard icon={User}    label="Contacto"            value={selected.contactPerson || selected.customerName} />
-                  <ReadOnlyCard icon={Phone}   label="TelÃ©fono"            value={<a href={`tel:${selected.contactPhone}`} className="text-dropit-accent font-bold">{selected.contactPhone}</a>} />
+                  <ReadOnlyCard icon={Phone}   label="Teléfono"            value={<a href={`tel:${selected.contactPhone}`} className="text-dropit-accent font-bold">{selected.contactPhone}</a>} />
                   <ReadOnlyCard icon={Mail}    label="Email cliente"       value={<a href={`mailto:${selected.contactEmail}`} className="text-dropit-accent font-bold break-all">{selected.contactEmail}</a>} />
                   <ReadOnlyCard icon={Clock}   label="Fecha / Hora"        value={`${selected.requiredDate || "â€”"}${selected.requiredTime ? ` a las ${selected.requiredTime}` : ""}`} />
                   <ReadOnlyCard icon={MapPin}  label="Retiro (origen)"     value={selected.pickupAddress} />
                   {(() => {
                     const stops = Array.isArray(selected.deliveryStops) ? selected.deliveryStops : [];
-                    // Si hay mÃ¡s de una entrega, listarlas todas; si no, mostrar el destino Ãºnico.
+                    // Si hay más de una entrega, listarlas todas; si no, mostrar el destino único.
                     if (stops.length > 1) {
                       return (
                         <div className="sm:col-span-2">
@@ -958,7 +958,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     }
                     return <ReadOnlyCard icon={MapPin} label="Entrega (destino)" value={selected.deliveryAddress} />;
                   })()}
-                  <ReadOnlyCard icon={Package} label="Carga"               value={`${selected.packages} bultos Â· ${selected.estimatedWeightKg} kg en total`} />
+                  <ReadOnlyCard icon={Package} label="Carga"               value={`${selected.packages} bultos · ${selected.estimatedWeightKg} kg en total`} />
                   {(() => {
                     const live    = routeCache[selected.id];
                     const km      = selected.distanceKm || live?.km;
@@ -971,7 +971,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                           km ? (
                             <span>
                               <strong className="text-dropit-accent">{km} km</strong>
-                              {minutes && <span className="text-xs text-slate-500"> Â· ~{minutes} min en auto</span>}
+                              {minutes && <span className="text-xs text-slate-500"> · ~{minutes} min en auto</span>}
                               {!selected.distanceKm && live?.km && (
                                 <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-600 border border-blue-200">CALCULADO</span>
                               )}
@@ -998,7 +998,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     );
                   })()}
                   <div className="sm:col-span-2">
-                    <ReadOnlyCard icon={Package} label="DescripciÃ³n" value={selected.cargoDescription} />
+                    <ReadOnlyCard icon={Package} label="Descripción" value={selected.cargoDescription} />
                   </div>
                   {selected.observations && (
                     <div className="sm:col-span-2">
@@ -1012,7 +1012,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                           <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
                           Peonetas solicitados por el cliente: {selected.avionetaCount > 0 ? `${selected.avionetaCount} peoneta${selected.avionetaCount > 1 ? "s" : ""}` : "1 peoneta"}
                         </p>
-                        <p className="text-[10px] text-amber-700 mt-0.5">Cantidad definitiva la fijas tÃº en el Paso 2.</p>
+                        <p className="text-[10px] text-amber-700 mt-0.5">Cantidad definitiva la fijas tú en el Paso 2.</p>
                       </div>
                     </div>
                   )}
@@ -1214,7 +1214,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                                 value={quoteForm.pickupOverride || selected.pickupAddress || ""}
                                 onChange={v => setQuoteForm(f => ({ ...f, pickupOverride: v, pickupCoords: null }))}
                                 onCoordsChange={coords => setQuoteForm(f => ({ ...f, pickupCoords: coords }))}
-                                placeholder="DirecciÃ³n de retiro"
+                                placeholder="Dirección de retiro"
                                 dotColor="#3B82F6"
                               />
                             </div>
@@ -1226,7 +1226,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                                 value={quoteForm.deliveryOverride || selected.deliveryAddress || ""}
                                 onChange={v => setQuoteForm(f => ({ ...f, deliveryOverride: v, deliveryCoords: null }))}
                                 onCoordsChange={coords => setQuoteForm(f => ({ ...f, deliveryCoords: coords }))}
-                                placeholder="DirecciÃ³n de entrega"
+                                placeholder="Dirección de entrega"
                                 dotColor="#10B981"
                               />
                             </div>
@@ -1260,7 +1260,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                             </button>
                             {km > 0 && (
                               <div className="text-xs font-bold text-blue-900">
-                                Zona: {isRM ? "Santiago RM" : km > 500 ? "Larga distancia" : km > 100 ? "Regional" : "Local"} Â· Base ${basePrice.toLocaleString("es-CL")}
+                                Zona: {isRM ? "Santiago RM" : km > 500 ? "Larga distancia" : km > 100 ? "Regional" : "Local"} · Base ${basePrice.toLocaleString("es-CL")}
                               </div>
                             )}
                           </div>
@@ -1313,7 +1313,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                                 }}
                                 onBlur={e => {
                                   const v = Number(e.target.value) || 0;
-                                  // Al perder foco: si estÃ¡ entre 1 y 9.999 lo subimos a 10.000 (rango mÃ­nimo razonable)
+                                  // Al perder foco: si está entre 1 y 9.999 lo subimos a 10.000 (rango mínimo razonable)
                                   if (v > 0 && v < 10000) {
                                     setQuoteForm(f => ({ ...f, peonetaUnitCost: 10000 }));
                                   }
@@ -1321,7 +1321,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                                 placeholder="0 = solo registrar cantidad" />
                             </div>
                             <p className="mt-1 text-[10px] text-slate-500">
-                              0 = solo registra cantidad sin afectar precio Â· Rango sugerido $10.000 â€“ $100.000
+                              0 = solo registra cantidad sin afectar precio · Rango sugerido $10.000 â€“ $100.000
                             </p>
                           </div>
                           {peonetaCount > 0 && (
@@ -1506,7 +1506,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                 <div className="grid gap-4 mt-4 md:grid-cols-2">
                   {/* Photo upload */}
                   <div className="md:col-span-2">
-                    <label className="label-base">Fotos adjuntas (mÃ¡x. 6)</label>
+                    <label className="label-base">Fotos adjuntas (máx. 6)</label>
                     <div className="flex flex-wrap gap-3 mt-1">
                       {photos.map((src, idx) => (
                         <div key={idx} className="relative group">
@@ -1526,7 +1526,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                       )}
                       <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
                     </div>
-                    {photos.length > 0 && <p className="mt-1 text-[10px] text-slate-400">{photos.length} foto{photos.length > 1 ? "s" : ""} adjunta{photos.length > 1 ? "s" : ""} Â· se incluirÃ¡n en el PDF</p>}
+                    {photos.length > 0 && <p className="mt-1 text-[10px] text-slate-400">{photos.length} foto{photos.length > 1 ? "s" : ""} adjunta{photos.length > 1 ? "s" : ""} · se incluirán en el PDF</p>}
                   </div>
                 </div>
 
@@ -1534,7 +1534,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   <button type="submit" disabled={sending || getFinalAmount() <= 0}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-dropit-accent px-6 py-3 text-sm font-bold text-white shadow-md shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto">
                     {sending ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
-                    {sending ? "Enviando..." : (updateMode ? `Reenviar â€” $${getFinalAmount().toLocaleString("es-CL")}` : `Enviar cotizaciÃ³n â€” $${getFinalAmount().toLocaleString("es-CL")}`)}
+                    {sending ? "Enviando..." : (updateMode ? `Reenviar â€” $${getFinalAmount().toLocaleString("es-CL")}` : `Enviar cotización â€” $${getFinalAmount().toLocaleString("es-CL")}`)}
                   </button>
                   <button type="button" onClick={() => setPdfPreview(buildPDFHtml(selected, getFinalAmount(), selected.photos || []))}
                     className="flex w-full items-center justify-center gap-2 rounded-xl border border-dropit-accent/30 bg-dropit-accent/5 px-5 py-3 text-sm font-bold text-dropit-accent hover:bg-dropit-accent hover:text-white transition-all sm:w-auto">
@@ -1559,10 +1559,10 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                   <div className="flex items-center gap-3">
                     <CheckCircle2 size={22} className="text-emerald-600" />
                     <div>
-                      <p className="font-bold text-emerald-800">CotizaciÃ³n enviada al cliente</p>
+                      <p className="font-bold text-emerald-800">Cotización enviada al cliente</p>
                       <p className="text-sm text-emerald-700">
-                        Valor: <strong>${Number(selected.quotedAmount).toLocaleString("es-CL")}</strong> Â· {selected.serviceType}
-                        {(Number(selected.avionetaCount) > 0) && <> Â· <strong>{selected.avionetaCount} peoneta{selected.avionetaCount > 1 ? "s" : ""}</strong></>}
+                        Valor: <strong>${Number(selected.quotedAmount).toLocaleString("es-CL")}</strong> · {selected.serviceType}
+                        {(Number(selected.avionetaCount) > 0) && <> · <strong>{selected.avionetaCount} peoneta{selected.avionetaCount > 1 ? "s" : ""}</strong></>}
                       </p>
                     </div>
                   </div>
@@ -1575,7 +1575,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                 </div>
                 {/* Confirmation link + manual accept */}
                 <div className="mt-4 rounded-xl border border-emerald-300 bg-white p-4 space-y-3">
-                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Opciones de confirmaciÃ³n</p>
+                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Opciones de confirmación</p>
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <button
                       onClick={handleAcceptManual}
@@ -1583,7 +1583,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                       className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-700 transition-all disabled:opacity-60 sm:w-auto"
                     >
                       {acceptingManual ? <RefreshCw size={13} className="animate-spin" /> : <ThumbsUp size={13} />}
-                      {acceptingManual ? "Procesando..." : "Cliente aceptÃ³ (por telÃ©fono / chat)"}
+                      {acceptingManual ? "Procesando..." : "Cliente aceptó (por teléfono / chat)"}
                     </button>
                     <button
                       onClick={() => {
@@ -1593,11 +1593,11 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                       }}
                       className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-all sm:w-auto"
                     >
-                      <Eye size={13} /> Ver pÃ¡gina del cliente
+                      <Eye size={13} /> Ver página del cliente
                     </button>
                   </div>
                   <p className="text-xs text-slate-500">
-                    O comparte el link de confirmaciÃ³n con el cliente para que acepte online.
+                    O comparte el link de confirmación con el cliente para que acepte online.
                   </p>
                 </div>
                 {message && (
@@ -1621,13 +1621,13 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                 <div className="flex items-center gap-3">
                   <ThumbsUp size={22} className="text-blue-600" />
                   <div>
-                    <p className="font-bold text-blue-800">âœ… Cliente aceptÃ³ la cotizaciÃ³n</p>
+                    <p className="font-bold text-blue-800">âœ… Cliente aceptó la cotización</p>
                     <p className="text-sm text-blue-700">
                       Valor confirmado: <strong>${Number(selected.quotedAmount).toLocaleString("es-CL")}</strong>
-                      {selected.acceptedAt && <> Â· {new Date(selected.acceptedAt).toLocaleString("es-CL")}</>}
+                      {selected.acceptedAt && <> · {new Date(selected.acceptedAt).toLocaleString("es-CL")}</>}
                     </p>
                     <p className="mt-1 text-xs text-blue-600">
-                      ðŸš› El pedido ya estÃ¡ disponible en el mÃ³dulo de <strong>PlanificaciÃ³n</strong> para asignar ruta y camiÃ³n.
+                      ðŸš› El pedido ya está disponible en el módulo de <strong>Planificación</strong> para asignar ruta y camión.
                     </p>
                   </div>
                 </div>
@@ -1638,7 +1638,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
           <div className="hidden xl:flex items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-16 text-center">
             <div>
               <Truck size={40} className="mx-auto mb-4 text-dropit-accent/30" />
-              <p className="font-semibold text-slate-600">Selecciona una cotizaciÃ³n de la lista</p>
+              <p className="font-semibold text-slate-600">Selecciona una cotización de la lista</p>
               <p className="mt-1 text-sm text-slate-400">para ver los detalles y cotizar</p>
             </div>
           </div>
@@ -1655,7 +1655,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
             <table className="min-w-full divide-y divide-slate-100 text-sm">
               <thead>
                 <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-50">
-                  {["CÃ³digo","Cliente","Retiro â†’ Entrega","Distancia","Valor","Servicio","Enviado","PDF"].map(h => (
+                  {["Código","Cliente","Retiro â†’ Entrega","Distancia","Valor","Servicio","Enviado","PDF"].map(h => (
                     <th key={h} className="px-4 py-3">{h}</th>
                   ))}
                 </tr>
@@ -1704,7 +1704,7 @@ function InfoCard({ icon: Icon, label, value }) {
   );
 }
 
-// Zona A â€” tarjeta de solo lectura con paleta neutra/frÃ­a
+// Zona A â€” tarjeta de solo lectura con paleta neutra/fría
 function ReadOnlyCard({ icon: Icon, label, value }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 min-w-0">
