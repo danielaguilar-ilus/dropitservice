@@ -2090,13 +2090,7 @@ export default function PublicQuotePage() {
 
           </div>
 
-        )) : (
-
-          /* Animated illustration fallback when no carousel images are loaded */
-
-          
-
-        )}
+        )) : null}
 
         {/* Dark gradient overlay — stronger at bottom for text legibility */}
 
