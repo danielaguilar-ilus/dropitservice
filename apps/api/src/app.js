@@ -80,4 +80,4 @@ export function createApp() {
   return app;
 }
 
-// deploy-trigger: force Railway build with latest web changes
+// deploy-trigger-2: fix API_URL localhost fallback
