@@ -397,14 +397,26 @@ export default function StreetAutocomplete({
     setResults([]); setOpen(false);
 
     if (item.placeId && gm) {
-      // Muestra el label inmediato, geocodifica en background para coords+comuna
+      // Muestra el label inmediato, resuelve coords+comuna en background.
       onChange(item.label + (item.sublabel ? ", " + item.sublabel.split(",")[0] : ""));
-      new gm.Geocoder().geocode({ placeId: item.placeId }, (res, status) => {
-        if (status !== "OK" || !res[0]) return;
-        const loc = res[0].geometry.location;
-        onCoordsChange?.({ lat: loc.lat(), lng: loc.lng() });
-        onComunaChange?.(extractGoogleCommune(res[0].address_components));
-      });
+      // Usamos Places Details (NO la Geocoding API) para traer geometry +
+      // address_components. Places ya está habilitado (el autocomplete funciona),
+      // así no dependemos de habilitar Geocoding en el proyecto de Google.
+      try {
+        const svc = new gm.places.PlacesService(document.createElement("div"));
+        svc.getDetails(
+          { placeId: item.placeId, fields: ["geometry", "address_components", "formatted_address"] },
+          (place, status) => {
+            if (cancelRef.current) return;
+            if (status !== gm.places.PlacesServiceStatus.OK || !place?.geometry) return;
+            const loc = place.geometry.location;
+            onCoordsChange?.({ lat: loc.lat(), lng: loc.lng() });
+            onComunaChange?.(extractGoogleCommune(place.address_components));
+          }
+        );
+      } catch {
+        /* Si Places Details falla, al menos la dirección queda escrita en el input. */
+      }
     } else {
       onChange(item.label + (item.sublabel ? ", " + item.sublabel : ""));
       if (item.commune) onComunaChange?.(item.commune);
@@ -430,7 +442,7 @@ export default function StreetAutocomplete({
           />
         </div>
         <input
-          className={`w-full rounded-xl border border-slate-200 bg-white py-3 pl-8 pr-9 text-sm text-slate-800 placeholder-slate-400 shadow-sm transition focus:border-dropit-accent focus:outline-none focus:ring-2 focus:ring-dropit-accent/20 disabled:opacity-50 disabled:cursor-not-allowed ${inputClassName}`}
+          className={`w-full rounded-xl border border-slate-200 bg-white py-3 pl-8 pr-9 text-base sm:text-sm text-slate-800 placeholder-slate-400 shadow-sm transition focus:border-dropit-accent focus:outline-none focus:ring-2 focus:ring-dropit-accent/20 disabled:opacity-50 disabled:cursor-not-allowed ${inputClassName}`}
           placeholder={placeholder}
           value={value}
           onChange={handleChange}

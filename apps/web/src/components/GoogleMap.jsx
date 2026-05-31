@@ -30,7 +30,7 @@ export function loadGoogleMaps() {
       return;
     }
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places,geometry&callback=__gmapsLoaded`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places,geometry&language=es&region=CL&loading=async&callback=__gmapsLoaded`;
     script.async = true;
     script.defer = true;
     window.__gmapsLoaded = () => { resolve(window.google.maps); };
