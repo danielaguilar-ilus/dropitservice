@@ -572,20 +572,29 @@ export default function PublicQuotePage() {
         style: { color: "#ea580c", weight: 6, opacity: 0.9, lineCap: "round", lineJoin: "round" }
       }).addTo(map);
 
-      // Marker for pickup (origin — always green)
-      const markerA = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: makeIcon("#10b981", "📦 Retiro") }).addTo(map);
+      const layers = [routeGeo];
 
-      // Marker for main delivery stop (Entrega 1 — always present)
-      const markerB = L.marker([deliveryCoords.lat, deliveryCoords.lng], { icon: makeIcon("#F97316", "🏁 Entrega 1") }).addTo(map);
+      // Paradas en el MISMO orden que los waypoints enviados a OSRM:
+      // 0 = retiro · 1 = entrega principal · 2+ = entregas adicionales con coords.
+      const allStops = [
+        { lat: pickupCoords.lat,   lng: pickupCoords.lng,   origin: true  },
+        { lat: deliveryCoords.lat, lng: deliveryCoords.lng, origin: false },
+        ...extraWithCoords.map(d => ({ lat: d.coords.lat, lng: d.coords.lng, origin: false })),
+      ];
+      // routeInfo.order[posVisita] = índiceOriginal. Si no hubo optimización
+      // (o no coincide el largo), usamos el orden natural de ingreso.
+      const visitOrder = (routeInfo.order && routeInfo.order.length === allStops.length)
+        ? routeInfo.order
+        : allStops.map((_, i) => i);
 
-      const layers = [routeGeo, markerA, markerB];
-
-      // Additional delivery markers (Entrega 2, 3, …) — only those with resolved coords
-      extraWithCoords.forEach((d, idx) => {
-        const m = L.marker([d.coords.lat, d.coords.lng], {
-          icon: makeIcon("#F97316", `🏁 Entrega ${idx + 2}`),
-        }).addTo(map);
-        layers.push(m);
+      // Marcadores numerados según el ORDEN ÓPTIMO de visita.
+      let entregaNum = 0;
+      visitOrder.forEach((origIdx) => {
+        const s = allStops[origIdx];
+        if (!s) return;
+        const label = s.origin ? "📦 Retiro" : `🏁 Entrega ${++entregaNum}`;
+        const color = s.origin ? "#10b981" : "#F97316";
+        layers.push(L.marker([s.lat, s.lng], { icon: makeIcon(color, label) }).addTo(map));
       });
 
       routeLayersRef.current = layers;
@@ -630,18 +639,11 @@ export default function PublicQuotePage() {
     clearTimeout(geocodeTimerRef.current.pickup);
     geocodeTimerRef.current.pickup = setTimeout(async () => {
       try {
-        const gm = window.google?.maps;
-        if (gm) {
-          new gm.Geocoder().geocode({ address: addr + ", Chile" }, (res, status) => {
-            if (status === "OK" && res[0]) {
-              const loc = res[0].geometry.location;
-              setPickupCoords({ lat: loc.lat(), lng: loc.lng() });
-            }
-          });
-        } else {
-          const data = await nominatimSearch(addr + ", Chile");
-          if (data[0]) setPickupCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
-        }
+        // Best-effort para direcciones escritas a mano (sin elegir sugerencia).
+        // Nominatim (OSM) no depende de la Geocoding API de Google. El caso
+        // comun -elegir una sugerencia- ya resuelve coords via Places Details.
+        const data = await nominatimSearch(addr + ", Chile");
+        if (data[0]) setPickupCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
       } catch { /* ignore */ }
     }, 900);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -654,18 +656,11 @@ export default function PublicQuotePage() {
     clearTimeout(geocodeTimerRef.current.delivery);
     geocodeTimerRef.current.delivery = setTimeout(async () => {
       try {
-        const gm = window.google?.maps;
-        if (gm) {
-          new gm.Geocoder().geocode({ address: addr + ", Chile" }, (res, status) => {
-            if (status === "OK" && res[0]) {
-              const loc = res[0].geometry.location;
-              setDeliveryCoords({ lat: loc.lat(), lng: loc.lng() });
-            }
-          });
-        } else {
-          const data = await nominatimSearch(addr + ", Chile");
-          if (data[0]) setDeliveryCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
-        }
+        // Best-effort para direcciones escritas a mano (sin elegir sugerencia).
+        // Nominatim (OSM) no depende de la Geocoding API de Google. El caso
+        // comun -elegir una sugerencia- ya resuelve coords via Places Details.
+        const data = await nominatimSearch(addr + ", Chile");
+        if (data[0]) setDeliveryCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
       } catch { /* ignore */ }
     }, 900);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -683,19 +678,11 @@ export default function PublicQuotePage() {
       clearTimeout(geocodeTimerRef.current[timerKey]);
       geocodeTimerRef.current[timerKey] = setTimeout(async () => {
         try {
-          const gm = window.google?.maps;
-          if (gm) {
-            new gm.Geocoder().geocode({ address: addr + ", Chile" }, (res, status) => {
-              if (status === "OK" && res[0]) {
-                const loc = res[0].geometry.location;
-                updateDelivery(idx, { coords: { lat: loc.lat(), lng: loc.lng() } });
-              }
-            });
-          } else {
-            const results = await nominatimSearch(addr + ", Chile");
-            if (results[0]) {
-              updateDelivery(idx, { coords: { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) } });
-            }
+          // Best-effort (Nominatim/OSM, sin Geocoding API). El caso comun
+          // -elegir sugerencia- ya resuelve coords via Places Details.
+          const results = await nominatimSearch(addr + ", Chile");
+          if (results[0]) {
+            updateDelivery(idx, { coords: { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) } });
           }
         } catch { /* ignore — geocode is best-effort */ }
       }, 900);
@@ -713,18 +700,55 @@ export default function PublicQuotePage() {
     setRouteError("");
     try {
       const coordStr = waypoints.map(p => `${p.lng},${p.lat}`).join(";");
-      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
-      const routeRes  = await fetch(osrmUrl);
-      const routeData = await routeRes.json();
-      if (routeData.routes?.[0]) {
-        // Sum of all legs = routes[0].distance (OSRM already sums all legs in this field)
-        const distanceKm = Math.round((routeData.routes[0].distance / 1000) * 10) / 10;
-        const isRM = RM_COMUNAS.has(form.pickupCommune) && RM_COMUNAS.has(form.deliveryCommune);
-        const price = calcPrice(distanceKm, form.estimatedWeightKg, isRM, form.avionetaCount);
-        setRouteInfo({ distanceKm, price, isRM, geometry: routeData.routes[0].geometry });
-      } else {
-        setRouteError("No se pudo calcular la ruta entre las dos direcciones.");
+      const isRM = RM_COMUNAS.has(form.pickupCommune) && RM_COMUNAS.has(form.deliveryCommune);
+
+      // distanceM/geometry se llenan por TRIP (optimizado) o ROUTE (directo).
+      // order[posiciónDeVisita] = índiceOriginal del waypoint (origen incluido en pos 0).
+      let distanceM = null, geometry = null, order = null, optimized = false;
+
+      // ── Optimizador inteligente ──────────────────────────────────────────────
+      // Con 3+ puntos (origen + 2 o más entregas) usamos el servicio TRIP de OSRM,
+      // que resuelve el ORDEN ÓPTIMO de las paradas (TSP) partiendo del origen fijo
+      // (source=first) y sin volver al inicio (roundtrip=false). Así, si una entrega
+      // queda "de paso", se visita antes aunque se haya agregado después.
+      if (waypoints.length >= 3) {
+        try {
+          const tripUrl = `https://router.project-osrm.org/trip/v1/driving/${coordStr}` +
+            `?source=first&roundtrip=false&overview=full&geometries=geojson`;
+          const tripRes  = await fetch(tripUrl);
+          const tripData = await tripRes.json();
+          if (tripData.code === "Ok" && tripData.trips?.[0]) {
+            distanceM = tripData.trips[0].distance;
+            geometry  = tripData.trips[0].geometry;
+            order = new Array(waypoints.length);
+            (tripData.waypoints || []).forEach((wp, originalIdx) => {
+              if (typeof wp.waypoint_index === "number") order[wp.waypoint_index] = originalIdx;
+            });
+            optimized = true;
+          }
+        } catch { /* cae a ruta directa abajo */ }
       }
+
+      // ── Ruta directa (2 puntos) o fallback si TRIP falló ─────────────────────
+      if (distanceM == null) {
+        const routeUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
+        const routeRes  = await fetch(routeUrl);
+        const routeData = await routeRes.json();
+        if (routeData.routes?.[0]) {
+          distanceM = routeData.routes[0].distance;
+          geometry  = routeData.routes[0].geometry;
+        }
+      }
+
+      if (distanceM == null) {
+        setRouteError("No se pudo calcular la ruta entre las direcciones.");
+        return;
+      }
+
+      // OSRM ya suma todos los tramos en distance
+      const distanceKm = Math.round((distanceM / 1000) * 10) / 10;
+      const price = calcPrice(distanceKm, form.estimatedWeightKg, isRM, form.avionetaCount);
+      setRouteInfo({ distanceKm, price, isRM, geometry, order, optimized });
     } catch {
       setRouteError("Error de red al calcular la ruta.");
     } finally {
@@ -821,8 +845,29 @@ export default function PublicQuotePage() {
         }),
         new Promise(resolve => setTimeout(resolve, MIN_LOADER_MS)),
       ]);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Error al enviar solicitud");
+      // Lee el cuerpo de forma robusta: puede venir vacío o no-JSON (API
+      // inalcanzable, 500 sin body, timeout del proxy, etc.). Nunca dejamos
+      // que un res.json() crudo reviente con "Unexpected end of JSON input":
+      // siempre mostramos un mensaje claro al usuario.
+      let data = {};
+      try {
+        const raw = await res.text();
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = {};
+      }
+      if (!res.ok) {
+        throw new Error(
+          data.message ||
+          `No pudimos enviar tu solicitud (error ${res.status}). Inténtalo de nuevo en unos segundos.`
+        );
+      }
+      if (!data.request) {
+        throw new Error(
+          "Tu solicitud salió, pero no recibimos confirmación del servidor. " +
+          "Escríbenos por WhatsApp para asegurarnos de que llegó."
+        );
+      }
 
       // ─── Show success IMMEDIATELY — tracking code ready ──────────────────
       setCreated(data.request);
@@ -1360,6 +1405,11 @@ export default function PublicQuotePage() {
                                 <span className="ml-2 text-sm font-semibold text-dropit-600">· {totalDestinos} destinos</span>
                               )}
                             </p>
+                            {routeInfo.optimized && (
+                              <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                                <Zap size={11} className="flex-shrink-0" /> Ruta optimizada · orden inteligente de paradas
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5">
