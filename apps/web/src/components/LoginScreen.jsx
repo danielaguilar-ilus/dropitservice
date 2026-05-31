@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { MapPin, Clock, Zap, Shield, ChevronRight, Truck } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 function useCarousel() {
   const [images, setImages] = useState([]);
@@ -35,9 +35,9 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
 
   return (
     <main className="grid min-h-screen overflow-hidden lg:grid-cols-[1fr_480px]">
-      {/* Left — Brand panel */}
+      {/* Left â€” Brand panel */}
       <section className="relative flex flex-col justify-between overflow-hidden bg-dropit-950 px-8 py-10 text-white lg:px-16">
-        {/* Carousel images — blurred fill + object-contain main */}
+        {/* Carousel images â€” blurred fill + object-contain main */}
         {hasCarousel && images.map((src, i) => (
           <div
             key={i}
@@ -46,12 +46,12 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
           >
             {/* Blurred fill for letterbox areas */}
             <div className="absolute inset-0 scale-110 bg-cover bg-center blur-md opacity-50" style={{ backgroundImage: `url(${src})` }} />
-            {/* Main image contained — no cropping */}
+            {/* Main image contained â€” no cropping */}
             <img src={src} className="absolute inset-0 h-full w-full object-contain" alt="" />
           </div>
         ))}
 
-        {/* Dark overlay — gradient stronger toward center for text legibility */}
+        {/* Dark overlay â€” gradient stronger toward center for text legibility */}
         <div className="pointer-events-none absolute inset-0" style={{
           background: hasCarousel
             ? "linear-gradient(to right, rgba(12,8,4,0.70) 0%, rgba(12,8,4,0.57) 55%, rgba(12,8,4,0.40) 100%)"
@@ -73,7 +73,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-dropit-accent">DropIt Service</p>
-            <p className="text-sm text-dropit-400">Gestión logística de última milla</p>
+            <p className="text-sm text-dropit-400">GestiÃ³n logÃ­stica de Ãºltima milla</p>
           </div>
         </div>
 
@@ -92,7 +92,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
             {[
               { icon: MapPin, value: "Todo Chile", label: "Cobertura" },
               { icon: Clock, value: "24/7", label: "Tracking en vivo" },
-              { icon: Zap, value: "<1 hora", label: "Cotización" },
+              { icon: Zap, value: "<1 hora", label: "CotizaciÃ³n" },
               { icon: Shield, value: "100%", label: "Carga asegurada" },
             ].map(({ icon: Icon, value, label }) => (
               <div
@@ -107,13 +107,13 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
           </div>
         </div>
 
-        {/* Bottom — link + carousel dots */}
+        {/* Bottom â€” link + carousel dots */}
         <div className="relative flex items-center justify-between">
           <a
             href="/cotizar"
             className="inline-flex items-center gap-2 text-sm font-semibold text-dropit-accent hover:underline"
           >
-            ¿Eres cliente? Solicita una cotización
+            Â¿Eres cliente? Solicita una cotizaciÃ³n
             <ChevronRight size={16} />
           </a>
           {hasCarousel && images.length > 1 && (
@@ -131,7 +131,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
         </div>
       </section>
 
-      {/* Right — Login form */}
+      {/* Right â€” Login form */}
       <section className="flex items-center justify-center bg-dropit-100 px-8 py-10">
         <div className="w-full max-w-sm space-y-8">
           <div>
@@ -146,7 +146,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
 
           <form className="space-y-5" onSubmit={onSubmit}>
             <div>
-              <label className="label-base" htmlFor="email">Correo electrónico</label>
+              <label className="label-base" htmlFor="email">Correo electrÃ³nico</label>
               <input
                 id="email"
                 type="email"
@@ -161,20 +161,20 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <label className="label-base mb-0" htmlFor="password">Contraseña</label>
+                <label className="label-base mb-0" htmlFor="password">ContraseÃ±a</label>
                 <button
                   type="button"
                   className="text-xs font-semibold text-dropit-accent hover:underline"
-                  onClick={() => alert("Próximamente: recuperación de contraseña")}
+                  onClick={() => alert("PrÃ³ximamente: recuperaciÃ³n de contraseÃ±a")}
                 >
-                  ¿Olvidaste tu contraseña?
+                  Â¿Olvidaste tu contraseÃ±a?
                 </button>
               </div>
               <input
                 id="password"
                 type="password"
                 className="input-base"
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 value={credentials.password}
                 onChange={(e) => onChange("password", e.target.value)}
                 required
@@ -205,7 +205,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
 
           <p className="text-center text-xs text-dropit-600">
             Al ingresar aceptas los{" "}
-            <a href="#" className="font-semibold text-dropit-accent hover:underline">términos de uso</a>{" "}
+            <a href="#" className="font-semibold text-dropit-accent hover:underline">tÃ©rminos de uso</a>{" "}
             de DropIt Service
           </p>
         </div>

@@ -1,19 +1,19 @@
-/**
+﻿/**
  * useAutoReminders
- * ────────────────
- * Hook global que corre SIEMPRE, independiente del módulo activo.
- * Escanea cada 30s las solicitudes pendientes y envía recordatorios
- * automáticos a los 30, 45 y 60 minutos por:
- *   • WhatsApp (Twilio) → al cliente
- *   • Email (SMTP)      → al operador / admin
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ * Hook global que corre SIEMPRE, independiente del mÃ³dulo activo.
+ * Escanea cada 30s las solicitudes pendientes y envÃ­a recordatorios
+ * automÃ¡ticos a los 30, 45 y 60 minutos por:
+ *   â€¢ WhatsApp (Twilio) â†’ al cliente
+ *   â€¢ Email (SMTP)      â†’ al operador / admin
  *
- * Montado en App.jsx → nunca se desmonta al cambiar de módulo.
+ * Montado en App.jsx â†’ nunca se desmonta al cambiar de mÃ³dulo.
  */
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "./messageLog";
 import { sendWAReminder } from "../components/AdminQuotesModule";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 const THRESHOLDS = [
   { type: "30min", min: 30, label: "30 minutos" },
@@ -25,17 +25,17 @@ function getElapsedMinutes(createdAt) {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
 }
 
-// ─── Email al operador ────────────────────────────────────────────────────────
+// â”€â”€â”€ Email al operador â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function sendEmailReminder(req, type, adminEmail, smtpConfig) {
   if (!adminEmail || !smtpConfig?.host) return false;
 
   const labels = { "30min": "30 minutos", "45min": "45 minutos", "60min": "1 hora" };
-  const icons  = { "30min": "⏰", "45min": "⚠️", "60min": "🔴" };
+  const icons  = { "30min": "â°", "45min": "âš ï¸", "60min": "ðŸ”´" };
   const label  = labels[type];
   const icon   = icons[type];
   const now    = new Date().toLocaleString("es-CL");
 
-  const subject = `${icon} Cotización sin respuesta (${label}) — ${req.customerName}`;
+  const subject = `${icon} CotizaciÃ³n sin respuesta (${label}) â€” ${req.customerName}`;
 
   const html = `
 <!DOCTYPE html>
@@ -61,26 +61,26 @@ async function sendEmailReminder(req, type, adminEmail, smtpConfig) {
 <body>
 <div class="wrap">
   <div class="header">
-    <h1>${icon} Alerta — cotización pendiente</h1>
+    <h1>${icon} Alerta â€” cotizaciÃ³n pendiente</h1>
     <p>Han pasado <strong>${label}</strong> sin responder esta solicitud</p>
   </div>
   <div class="body">
     <div class="alert">
-      <p>⚡ Acción requerida: cotiza de inmediato para no perder al cliente</p>
+      <p>âš¡ AcciÃ³n requerida: cotiza de inmediato para no perder al cliente</p>
     </div>
-    <div class="row"><span>Código</span><span><strong style="font-family:monospace;">${req.trackingCode}</strong></span></div>
+    <div class="row"><span>CÃ³digo</span><span><strong style="font-family:monospace;">${req.trackingCode}</strong></span></div>
     <div class="row"><span>Cliente</span><span>${req.customerName}</span></div>
-    <div class="row"><span>Teléfono</span><span>${req.contactPhone}</span></div>
+    <div class="row"><span>TelÃ©fono</span><span>${req.contactPhone}</span></div>
     <div class="row"><span>Email cliente</span><span>${req.contactEmail}</span></div>
-    <div class="row"><span>📦 Retiro</span><span>${req.pickupAddress}</span></div>
-    <div class="row"><span>🏁 Entrega</span><span>${req.deliveryAddress}</span></div>
-    <div class="row"><span>Bultos / Peso</span><span>${req.packages} bultos · ${req.estimatedWeightKg} kg</span></div>
+    <div class="row"><span>ðŸ“¦ Retiro</span><span>${req.pickupAddress}</span></div>
+    <div class="row"><span>ðŸ Entrega</span><span>${req.deliveryAddress}</span></div>
+    <div class="row"><span>Bultos / Peso</span><span>${req.packages} bultos Â· ${req.estimatedWeightKg} kg</span></div>
     ${req.distanceKm ? `<div class="row"><span>Distancia</span><span><strong style="color:#F97316;">${req.distanceKm} km</strong></span></div>` : ""}
     <div class="row"><span>Recibida</span><span>${new Date(req.createdAt).toLocaleString("es-CL")}</span></div>
     <div class="row"><span>Alerta generada</span><span>${now}</span></div>
-    <a href="http://localhost:5173" class="btn">Ir al panel → Cotizar ahora</a>
+    <a href="http://localhost:5173" class="btn">Ir al panel â†’ Cotizar ahora</a>
   </div>
-  <div class="footer">Dropit Service · Alerta automática · No responder este correo</div>
+  <div class="footer">Dropit Service Â· Alerta automÃ¡tica Â· No responder este correo</div>
 </div>
 </body>
 </html>`;
@@ -97,10 +97,10 @@ async function sendEmailReminder(req, type, adminEmail, smtpConfig) {
   }
 }
 
-// ─── Hook principal ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Hook principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function useAutoReminders(requests = []) {
   const sentRef     = useRef(new Set());   // "requestId-type" sent this session
-  const retriesRef  = useRef({});          // "requestId-type" → retry count (max 3)
+  const retriesRef  = useRef({});          // "requestId-type" â†’ retry count (max 3)
   const requestsRef = useRef(requests);    // always up-to-date without re-creating interval
   const [toast, setToast] = useState(null);
 
@@ -134,7 +134,7 @@ export default function useAutoReminders(requests = []) {
         if ((req.remindersSent || []).some(r => r.type === type)) return;
 
         sentRef.current.add(key);
-        console.log(`[AutoReminder] 📤 Enviando ${type} a ${req.customerName} (${mins} min elapsed)`);
+        console.log(`[AutoReminder] ðŸ“¤ Enviando ${type} a ${req.customerName} (${mins} min elapsed)`);
 
         // Fire WA + Email in parallel
         const waPromise    = hasWA    ? sendWAReminder(req, type, waConfig)                : Promise.resolve(false);
@@ -164,17 +164,17 @@ export default function useAutoReminders(requests = []) {
           if (anyOk) {
             // Build toast text showing which channels fired
             const channels = [waOk && "WA", emailOk && "Email"].filter(Boolean).join(" + ");
-            setToast({ ok: true, text: `⚡ Recordatorio (${label}) → ${req.customerName} · ${channels}` });
+            setToast({ ok: true, text: `âš¡ Recordatorio (${label}) â†’ ${req.customerName} Â· ${channels}` });
             setTimeout(() => setToast(null), 7000);
-            console.log(`[AutoReminder] ✅ ${type} OK → ${req.customerName} (${channels})`);
+            console.log(`[AutoReminder] âœ… ${type} OK â†’ ${req.customerName} (${channels})`);
           } else {
             const retries = (retriesRef.current[key] || 0) + 1;
             retriesRef.current[key] = retries;
             if (retries < 3) {
-              console.warn(`[AutoReminder] ❌ ${type} FALLÓ → ${req.customerName} — reintento ${retries}/3`);
+              console.warn(`[AutoReminder] âŒ ${type} FALLÃ“ â†’ ${req.customerName} â€” reintento ${retries}/3`);
               sentRef.current.delete(key); // allow retry (max 3)
             } else {
-              console.warn(`[AutoReminder] ❌ ${type} FALLÓ 3 veces → ${req.customerName} — abandonado`);
+              console.warn(`[AutoReminder] âŒ ${type} FALLÃ“ 3 veces â†’ ${req.customerName} â€” abandonado`);
             }
           }
         });
@@ -189,7 +189,7 @@ export default function useAutoReminders(requests = []) {
     const id = setInterval(runScan, 30_000);
     return () => clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // empty deps — interval runs forever, reads fresh data via requestsRef
+  }, []); // empty deps â€” interval runs forever, reads fresh data via requestsRef
 
   return { toast, clearToast: () => setToast(null) };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import {
   Truck, MapPin, Package, Phone, Mail, User, Calendar,
   CheckCircle2, ChevronRight, ChevronDown, Star, Zap, Shield, Clock,
@@ -12,8 +12,8 @@ import HeroAnimation from "../components/HeroAnimation";
 import StreetAutocomplete from "../components/StreetAutocomplete";
 import { COMUNAS, RM_COMUNAS } from "../lib/comunas";
 
-// ─── Image compression — resize + JPEG re-encode ──────────────────────────────
-// Reduces large camera photos (5–15 MB) to ~200–500 KB so the JSON payload stays
+// â”€â”€â”€ Image compression â€” resize + JPEG re-encode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Reduces large camera photos (5â€“15 MB) to ~200â€“500 KB so the JSON payload stays
 // manageable and the API can save them reliably to db.json.
 async function compressImage(file, maxSide = 900, quality = 0.7) {
   // Fast path: OffscreenCanvas + createImageBitmap (Chrome/Edge/Firefox)
@@ -46,7 +46,7 @@ async function compressImage(file, maxSide = 900, quality = 0.7) {
   return canvas.toDataURL("image/jpeg", quality);
 }
 
-// ─── Nominatim geocoder — used as fallback when Google Maps is unavailable ───
+// â”€â”€â”€ Nominatim geocoder â€” used as fallback when Google Maps is unavailable â”€â”€â”€
 // Returns raw Nominatim results so callers can access .lat / .lon as strings.
 async function nominatimSearch(q) {
   const url =
@@ -57,11 +57,11 @@ async function nominatimSearch(q) {
   return res.json();
 }
 
-// calcPrice is now imported from ../lib/pricing — works for RM + all of Chile
+// calcPrice is now imported from ../lib/pricing â€” works for RM + all of Chile
 
-// ─── Chilean phone formatter ─────────────────────────────────────────────────
+// â”€â”€â”€ Chilean phone formatter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Auto-prefixes +56 9 if the user types a raw 8-digit mobile number.
-// Formats: 912345678 → +56 9 1234 5678 | 56912345678 → +56 9 1234 5678
+// Formats: 912345678 â†’ +56 9 1234 5678 | 56912345678 â†’ +56 9 1234 5678
 function formatPhone(raw) {
   const digits = raw.replace(/\D/g, "");
   // Already has +56 prefix typed: just format
@@ -80,14 +80,14 @@ function formatPhone(raw) {
   if (digits.length === 8 && !digits.startsWith("0")) {
     return `+56 9 ${digits.slice(0, 4)} ${digits.slice(4, 8)}`;
   }
-  // Partial input — just show what they typed with + prefix hint
+  // Partial input â€” just show what they typed with + prefix hint
   if (digits.length > 0 && digits.length < 9 && !raw.startsWith("+")) {
     return `+56 9 ${digits}`;
   }
   return raw; // keep as-is if it already has + or is complex
 }
 
-// ─── RUT helpers ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ RUT helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function formatRut(raw) {
   const clean = raw.replace(/[^0-9kK]/g, "").toUpperCase();
   if (clean.length <= 1) return clean;
@@ -114,8 +114,8 @@ function validateRut(rut) {
   return dv === expected;
 }
 
-// ─── Commune searchable selector ─────────────────────────────────────────────
-function ComunaSelect({ value, onChange, placeholder = "Seleccionar comuna…" }) {
+// â”€â”€â”€ Commune searchable selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function ComunaSelect({ value, onChange, placeholder = "Seleccionar comunaâ€¦" }) {
   const [open,  setOpen]  = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef(null);
@@ -143,7 +143,7 @@ function ComunaSelect({ value, onChange, placeholder = "Seleccionar comuna…" }
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input ref={inputRef} autoFocus
                 className="w-full rounded-lg border border-slate-100 bg-white py-1.5 pl-7 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-dropit-accent/30"
-                placeholder="Buscar…" value={query} onChange={e => setQuery(e.target.value)} />
+                placeholder="Buscarâ€¦" value={query} onChange={e => setQuery(e.target.value)} />
             </div>
           </div>
           <ul className="max-h-48 overflow-y-auto">
@@ -161,11 +161,11 @@ function ComunaSelect({ value, onChange, placeholder = "Seleccionar comuna…" }
   );
 }
 
-// ─── Reverse geocode coords → address string ────────────────────────────────
+// â”€â”€â”€ Reverse geocode coords â†’ address string â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Primary: Nominatim (OpenStreetMap). Fallback: Google Maps Geocoding API.
 // If both fail, returns a placeholder so the form still captures coordinates.
 async function reverseGeocode(lat, lng) {
-  // ── Attempt 1: Nominatim ──────────────────────────────────────────────────
+  // â”€â”€ Attempt 1: Nominatim â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=es`;
     const res = await fetch(url, { headers: { "Accept-Language": "es" } });
@@ -179,7 +179,7 @@ async function reverseGeocode(lat, lng) {
     }
   } catch { /* fall through to Google Maps */ }
 
-  // ── Attempt 2: Google Maps Geocoding API ──────────────────────────────────
+  // â”€â”€ Attempt 2: Google Maps Geocoding API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const gmKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   if (gmKey) {
     try {
@@ -202,11 +202,11 @@ async function reverseGeocode(lat, lng) {
     } catch { /* fall through to coords-only fallback */ }
   }
 
-  // ── Fallback: coords known but no street name ─────────────────────────────
-  return { street: "Ubicación detectada (sin dirección exacta)", commune: "", lat, lng };
+  // â”€â”€ Fallback: coords known but no street name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  return { street: "UbicaciÃ³n detectada (sin direcciÃ³n exacta)", commune: "", lat, lng };
 }
 
-// ─── Address pair — Google Maps-style vertical stack ──────────────────────────
+// â”€â”€â”€ Address pair â€” Google Maps-style vertical stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AddressPair({
   pickupValue, onPickupChange, onPickupCommune, onPickupCoords,
   deliveryValue, onDeliveryChange, onDeliveryCommune, onDeliveryCoords,
@@ -216,7 +216,7 @@ function AddressPair({
 
   function useMyLocation() {
     if (!navigator.geolocation) {
-      setGeoError("Tu navegador no soporta geolocalización");
+      setGeoError("Tu navegador no soporta geolocalizaciÃ³n");
       return;
     }
     setGeoLoading(true);
@@ -231,17 +231,17 @@ function AddressPair({
             onPickupCoords?.({ lat: result.lat, lng: result.lng });
           }
         } catch {
-          setGeoError("No se pudo obtener la dirección. Ingrésala manualmente.");
+          setGeoError("No se pudo obtener la direcciÃ³n. IngrÃ©sala manualmente.");
         }
         setGeoLoading(false);
       },
       (err) => {
         if (err.code === 1) {
-          setGeoError("Permiso de ubicación denegado. Actívalo en la configuración de tu navegador.");
+          setGeoError("Permiso de ubicaciÃ³n denegado. ActÃ­valo en la configuraciÃ³n de tu navegador.");
         } else if (err.code === 3) {
-          setGeoError("Tiempo de espera agotado al obtener tu ubicación. Inténtalo de nuevo.");
+          setGeoError("Tiempo de espera agotado al obtener tu ubicaciÃ³n. IntÃ©ntalo de nuevo.");
         } else {
-          setGeoError("No se pudo detectar tu ubicación. Ingrésala manualmente.");
+          setGeoError("No se pudo detectar tu ubicaciÃ³n. IngrÃ©sala manualmente.");
         }
         setGeoLoading(false);
       },
@@ -251,7 +251,7 @@ function AddressPair({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {/* ── Origin ── */}
+      {/* â”€â”€ Origin â”€â”€ */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
         <div className="flex flex-col items-center gap-1 flex-shrink-0">
           <div className="h-3 w-3 rounded-full border-2 border-emerald-500 bg-white" />
@@ -270,7 +270,7 @@ function AddressPair({
                 ? <Loader2 size={10} className="animate-spin" />
                 : <Navigation size={10} />
               }
-              Mi ubicación
+              Mi ubicaciÃ³n
             </button>
           </div>
           <StreetAutocomplete
@@ -278,7 +278,7 @@ function AddressPair({
             onChange={onPickupChange}
             onComunaChange={onPickupCommune}
             onCoordsChange={onPickupCoords}
-            placeholder="Calle y número de retiro"
+            placeholder="Calle y nÃºmero de retiro"
             dotColor="#10b981"
             required
             inputClassName={pickupValue && pickupValue.trim().length >= 4 ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300" : ""}
@@ -292,7 +292,7 @@ function AddressPair({
         </div>
       </div>
 
-      {/* ── Destination ── */}
+      {/* â”€â”€ Destination â”€â”€ */}
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex flex-col items-center gap-1 flex-shrink-0">
           <div className="w-px bg-slate-200" style={{ height: 4 }} />
@@ -305,7 +305,7 @@ function AddressPair({
             onChange={onDeliveryChange}
             onComunaChange={onDeliveryCommune}
             onCoordsChange={onDeliveryCoords}
-            placeholder="Calle y número de entrega"
+            placeholder="Calle y nÃºmero de entrega"
             dotColor="#F97316"
             required
             inputClassName={deliveryValue && deliveryValue.trim().length >= 4 ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300" : ""}
@@ -318,13 +318,13 @@ function AddressPair({
 
 // Mock tracking data for public demo
 const MOCK_TRACKING = {
-  "DR-001": { status: "En reparto", client: "Comercial Las Condes", address: "Apoquindo 4500, Las Condes", steps: ["Recibido","En bodega","En tránsito","En reparto"], currentStep: 3, date: "2026-05-01", eta: "hoy 18:00" },
-  "DR-002": { status: "Entregado", client: "Sociedad Vibrados Chile", address: "Estación Central 4022", steps: ["Recibido","En bodega","En tránsito","En reparto","Entregado"], currentStep: 4, date: "2026-04-30", eta: "Entregado 15:46" },
+  "DR-001": { status: "En reparto", client: "Comercial Las Condes", address: "Apoquindo 4500, Las Condes", steps: ["Recibido","En bodega","En trÃ¡nsito","En reparto"], currentStep: 3, date: "2026-05-01", eta: "hoy 18:00" },
+  "DR-002": { status: "Entregado", client: "Sociedad Vibrados Chile", address: "EstaciÃ³n Central 4022", steps: ["Recibido","En bodega","En trÃ¡nsito","En reparto","Entregado"], currentStep: 4, date: "2026-04-30", eta: "Entregado 15:46" },
 };
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
-// ─── Validación por campo — devuelve true si el valor es válido ──────────────
+// â”€â”€â”€ ValidaciÃ³n por campo â€” devuelve true si el valor es vÃ¡lido â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function isFieldValid(name, form) {
   const v = String(form?.[name] ?? "").trim();
   if (!v && name !== "observations" && name !== "requiredTime") return false;
@@ -347,18 +347,18 @@ function isFieldValid(name, form) {
   }
 }
 
-// Devuelve clases adicionales para que el input se torne verde cuando es válido
+// Devuelve clases adicionales para que el input se torne verde cuando es vÃ¡lido
 function fieldGreen(name, form) {
   const v = String(form?.[name] ?? "").trim();
-  if (!v) return ""; // vacío = neutro, no marca rojo ni verde
+  if (!v) return ""; // vacÃ­o = neutro, no marca rojo ni verde
   return isFieldValid(name, form)
-    ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300 pr-9" // verde + espacio para el ✓
+    ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300 pr-9" // verde + espacio para el âœ“
     : "";
 }
 
-// ─── Formulario inicial — campos vacíos para el cliente ──────────────────────
-// Solo se sugiere fecha/hora (mañana 10:00, siempre ≥ 4h y ≤ 21:00) por comodidad;
-// el cliente puede cambiarlas. Ningún dato personal viene pre-cargado.
+// â”€â”€â”€ Formulario inicial â€” campos vacÃ­os para el cliente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Solo se sugiere fecha/hora (maÃ±ana 10:00, siempre â‰¥ 4h y â‰¤ 21:00) por comodidad;
+// el cliente puede cambiarlas. NingÃºn dato personal viene pre-cargado.
 function getInitialForm() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
@@ -389,18 +389,18 @@ const initialForm = getInitialForm();
 const features = [
   {
     icon: Zap,
-    title: "Cotización en minutos",
-    desc: "Recibe tu propuesta de precio en menos de 1 hora hábil, sin llamadas ni esperas.",
+    title: "CotizaciÃ³n en minutos",
+    desc: "Recibe tu propuesta de precio en menos de 1 hora hÃ¡bil, sin llamadas ni esperas.",
   },
   {
     icon: Navigation,
     title: "Rutas optimizadas",
-    desc: "Algoritmo de optimización garantiza el menor tiempo y costo de entrega.",
+    desc: "Algoritmo de optimizaciÃ³n garantiza el menor tiempo y costo de entrega.",
   },
   {
     icon: Shield,
     title: "Carga asegurada",
-    desc: "Tu mercadería viaja protegida con choferes certificados y camiones en buen estado.",
+    desc: "Tu mercaderÃ­a viaja protegida con choferes certificados y camiones en buen estado.",
   },
   {
     icon: Clock,
@@ -410,9 +410,9 @@ const features = [
 ];
 
 const steps = [
-  { num: "01", title: "Solicitas cotización", desc: "Completas el formulario con origen, destino y tipo de carga." },
+  { num: "01", title: "Solicitas cotizaciÃ³n", desc: "Completas el formulario con origen, destino y tipo de carga." },
   { num: "02", title: "Recives propuesta", desc: "Te enviamos el precio exacto a tu correo en menos de 1 hora." },
-  { num: "03", title: "Apruebas y agendamos", desc: "Confirmas la cotización y coordinamos la fecha de retiro." },
+  { num: "03", title: "Apruebas y agendamos", desc: "Confirmas la cotizaciÃ³n y coordinamos la fecha de retiro." },
   { num: "04", title: "Retiro y entrega", desc: "Nuestro equipo retira y entrega con tracking en tiempo real." },
 ];
 
@@ -421,7 +421,7 @@ export default function PublicQuotePage() {
   const [created, setCreated] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  // mapReady removed — ChileCoverageMap handles its own loading state
+  // mapReady removed â€” ChileCoverageMap handles its own loading state
   // Tracking
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [trackingCode, setTrackingCode] = useState("");
@@ -435,13 +435,13 @@ export default function PublicQuotePage() {
   // Route & geo
   const [pickupCoords, setPickupCoords] = useState(null);
   const [deliveryCoords, setDeliveryCoords] = useState(null);
-  // Entregas ADICIONALES (1 retiro → varias entregas). El destino principal
+  // Entregas ADICIONALES (1 retiro â†’ varias entregas). El destino principal
   // sigue en form.deliveryAddress; estas son las paradas extra del cliente.
   const [extraDeliveries, setExtraDeliveries] = useState([]); // [{ address, commune, coords }]
   const [routeInfo, setRouteInfo] = useState(null); // {distanceKm, price, isRM, geometry}
   const [geocoding, setGeocoding] = useState(false);
   const [routeError, setRouteError] = useState("");
-  // Image uploads — dynamic array, max 6
+  // Image uploads â€” dynamic array, max 6
   const MAX_PHOTOS = 6;
   const [images, setImages] = useState([]);   // Array of base64 strings
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -486,17 +486,17 @@ export default function PublicQuotePage() {
         // Fallback to mock for demo
         const mock = MOCK_TRACKING[code];
         if (mock) { setTrackingResult(mock); }
-        else { setTrackingError(`No se encontró el envío "${code}". Verifica el código.`); }
+        else { setTrackingError(`No se encontrÃ³ el envÃ­o "${code}". Verifica el cÃ³digo.`); }
       }
     } catch {
       // Offline fallback
       const mock = MOCK_TRACKING[code];
       if (mock) { setTrackingResult(mock); }
-      else { setTrackingError(`No se encontró el envío "${code}". Verifica el código.`); }
+      else { setTrackingError(`No se encontrÃ³ el envÃ­o "${code}". Verifica el cÃ³digo.`); }
     }
   }
 
-  // ─── Entregas adicionales (1 retiro → varias entregas) ──────────────────────
+  // â”€â”€â”€ Entregas adicionales (1 retiro â†’ varias entregas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function addDelivery() {
     setExtraDeliveries((d) => [...d, { address: "", commune: "", coords: null }]);
   }
@@ -519,7 +519,7 @@ export default function PublicQuotePage() {
 
   // Coverage map is now handled by <ChileCoverageMap /> component
 
-  // ─── Route map: draw when coords/geometry arrive ─────────────────────────────
+  // â”€â”€â”€ Route map: draw when coords/geometry arrive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!pickupCoords || !deliveryCoords || !routeInfo?.geometry) {
       // Destroy existing map so it re-initializes fresh next time
@@ -552,7 +552,7 @@ export default function PublicQuotePage() {
           zoomControl: true, scrollWheelZoom: false,
         });
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-          attribution: '© <a href="https://openstreetmap.org">OSM</a> © <a href="https://carto.com">CARTO</a>',
+          attribution: 'Â© <a href="https://openstreetmap.org">OSM</a> Â© <a href="https://carto.com">CARTO</a>',
           maxZoom: 19,
         }).addTo(routeMapInstanceRef.current);
       }
@@ -575,24 +575,24 @@ export default function PublicQuotePage() {
       const layers = [routeGeo];
 
       // Paradas en el MISMO orden que los waypoints enviados a OSRM:
-      // 0 = retiro · 1 = entrega principal · 2+ = entregas adicionales con coords.
+      // 0 = retiro Â· 1 = entrega principal Â· 2+ = entregas adicionales con coords.
       const allStops = [
         { lat: pickupCoords.lat,   lng: pickupCoords.lng,   origin: true  },
         { lat: deliveryCoords.lat, lng: deliveryCoords.lng, origin: false },
         ...extraWithCoords.map(d => ({ lat: d.coords.lat, lng: d.coords.lng, origin: false })),
       ];
-      // routeInfo.order[posVisita] = índiceOriginal. Si no hubo optimización
+      // routeInfo.order[posVisita] = Ã­ndiceOriginal. Si no hubo optimizaciÃ³n
       // (o no coincide el largo), usamos el orden natural de ingreso.
       const visitOrder = (routeInfo.order && routeInfo.order.length === allStops.length)
         ? routeInfo.order
         : allStops.map((_, i) => i);
 
-      // Marcadores numerados según el ORDEN ÓPTIMO de visita.
+      // Marcadores numerados segÃºn el ORDEN Ã“PTIMO de visita.
       let entregaNum = 0;
       visitOrder.forEach((origIdx) => {
         const s = allStops[origIdx];
         if (!s) return;
-        const label = s.origin ? "📦 Retiro" : `🏁 Entrega ${++entregaNum}`;
+        const label = s.origin ? "ðŸ“¦ Retiro" : `ðŸ Entrega ${++entregaNum}`;
         const color = s.origin ? "#10b981" : "#F97316";
         layers.push(L.marker([s.lat, s.lng], { icon: makeIcon(color, label) }).addTo(map));
       });
@@ -616,7 +616,7 @@ export default function PublicQuotePage() {
     };
   }, []);
 
-  // ─── Auto-calculate route when any waypoint coords change ────────────────────
+  // â”€â”€â”€ Auto-calculate route when any waypoint coords change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Re-runs whenever pickup, main delivery, or any extra-delivery coord changes.
   useEffect(() => {
     if (!pickupCoords || !deliveryCoords) return;
@@ -630,7 +630,7 @@ export default function PublicQuotePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickupCoords, deliveryCoords, JSON.stringify(extraDeliveries.map(d => d.coords))]);
 
-  // ─── Geocode fallback: if address typed manually (no suggestion picked) ───────
+  // â”€â”€â”€ Geocode fallback: if address typed manually (no suggestion picked) â”€â”€â”€â”€â”€â”€â”€
   const geocodeTimerRef = useRef({});
   useEffect(() => {
     if (pickupCoords) return;
@@ -666,12 +666,12 @@ export default function PublicQuotePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.deliveryAddress]);
 
-  // ─── Geocode fallback for extra deliveries typed manually ────────────────────
-  // Mirrors the pickup/delivery fallback: Google → Nominatim, debounced 900 ms.
-  // Only fires when the entry has ≥6 chars but no coords yet.
+  // â”€â”€â”€ Geocode fallback for extra deliveries typed manually â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Mirrors the pickup/delivery fallback: Google â†’ Nominatim, debounced 900 ms.
+  // Only fires when the entry has â‰¥6 chars but no coords yet.
   useEffect(() => {
     extraDeliveries.forEach((d, idx) => {
-      if (d.coords) return; // already resolved — skip
+      if (d.coords) return; // already resolved â€” skip
       const addr = (d.address || "").trim();
       if (addr.length < 6) return;
       const timerKey = `extra_${idx}`;
@@ -684,14 +684,14 @@ export default function PublicQuotePage() {
           if (results[0]) {
             updateDelivery(idx, { coords: { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) } });
           }
-        } catch { /* ignore — geocode is best-effort */ }
+        } catch { /* ignore â€” geocode is best-effort */ }
       }, 900);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(extraDeliveries.map(d => ({ address: d.address, hasCoords: Boolean(d.coords) })))]);
 
-  // ─── OSRM multi-waypoint route calculation ────────────────────────────────────
-  // waypoints: ordered array of {lat, lng} — [pickup, mainDelivery, ...extras]
+  // â”€â”€â”€ OSRM multi-waypoint route calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // waypoints: ordered array of {lat, lng} â€” [pickup, mainDelivery, ...extras]
   // OSRM accepts: /route/v1/driving/lng1,lat1;lng2,lat2;lng3,lat3?overview=full&geometries=geojson
   // routes[0].distance = total metres across ALL legs; routes[0].geometry = full polyline.
   async function calculateRoute(waypoints) {
@@ -703,14 +703,14 @@ export default function PublicQuotePage() {
       const isRM = RM_COMUNAS.has(form.pickupCommune) && RM_COMUNAS.has(form.deliveryCommune);
 
       // distanceM/geometry se llenan por TRIP (optimizado) o ROUTE (directo).
-      // order[posiciónDeVisita] = índiceOriginal del waypoint (origen incluido en pos 0).
+      // order[posiciÃ³nDeVisita] = Ã­ndiceOriginal del waypoint (origen incluido en pos 0).
       let distanceM = null, geometry = null, order = null, optimized = false;
 
-      // ── Optimizador inteligente ──────────────────────────────────────────────
-      // Con 3+ puntos (origen + 2 o más entregas) usamos el servicio TRIP de OSRM,
-      // que resuelve el ORDEN ÓPTIMO de las paradas (TSP) partiendo del origen fijo
-      // (source=first) y sin volver al inicio (roundtrip=false). Así, si una entrega
-      // queda "de paso", se visita antes aunque se haya agregado después.
+      // â”€â”€ Optimizador inteligente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Con 3+ puntos (origen + 2 o mÃ¡s entregas) usamos el servicio TRIP de OSRM,
+      // que resuelve el ORDEN Ã“PTIMO de las paradas (TSP) partiendo del origen fijo
+      // (source=first) y sin volver al inicio (roundtrip=false). AsÃ­, si una entrega
+      // queda "de paso", se visita antes aunque se haya agregado despuÃ©s.
       if (waypoints.length >= 3) {
         try {
           const tripUrl = `https://router.project-osrm.org/trip/v1/driving/${coordStr}` +
@@ -729,7 +729,7 @@ export default function PublicQuotePage() {
         } catch { /* cae a ruta directa abajo */ }
       }
 
-      // ── Ruta directa (2 puntos) o fallback si TRIP falló ─────────────────────
+      // â”€â”€ Ruta directa (2 puntos) o fallback si TRIP fallÃ³ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       if (distanceM == null) {
         const routeUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
         const routeRes  = await fetch(routeUrl);
@@ -756,7 +756,7 @@ export default function PublicQuotePage() {
     }
   }
 
-  // ─── Recalculate price if weight changes after route is drawn ─────────────────
+  // â”€â”€â”€ Recalculate price if weight changes after route is drawn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (routeInfo && form.estimatedWeightKg) {
       const isRM = RM_COMUNAS.has(form.pickupCommune) && RM_COMUNAS.has(form.deliveryCommune);
@@ -772,12 +772,12 @@ export default function PublicQuotePage() {
 
   async function submit(event) {
     event.preventDefault();
-    if (!form.rut || !validateRut(form.rut)) { setError("RUT inválido — verifica el dígito verificador"); return; }
-    if (!form.contactEmail.includes("@")) { setError("Correo electrónico inválido"); return; }
-    if (!form.pickupAddress.trim())   { setError("Ingresa la dirección de retiro"); return; }
-    if (!form.deliveryAddress.trim()) { setError("Ingresa la dirección de entrega"); return; }
+    if (!form.rut || !validateRut(form.rut)) { setError("RUT invÃ¡lido â€” verifica el dÃ­gito verificador"); return; }
+    if (!form.contactEmail.includes("@")) { setError("Correo electrÃ³nico invÃ¡lido"); return; }
+    if (!form.pickupAddress.trim())   { setError("Ingresa la direcciÃ³n de retiro"); return; }
+    if (!form.deliveryAddress.trim()) { setError("Ingresa la direcciÃ³n de entrega"); return; }
 
-    // ─── Date / time validation ───────────────────────────────────────────────
+    // â”€â”€â”€ Date / time validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (form.requiredDate) {
       const timeStr = form.requiredTime || "09:00";
       const requested = new Date(`${form.requiredDate}T${timeStr}:00`);
@@ -792,12 +792,12 @@ export default function PublicQuotePage() {
       }
     }
 
-    // ─── Entregas adicionales: validar las que tengan texto ───────────────────
+    // â”€â”€â”€ Entregas adicionales: validar las que tengan texto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const cleanExtra = extraDeliveries
       .map(d => ({ address: (d.address || "").trim(), commune: d.commune || "", coords: d.coords || null }))
       .filter(d => d.address.length > 0);
     if (cleanExtra.some(d => d.address.length < 4)) {
-      setError("Hay una entrega adicional incompleta — escribe la dirección o quítala");
+      setError("Hay una entrega adicional incompleta â€” escribe la direcciÃ³n o quÃ­tala");
       return;
     }
     // Lista completa de entregas: destino principal + adicionales
@@ -809,7 +809,7 @@ export default function PublicQuotePage() {
     setLoading(true);
     setError("");
     // Minimum loader duration so the SaulLoader animation completes all 4 steps
-    // (~800 + 1200 + 900 + 1100 = 4000 ms). Only enforced on success — errors exit immediately.
+    // (~800 + 1200 + 900 + 1100 = 4000 ms). Only enforced on success â€” errors exit immediately.
     const MIN_LOADER_MS = 4000;
     try {
       const payload = {
@@ -831,7 +831,7 @@ export default function PublicQuotePage() {
         avionetaCount: form.avionetaCount,
         avioneta: form.avionetaCount > 0,
         urgent: form.urgent || false,
-        observations: `${form.urgent ? "⚡ URGENTE\n" : ""}${form.observations}`.trim(),
+        observations: `${form.urgent ? "âš¡ URGENTE\n" : ""}${form.observations}`.trim(),
         photos: [],  // Photos sent separately in background (faster first response)
         bultosDetail: bultos.filter(b => b.largo || b.ancho || b.alto || b.peso),
       };
@@ -845,7 +845,7 @@ export default function PublicQuotePage() {
         }),
         new Promise(resolve => setTimeout(resolve, MIN_LOADER_MS)),
       ]);
-      // Lee el cuerpo de forma robusta: puede venir vacío o no-JSON (API
+      // Lee el cuerpo de forma robusta: puede venir vacÃ­o o no-JSON (API
       // inalcanzable, 500 sin body, timeout del proxy, etc.). Nunca dejamos
       // que un res.json() crudo reviente con "Unexpected end of JSON input":
       // siempre mostramos un mensaje claro al usuario.
@@ -859,17 +859,17 @@ export default function PublicQuotePage() {
       if (!res.ok) {
         throw new Error(
           data.message ||
-          `No pudimos enviar tu solicitud (error ${res.status}). Inténtalo de nuevo en unos segundos.`
+          `No pudimos enviar tu solicitud (error ${res.status}). IntÃ©ntalo de nuevo en unos segundos.`
         );
       }
       if (!data.request) {
         throw new Error(
-          "Tu solicitud salió, pero no recibimos confirmación del servidor. " +
-          "Escríbenos por WhatsApp para asegurarnos de que llegó."
+          "Tu solicitud saliÃ³, pero no recibimos confirmaciÃ³n del servidor. " +
+          "EscrÃ­benos por WhatsApp para asegurarnos de que llegÃ³."
         );
       }
 
-      // ─── Show success IMMEDIATELY — tracking code ready ──────────────────
+      // â”€â”€â”€ Show success IMMEDIATELY â€” tracking code ready â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       setCreated(data.request);
       setForm(getInitialForm());
       setRouteInfo(null);
@@ -881,10 +881,10 @@ export default function PublicQuotePage() {
       // Scroll to top of page so user sees the success screen
       window.scrollTo({ top: 0, behavior: "smooth" });
 
-      // ─── Background: subir fotos (no bloqueante) ─────────────────────────
-      // Las notificaciones por email (cliente + operador) las envía el SERVIDOR
-      // automáticamente en POST /quote-requests vía Resend/SMTP. El formulario
-      // público ya NO llama /mail/send ni /whatsapp/send (endpoints protegidos).
+      // â”€â”€â”€ Background: subir fotos (no bloqueante) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Las notificaciones por email (cliente + operador) las envÃ­a el SERVIDOR
+      // automÃ¡ticamente en POST /quote-requests vÃ­a Resend/SMTP. El formulario
+      // pÃºblico ya NO llama /mail/send ni /whatsapp/send (endpoints protegidos).
       const savedImages = capturedImages;
       (async () => {
         try {
@@ -911,10 +911,10 @@ export default function PublicQuotePage() {
 
   return (
     <div className="min-h-screen bg-white font-sans">
-      {/* ─── Saúl loader during form submission ─── */}
+      {/* â”€â”€â”€ SaÃºl loader during form submission â”€â”€â”€ */}
       <SaulLoader visible={loading} />
 
-      {/* ─── NAVBAR ─── */}
+      {/* â”€â”€â”€ NAVBAR â”€â”€â”€ */}
       <header className="sticky top-0 z-50 border-b border-dropit-200 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
@@ -927,7 +927,7 @@ export default function PublicQuotePage() {
           </div>
 
           <nav className="hidden items-center gap-6 text-sm font-medium text-dropit-700 md:flex">
-            <a href="#como-funciona" className="hover:text-dropit-accent transition-colors">Cómo funciona</a>
+            <a href="#como-funciona" className="hover:text-dropit-accent transition-colors">CÃ³mo funciona</a>
             <a href="#formulario" className="hover:text-dropit-accent transition-colors">Cotizar</a>
             <a href="#mapa" className="hover:text-dropit-accent transition-colors">Cobertura</a>
             <button
@@ -947,7 +947,7 @@ export default function PublicQuotePage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-600 transition-colors shadow-sm sm:px-4"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 flex-shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              <span className="hidden sm:inline">Contáctanos</span>
+              <span className="hidden sm:inline">ContÃ¡ctanos</span>
             </a>
             <a
               href="/"
@@ -965,14 +965,14 @@ export default function PublicQuotePage() {
         </div>
       </header>
 
-      {/* ─── SEGUIMIENTO DROPDOWN ─── */}
+      {/* â”€â”€â”€ SEGUIMIENTO DROPDOWN â”€â”€â”€ */}
       {trackingOpen && (
         <div className="border-b border-dropit-200 bg-white px-4 py-6 shadow-lg">
           <div className="mx-auto max-w-2xl">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-dropit-accent">Tracking</p>
-                <h3 className="text-xl font-black text-dropit-950">Rastrear mi envío</h3>
+                <h3 className="text-xl font-black text-dropit-950">Rastrear mi envÃ­o</h3>
               </div>
               <button onClick={() => { setTrackingOpen(false); setTrackingResult(null); setTrackingError(""); }}
                 className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
@@ -982,7 +982,7 @@ export default function PublicQuotePage() {
             <form onSubmit={searchTracking} className="flex gap-2">
               <input
                 className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
-                placeholder="Ingresa tu código de seguimiento (ej: DR-001)"
+                placeholder="Ingresa tu cÃ³digo de seguimiento (ej: DR-001)"
                 value={trackingCode}
                 onChange={(e) => setTrackingCode(e.target.value)}
               />
@@ -1031,9 +1031,9 @@ export default function PublicQuotePage() {
         </div>
       )}
 
-      {/* ─── HERO ─── */}
+      {/* â”€â”€â”€ HERO â”€â”€â”€ */}
       <section className="relative overflow-hidden bg-dropit-950 px-4 py-24 text-white">
-        {/* Marketing carousel — smart fit: blurred fill + contained main image */}
+        {/* Marketing carousel â€” smart fit: blurred fill + contained main image */}
         {carouselImages.length > 0 ? carouselImages.map((src, i) => (
           <div
             key={i}
@@ -1042,14 +1042,14 @@ export default function PublicQuotePage() {
           >
             {/* Blurred fill for letterbox areas */}
             <div className="absolute inset-0 scale-110 bg-cover bg-center blur-md opacity-35" style={{ backgroundImage: `url(${src})` }} />
-            {/* Main image contained — no cropping */}
+            {/* Main image contained â€” no cropping */}
             <img src={src} className="absolute inset-0 h-full w-full object-contain opacity-55" alt="" />
           </div>
         )) : (
           /* Animated illustration fallback when no carousel images are loaded */
           <HeroAnimation />
         )}
-        {/* Dark gradient overlay — stronger at bottom for text legibility */}
+        {/* Dark gradient overlay â€” stronger at bottom for text legibility */}
         <div className="pointer-events-none absolute inset-0" style={{
           background: "linear-gradient(to bottom, rgba(12,8,4,0.55) 0%, rgba(12,8,4,0.45) 40%, rgba(12,8,4,0.65) 100%)"
         }} />
@@ -1061,17 +1061,17 @@ export default function PublicQuotePage() {
         <div className="relative mx-auto max-w-5xl">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-dropit-accent/30 bg-dropit-accent/10 px-4 py-2 text-sm font-semibold text-dropit-accent">
             <Zap size={14} />
-            Cotización en menos de 1 hora
+            CotizaciÃ³n en menos de 1 hora
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)] md:text-7xl">
             Entregamos donde<br />
-            <span className="text-dropit-accent">nadie más llega.</span>
+            <span className="text-dropit-accent">nadie mÃ¡s llega.</span>
           </h1>
 
           <p className="mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] md:text-xl">
-            Fletes, última milla y distribución urbana con tecnología de primer nivel.
-            Tracking en tiempo real, rutas optimizadas y atención inmediata.
+            Fletes, Ãºltima milla y distribuciÃ³n urbana con tecnologÃ­a de primer nivel.
+            Tracking en tiempo real, rutas optimizadas y atenciÃ³n inmediata.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:gap-4">
@@ -1079,14 +1079,14 @@ export default function PublicQuotePage() {
               onClick={scrollToForm}
               className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-xl bg-dropit-accent px-8 py-4 text-base font-bold text-white shadow-xl shadow-dropit-accent/30 hover:bg-dropit-accent-dark transition-all hover:scale-105"
             >
-              Solicitar cotización gratis
+              Solicitar cotizaciÃ³n gratis
               <ArrowRight size={18} />
             </button>
             <a
               href="#como-funciona"
               className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-xl border border-white/20 px-8 py-4 text-base font-semibold text-white hover:bg-white/8 transition-colors"
             >
-              ¿Cómo funciona?
+              Â¿CÃ³mo funciona?
               <ChevronRight size={18} />
             </a>
           </div>
@@ -1127,12 +1127,12 @@ export default function PublicQuotePage() {
         </div>
       </section>
 
-      {/* ─── FEATURES ─── */}
+      {/* â”€â”€â”€ FEATURES â”€â”€â”€ */}
       <section className="bg-dropit-100 px-4 py-12 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12 text-center">
-            <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">Por qué DropIt Service</p>
-            <h2 className="mt-2 text-2xl sm:text-4xl font-black text-dropit-950">Tecnología que trabaja por ti</h2>
+            <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">Por quÃ© DropIt Service</p>
+            <h2 className="mt-2 text-2xl sm:text-4xl font-black text-dropit-950">TecnologÃ­a que trabaja por ti</h2>
           </div>
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
             {features.map(({ icon: Icon, title, desc }) => (
@@ -1148,7 +1148,7 @@ export default function PublicQuotePage() {
         </div>
       </section>
 
-      {/* ─── CÓMO FUNCIONA ─── */}
+      {/* â”€â”€â”€ CÃ“MO FUNCIONA â”€â”€â”€ */}
       <section id="como-funciona" className="px-4 py-12 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12 text-center">
@@ -1167,19 +1167,19 @@ export default function PublicQuotePage() {
         </div>
       </section>
 
-      {/* ─── FORMULARIO ─── */}
+      {/* â”€â”€â”€ FORMULARIO â”€â”€â”€ */}
       <section id="formulario" ref={formRef} className="px-4 py-12 sm:py-20">
         <div className="mx-auto max-w-4xl">
           <div className="mb-10 text-center">
-            <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">Cotización gratuita</p>
-            <h2 className="mt-2 text-2xl sm:text-4xl font-black text-dropit-950">Cuéntanos tu necesidad</h2>
+            <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">CotizaciÃ³n gratuita</p>
+            <h2 className="mt-2 text-2xl sm:text-4xl font-black text-dropit-950">CuÃ©ntanos tu necesidad</h2>
             <p className="mt-3 text-dropit-700">
-              Completa el formulario y recibirás tu cotización en menos de 1 hora hábil
+              Completa el formulario y recibirÃ¡s tu cotizaciÃ³n en menos de 1 hora hÃ¡bil
             </p>
           </div>
 
           {created ? (
-            /* ── SUCCESS SCREEN — full page overlay ─────────────────────────── */
+            /* â”€â”€ SUCCESS SCREEN â€” full page overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-dropit-950/90 backdrop-blur-sm p-4">
               <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
                 {/* Header */}
@@ -1187,10 +1187,10 @@ export default function PublicQuotePage() {
                   <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur ring-4 ring-white/30">
                     <CheckCircle2 size={40} className="text-white" />
                   </div>
-                  <h3 className="text-3xl font-black">¡Solicitud enviada!</h3>
-                  <p className="mt-2 text-base text-white/85">Te responderemos en menos de 1 hora hábil</p>
+                  <h3 className="text-3xl font-black">Â¡Solicitud enviada!</h3>
+                  <p className="mt-2 text-base text-white/85">Te responderemos en menos de 1 hora hÃ¡bil</p>
                   <div className="mt-5 inline-flex flex-col items-center gap-1 rounded-2xl bg-white/15 px-6 py-3 backdrop-blur">
-                    <span className="text-xs font-bold uppercase tracking-wider text-white/70">Código de seguimiento</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-white/70">CÃ³digo de seguimiento</span>
                     <span className="font-mono text-2xl font-black tracking-widest">{created.trackingCode}</span>
                   </div>
                 </div>
@@ -1198,19 +1198,19 @@ export default function PublicQuotePage() {
                 {/* Detail cards */}
                 <div className="grid gap-3 p-6 sm:grid-cols-2">
                   <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">N° Solicitud</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">NÂ° Solicitud</p>
                     <p className="mt-1 font-mono text-lg font-black text-dropit-950">{created.id}</p>
                   </div>
                   <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">Carga</p>
-                    <p className="mt-1 text-base font-black text-dropit-950">{created.packages} bultos · {created.estimatedWeightKg} kg</p>
+                    <p className="mt-1 text-base font-black text-dropit-950">{created.packages} bultos Â· {created.estimatedWeightKg} kg</p>
                   </div>
                   <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">📍 Retiro</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">ðŸ“ Retiro</p>
                     <p className="mt-1 text-sm font-semibold text-dropit-800">{created.pickupAddress}</p>
                   </div>
                   <div className="rounded-xl border border-dropit-200 bg-dropit-50 p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">🏁 Entrega</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-dropit-500">ðŸ Entrega</p>
                     <p className="mt-1 text-sm font-semibold text-dropit-800">{created.deliveryAddress}</p>
                   </div>
                 </div>
@@ -1219,7 +1219,7 @@ export default function PublicQuotePage() {
                   <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 mb-4">
                     <Mail size={18} className="flex-shrink-0 mt-0.5 text-sky-500" />
                     <p className="text-sm text-sky-700">
-                      Enviamos confirmación a <strong>{created.contactEmail}</strong> — recibirás tu cotización formal muy pronto
+                      Enviamos confirmaciÃ³n a <strong>{created.contactEmail}</strong> â€” recibirÃ¡s tu cotizaciÃ³n formal muy pronto
                     </p>
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
@@ -1269,9 +1269,9 @@ export default function PublicQuotePage() {
                         )}
                       </div>
                     </div>
-                    <Field label="Empresa o Persona" field="customerName" form={form} update={update} placeholder="Nombre completo o razón social" />
+                    <Field label="Empresa o Persona" field="customerName" form={form} update={update} placeholder="Nombre completo o razÃ³n social" />
                     <div>
-                      <label className="label-base">Teléfono <span className="text-red-500">*</span></label>
+                      <label className="label-base">TelÃ©fono <span className="text-red-500">*</span></label>
                       <div className="relative">
                         <input className={`input-base ${fieldGreen("contactPhone", form)}`} type="tel" placeholder="+56 9 1234 5678"
                           value={form.contactPhone}
@@ -1283,7 +1283,7 @@ export default function PublicQuotePage() {
                         )}
                       </div>
                     </div>
-                    <Field label="Correo electrónico" field="contactEmail" form={form} update={update} type="email" placeholder="juan@empresa.cl" />
+                    <Field label="Correo electrÃ³nico" field="contactEmail" form={form} update={update} type="email" placeholder="juan@empresa.cl" />
                   </div>
                 </div>
 
@@ -1296,7 +1296,7 @@ export default function PublicQuotePage() {
                     <h3 className="text-lg font-bold text-dropit-950">Origen y destino</h3>
                   </div>
 
-                  {/* Address pair — Google Maps style */}
+                  {/* Address pair â€” Google Maps style */}
                   <AddressPair
                     pickupValue={form.pickupAddress}
                     onPickupChange={v => update("pickupAddress", v)}
@@ -1308,7 +1308,7 @@ export default function PublicQuotePage() {
                     onDeliveryCoords={coords => setDeliveryCoords(coords)}
                   />
 
-                  {/* ── Entregas adicionales (1 retiro → varias entregas) ───────── */}
+                  {/* â”€â”€ Entregas adicionales (1 retiro â†’ varias entregas) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                   {extraDeliveries.length > 0 && (
                     <div className="mt-3 space-y-2">
                       {extraDeliveries.map((d, idx) => (
@@ -1331,7 +1331,7 @@ export default function PublicQuotePage() {
                             onChange={v => updateDelivery(idx, { address: v, coords: null })}
                             onComunaChange={v => updateDelivery(idx, { commune: v })}
                             onCoordsChange={coords => updateDelivery(idx, { coords })}
-                            placeholder={`Calle y número de la entrega ${idx + 2}`}
+                            placeholder={`Calle y nÃºmero de la entrega ${idx + 2}`}
                             dotColor="#F97316"
                             inputClassName={d.address && d.address.trim().length >= 4 ? "!border-emerald-400 !bg-emerald-50/50 focus:!ring-emerald-300" : ""}
                           />
@@ -1360,7 +1360,7 @@ export default function PublicQuotePage() {
                         min={(() => { const d = new Date(Date.now() + 4 * 60 * 60 * 1000); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })()}
                         required
                       />
-                      <p className="mt-1 text-[10px] text-dropit-500">Mínimo 4 horas desde ahora</p>
+                      <p className="mt-1 text-[10px] text-dropit-500">MÃ­nimo 4 horas desde ahora</p>
                     </div>
                     <div>
                       <label className="label-base">Hora de retiro</label>
@@ -1375,7 +1375,7 @@ export default function PublicQuotePage() {
                   {geocoding && (
                     <div className="mt-3 flex items-center gap-2 text-sm text-dropit-700">
                       <Loader2 size={14} className="animate-spin text-dropit-accent" />
-                      Calculando ruta…
+                      Calculando rutaâ€¦
                     </div>
                   )}
                   {routeError && !geocoding && (
@@ -1391,7 +1391,7 @@ export default function PublicQuotePage() {
                     const totalDestinos = 1 + resolvedExtras; // 1 = main delivery
                     return (
                     <div className="mt-3 overflow-hidden rounded-xl border border-dropit-300 shadow-sm">
-                      {/* Route info banner — price hidden to prevent scraping */}
+                      {/* Route info banner â€” price hidden to prevent scraping */}
                       <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5 border-b border-dropit-accent/20 bg-gradient-to-r from-dropit-accent/10 to-orange-50">
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-dropit-accent/20">
@@ -1402,21 +1402,21 @@ export default function PublicQuotePage() {
                             <p className="text-2xl font-black text-dropit-950">
                               {routeInfo.distanceKm} <span className="text-base font-bold">km</span>
                               {totalDestinos > 1 && (
-                                <span className="ml-2 text-sm font-semibold text-dropit-600">· {totalDestinos} destinos</span>
+                                <span className="ml-2 text-sm font-semibold text-dropit-600">Â· {totalDestinos} destinos</span>
                               )}
                             </p>
                             {routeInfo.optimized && (
                               <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                                <Zap size={11} className="flex-shrink-0" /> Ruta optimizada · orden inteligente de paradas
+                                <Zap size={11} className="flex-shrink-0" /> Ruta optimizada Â· orden inteligente de paradas
                               </p>
                             )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5">
-                          <span className="text-xl">💰</span>
+                          <span className="text-xl">ðŸ’°</span>
                           <div>
-                            <p className="text-xs font-bold text-sky-700">Cotización personalizada</p>
-                            <p className="text-[11px] text-sky-600">Recibirás el precio exacto en tu correo en <strong>menos de 1 hora hábil</strong></p>
+                            <p className="text-xs font-bold text-sky-700">CotizaciÃ³n personalizada</p>
+                            <p className="text-[11px] text-sky-600">RecibirÃ¡s el precio exacto en tu correo en <strong>menos de 1 hora hÃ¡bil</strong></p>
                           </div>
                         </div>
                       </div>
@@ -1424,11 +1424,11 @@ export default function PublicQuotePage() {
                       <div className="border-b border-dropit-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex gap-3">
-                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-xl">💪</div>
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-xl">ðŸ’ª</div>
                             <div>
-                              <p className="text-sm font-bold text-slate-800">¿Necesitas ayuda con la carga?</p>
-                              <p className="mt-0.5 text-xs text-slate-500">Sumamos peonetas profesionales para objetos pesados, voluminosos o frágiles</p>
-                              <p className="mt-1 text-xs text-slate-400">El valor se cotiza según el trabajo y metodología requerida</p>
+                              <p className="text-sm font-bold text-slate-800">Â¿Necesitas ayuda con la carga?</p>
+                              <p className="mt-0.5 text-xs text-slate-500">Sumamos peonetas profesionales para objetos pesados, voluminosos o frÃ¡giles</p>
+                              <p className="mt-1 text-xs text-slate-400">El valor se cotiza segÃºn el trabajo y metodologÃ­a requerida</p>
                               {form.avionetaCount > 0 && (
                                 <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
                                   {form.avionetaCount} peoneta{form.avionetaCount > 1 ? "s" : ""}
@@ -1442,7 +1442,7 @@ export default function PublicQuotePage() {
                               onClick={() => update("avionetaCount", Math.max(0, (form.avionetaCount || 0) - 1))}
                               className="flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-30"
                               disabled={!form.avionetaCount}
-                            >−</button>
+                            >âˆ’</button>
                             <span className="w-6 text-center text-lg font-black text-slate-800">{form.avionetaCount || 0}</span>
                             <button
                               type="button"
@@ -1471,13 +1471,13 @@ export default function PublicQuotePage() {
                     <Field label="Cantidad de bultos" field="packages" form={form} update={update} type="number" placeholder="Ej: 10" />
                     <Field label="Peso estimado (kg)" field="estimatedWeightKg" form={form} update={update} type="number" placeholder="Ej: 250" />
                     <div className="md:col-span-2">
-                      <label className="label-base">Descripción de la carga</label>
+                      <label className="label-base">DescripciÃ³n de la carga</label>
                       <div className="relative">
                         <textarea
                           className={`input-base min-h-[88px] resize-none ${fieldGreen("cargoDescription", form)}`}
                           value={form.cargoDescription}
                           onChange={(e) => update("cargoDescription", e.target.value)}
-                          placeholder="Ej: Cajas de electrodomésticos, requieren cuidado especial..."
+                          placeholder="Ej: Cajas de electrodomÃ©sticos, requieren cuidado especial..."
                           required
                         />
                         {form.cargoDescription && isFieldValid("cargoDescription", form) && (
@@ -1491,7 +1491,7 @@ export default function PublicQuotePage() {
                         className="input-base min-h-[72px] resize-none"
                         value={form.observations}
                         onChange={(e) => update("observations", e.target.value)}
-                        placeholder="Ej: Debe ingresar por portón lateral, preguntar por Jorge..."
+                        placeholder="Ej: Debe ingresar por portÃ³n lateral, preguntar por Jorge..."
                       />
                     </div>
 
@@ -1504,9 +1504,9 @@ export default function PublicQuotePage() {
                         <div>
                           <span className="text-sm font-bold text-dropit-950 flex items-center gap-1.5">
                             <Zap size={14} className={form.urgent ? "text-red-500" : "text-dropit-400"} />
-                            Cotización urgente
+                            CotizaciÃ³n urgente
                           </span>
-                          <p className="text-xs text-dropit-500 mt-0.5">Prioridad inmediata — respuesta en menos de 30 minutos</p>
+                          <p className="text-xs text-dropit-500 mt-0.5">Prioridad inmediata â€” respuesta en menos de 30 minutos</p>
                         </div>
                         <input type="checkbox" className="sr-only" checked={form.urgent} onChange={e => update("urgent", e.target.checked)} />
                       </label>
@@ -1523,7 +1523,7 @@ export default function PublicQuotePage() {
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-dropit-950">Medidas por bulto</h3>
-                        <p className="text-xs text-dropit-600">Opcional — para cotización más exacta</p>
+                        <p className="text-xs text-dropit-600">Opcional â€” para cotizaciÃ³n mÃ¡s exacta</p>
                       </div>
                     </div>
                     <button
@@ -1538,7 +1538,7 @@ export default function PublicQuotePage() {
 
                   {bultos.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-dropit-300 py-6 text-center text-sm text-dropit-500">
-                      Sin medidas — haz clic en "Agregar bulto" si quieres detallar dimensiones
+                      Sin medidas â€” haz clic en "Agregar bulto" si quieres detallar dimensiones
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -1591,7 +1591,7 @@ export default function PublicQuotePage() {
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-dropit-950">Fotos de la carga <span className="text-xs font-normal text-dropit-500">(opcional)</span></h3>
-                      <p className="text-xs text-dropit-500">Capacidad máxima: {MAX_PHOTOS} fotos de envío</p>
+                      <p className="text-xs text-dropit-500">Capacidad mÃ¡xima: {MAX_PHOTOS} fotos de envÃ­o</p>
                     </div>
                   </div>
                   {images.length > 0 && (
@@ -1601,7 +1601,7 @@ export default function PublicQuotePage() {
                   )}
                 </div>
 
-                {/* Thumbnails row — fotos ya agregadas */}
+                {/* Thumbnails row â€” fotos ya agregadas */}
                 {images.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-2">
                     {images.map((img, idx) => (
@@ -1620,7 +1620,7 @@ export default function PublicQuotePage() {
                   </div>
                 )}
 
-                {/* Upload zone — solo si hay espacio */}
+                {/* Upload zone â€” solo si hay espacio */}
                 {images.length < MAX_PHOTOS && (
                   <label
                     className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition-all ${
@@ -1638,9 +1638,9 @@ export default function PublicQuotePage() {
                       <>
                         <Camera size={22} className="text-dropit-400" />
                         <p className="text-sm font-semibold text-dropit-600">
-                          {images.length === 0 ? "Agregar fotos de la carga" : `Agregar más · ${MAX_PHOTOS - images.length} disponible${MAX_PHOTOS - images.length !== 1 ? "s" : ""}`}
+                          {images.length === 0 ? "Agregar fotos de la carga" : `Agregar mÃ¡s Â· ${MAX_PHOTOS - images.length} disponible${MAX_PHOTOS - images.length !== 1 ? "s" : ""}`}
                         </p>
-                        <p className="text-xs text-dropit-400">JPG, PNG — toca para seleccionar o arrastra aquí</p>
+                        <p className="text-xs text-dropit-400">JPG, PNG â€” toca para seleccionar o arrastra aquÃ­</p>
                       </>
                     )}
                     <input
@@ -1682,7 +1682,7 @@ export default function PublicQuotePage() {
                   <p className="text-sm text-dropit-700">
                     Al enviar aceptas nuestra{" "}
                     <a href="/privacidad" className="font-semibold text-dropit-accent hover:underline">
-                      política de privacidad
+                      polÃ­tica de privacidad
                     </a>
                   </p>
                   <button
@@ -1698,7 +1698,7 @@ export default function PublicQuotePage() {
                     ) : (
                       <>
                         <Send size={18} />
-                        Solicitar cotización gratis
+                        Solicitar cotizaciÃ³n gratis
                       </>
                     )}
                   </button>
@@ -1709,13 +1709,13 @@ export default function PublicQuotePage() {
         </div>
       </section>
 
-      {/* ─── MAPA ─── */}
+      {/* â”€â”€â”€ MAPA â”€â”€â”€ */}
       <section id="mapa" className="bg-dropit-950 px-4 py-12 sm:py-20" style={{ isolation: "isolate" }}>
         <div className="mx-auto max-w-5xl">
           <div className="mb-8 text-center">
             <p className="text-sm font-bold uppercase tracking-widest text-dropit-accent">Cobertura nacional</p>
             <h2 className="mt-2 text-2xl sm:text-4xl font-black text-white">De Arica a Punta Arenas</h2>
-            <p className="mt-3 text-dropit-400">Una red de despacho que cubre los 4.300 km de Chile — sin excepciones</p>
+            <p className="mt-3 text-dropit-400">Una red de despacho que cubre los 4.300 km de Chile â€” sin excepciones</p>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-dropit-accent/10">
@@ -1724,10 +1724,10 @@ export default function PublicQuotePage() {
 
           <div className="mt-6 grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
             {[
-              { val: "17", suffix: " ciudades", label: "Nodos de cobertura", icon: "📍" },
-              { val: "4.300", suffix: " km", label: "Arica → Punta Arenas", icon: "🛣️" },
-              { val: "<1", suffix: "h", label: "Cotización garantizada", icon: "⚡" },
-              { val: "24/7", suffix: "", label: "Seguimiento en tiempo real", icon: "📡" },
+              { val: "17", suffix: " ciudades", label: "Nodos de cobertura", icon: "ðŸ“" },
+              { val: "4.300", suffix: " km", label: "Arica â†’ Punta Arenas", icon: "ðŸ›£ï¸" },
+              { val: "<1", suffix: "h", label: "CotizaciÃ³n garantizada", icon: "âš¡" },
+              { val: "24/7", suffix: "", label: "Seguimiento en tiempo real", icon: "ðŸ“¡" },
             ].map(({ val, suffix, label, icon }) => (
               <div key={label} className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/8 transition-colors">
                 <p className="text-2xl">{icon}</p>
@@ -1739,7 +1739,7 @@ export default function PublicQuotePage() {
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
+      {/* â”€â”€â”€ FOOTER â”€â”€â”€ */}
       <footer className="border-t border-dropit-200 bg-dropit-950 px-4 py-12 text-white">
         <div className="mx-auto max-w-5xl">
           <div className="flex flex-col gap-8 md:flex-row md:justify-between">
@@ -1754,22 +1754,22 @@ export default function PublicQuotePage() {
                 </span>
               </div>
               <p className="max-w-xs text-sm text-dropit-500">
-                Fletes, última milla y distribución con tecnología de primer nivel en todo Chile.
+                Fletes, Ãºltima milla y distribuciÃ³n con tecnologÃ­a de primer nivel en todo Chile.
               </p>
             </div>
 
             {/* Links */}
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-dropit-400">Navegación</p>
-              <a href="#como-funciona" className="text-sm text-dropit-500 hover:text-white transition-colors">Cómo funciona</a>
-              <a href="#formulario" className="text-sm text-dropit-500 hover:text-white transition-colors">Solicitar cotización</a>
+              <p className="text-xs font-bold uppercase tracking-widest text-dropit-400">NavegaciÃ³n</p>
+              <a href="#como-funciona" className="text-sm text-dropit-500 hover:text-white transition-colors">CÃ³mo funciona</a>
+              <a href="#formulario" className="text-sm text-dropit-500 hover:text-white transition-colors">Solicitar cotizaciÃ³n</a>
               <a href="#mapa" className="text-sm text-dropit-500 hover:text-white transition-colors">Cobertura</a>
-              <a href="/privacidad" className="text-sm text-dropit-500 hover:text-white transition-colors">Política de privacidad</a>
+              <a href="/privacidad" className="text-sm text-dropit-500 hover:text-white transition-colors">PolÃ­tica de privacidad</a>
             </div>
 
-            {/* Social + contact — centered */}
+            {/* Social + contact â€” centered */}
             <div className="flex flex-col items-center gap-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-dropit-400">Síguenos</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-dropit-400">SÃ­guenos</p>
               <div className="flex items-center justify-center gap-4">
                 {/* Instagram */}
                 <a href="https://www.instagram.com/dropit.service?igsh=MThpdnhmOG1zOGc4eg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer"
@@ -1791,14 +1791,14 @@ export default function PublicQuotePage() {
                   <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 </a>
               </div>
-              {/* WhatsApp CTA — centered */}
+              {/* WhatsApp CTA â€” centered */}
               <a
                 href="https://api.whatsapp.com/send?phone=56950979687&text=Hola%2C%20%F0%9F%91%8B%20%0AQuisiera%20informaci%C3%B3n%20sobre%20sus%20servicios...%0AGracias!!%20%F0%9F%98%80"
                 target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                Escríbenos por WhatsApp
+                EscrÃ­benos por WhatsApp
               </a>
             </div>
           </div>
@@ -1806,7 +1806,7 @@ export default function PublicQuotePage() {
           {/* Bottom bar */}
           <div className="mt-8 border-t border-white/10 pt-6 text-center">
             <p className="text-xs text-dropit-600">
-              © 2026 DropIt Service · Santiago, Chile · Fletes y distribución con tecnología de primer nivel
+              Â© 2026 DropIt Service Â· Santiago, Chile Â· Fletes y distribuciÃ³n con tecnologÃ­a de primer nivel
             </p>
           </div>
         </div>

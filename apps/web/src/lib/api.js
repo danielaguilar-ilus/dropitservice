@@ -1,6 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+﻿const API_URL = import.meta.env.VITE_API_URL || "/api";
 
-// ─── Session helpers ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Session helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // El login persiste el email en localStorage para que las llamadas a /users
 // (que requieren X-User-Email) puedan identificar al actor sin estado global.
 const CURRENT_EMAIL_KEY = "dropit-current-email";
@@ -25,7 +25,7 @@ export function setCurrentUserEmail(email) {
 async function request(path, options = {}) {
   // IMPORTANTE: extraer headers de options ANTES del spread. Si hacemos
   // `{ headers: {...}, ...options }`, el spread re-inyecta options.headers y
-  // pisa el merge — perdiendo Content-Type cuando el caller pasa headers
+  // pisa el merge â€” perdiendo Content-Type cuando el caller pasa headers
   // (p.ej. withActor()). Eso dejaba el body sin parsear en el backend.
   const { headers: callerHeaders, ...rest } = options;
   const response = await fetch(`${API_URL}${path}`, {
@@ -48,7 +48,7 @@ async function request(path, options = {}) {
   return payload;
 }
 
-// ─── Helper: añade X-User-Email cuando hay sesión ────────────────────────────
+// â”€â”€â”€ Helper: aÃ±ade X-User-Email cuando hay sesiÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function withActor(headers = {}) {
   const email = getCurrentUserEmail();
   if (email) return { ...headers, "X-User-Email": email };
@@ -93,7 +93,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getTracking: (code) => request(`/tracking/${code}`),
-  // ─── Quote acceptance ───────────────────────────────────────────────────────
+  // â”€â”€â”€ Quote acceptance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   acceptQuoteManual: (requestId) =>
     request(`/quote-requests/${requestId}/accept-manual`, { method: "PATCH", body: JSON.stringify({}) }),
   getPublicQuote: (requestId, token) =>
@@ -110,7 +110,7 @@ export const api = {
   sendWhatsApp: (payload) =>
     request("/whatsapp/send", { method: "POST", body: JSON.stringify(payload), headers: withActor() }),
 
-  // ─── Users management (require super_admin) ────────────────────────────────
+  // â”€â”€â”€ Users management (require super_admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   listUsers: () =>
     request("/users", { headers: withActor() }),
   createUser: (payload) =>

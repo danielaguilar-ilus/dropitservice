@@ -1,4 +1,4 @@
-import {
+﻿import {
   AlertCircle, Camera, CheckCircle2, ChevronDown, ChevronRight,
   Clock, MapPin, Navigation, Package, Phone, Truck, User, X, Pen,
   Play, RotateCw, Satellite,
@@ -6,18 +6,18 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import DriverNavigationMode from "./DriverNavigationMode";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
-// ─── Razones de fallo (editables por admin en localStorage) ──────────────────
+// â”€â”€â”€ Razones de fallo (editables por admin en localStorage) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DEFAULT_FAILURE_REASONS = [
   "Local cerrado",
-  "Dirección incorrecta / no encontrada",
+  "DirecciÃ³n incorrecta / no encontrada",
   "Cliente desconoce el pedido",
   "Cliente no se encontraba",
   "Acceso no permitido al edificio",
-  "El cliente rechazó el pedido",
+  "El cliente rechazÃ³ el pedido",
   "Problema con el pago",
-  "Carga dañada en tránsito",
+  "Carga daÃ±ada en trÃ¡nsito",
   "Otro (especificar en observaciones)",
 ];
 
@@ -28,7 +28,7 @@ function getFailureReasons() {
   } catch { return DEFAULT_FAILURE_REASONS; }
 }
 
-// ─── Signature Pad ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Signature Pad â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SignaturePad({ onChange }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
@@ -103,19 +103,19 @@ function SignaturePad({ onChange }) {
         {!hasSignature && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <p className="flex items-center gap-1.5 text-sm text-slate-300">
-              <Pen size={14} />Firme aquí
+              <Pen size={14} />Firme aquÃ­
             </p>
           </div>
         )}
       </div>
       <button type="button" onClick={clear} className="mt-1 text-[10px] font-semibold text-slate-400 hover:text-red-500 transition-colors">
-        ✕ Limpiar firma
+        âœ• Limpiar firma
       </button>
     </div>
   );
 }
 
-// ─── Delivery Confirmation Modal ──────────────────────────────────────────────
+// â”€â”€â”€ Delivery Confirmation Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DeliveryModal({ stop, onClose, onConfirm }) {
   const [photos, setPhotos] = useState([]);
   const [signature, setSignature] = useState("");
@@ -162,7 +162,7 @@ function DeliveryModal({ stop, onClose, onConfirm }) {
           {/* Photos */}
           <div>
             <label className="mb-2 block text-xs font-bold text-slate-700">
-              📸 Fotos del pedido entregado *
+              ðŸ“¸ Fotos del pedido entregado *
               {errors.photos && <span className="ml-2 text-red-500">{errors.photos}</span>}
             </label>
             <div className="flex flex-wrap gap-3">
@@ -171,7 +171,7 @@ function DeliveryModal({ stop, onClose, onConfirm }) {
                   <img src={src} alt="" className="h-24 w-24 rounded-xl object-cover border border-slate-200 shadow-sm" />
                   <button type="button" onClick={() => setPhotos(p => p.filter((_, i) => i !== idx))}
                     className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow text-[10px] font-bold">
-                    ✕
+                    âœ•
                   </button>
                 </div>
               ))}
@@ -215,7 +215,7 @@ function DeliveryModal({ stop, onClose, onConfirm }) {
 
           {/* Signature */}
           <div>
-            <label className="mb-2 block text-xs font-bold text-slate-700">✍️ Firma del receptor</label>
+            <label className="mb-2 block text-xs font-bold text-slate-700">âœï¸ Firma del receptor</label>
             <SignaturePad onChange={setSignature} />
           </div>
 
@@ -225,7 +225,7 @@ function DeliveryModal({ stop, onClose, onConfirm }) {
             <textarea
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
               rows={2}
-              placeholder="Ej: Dejado en conserjería, entregado a portero..."
+              placeholder="Ej: Dejado en conserjerÃ­a, entregado a portero..."
               value={observations}
               onChange={e => setObservations(e.target.value)}
             />
@@ -248,7 +248,7 @@ function DeliveryModal({ stop, onClose, onConfirm }) {
   );
 }
 
-// ─── Failure Modal ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Failure Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FailureModal({ stop, onClose, onConfirm }) {
   const reasons = getFailureReasons();
   const [selected, setSelected] = useState("");
@@ -316,7 +316,7 @@ function FailureModal({ stop, onClose, onConfirm }) {
                 <div key={i} className="relative group">
                   <img src={src} className="h-16 w-16 rounded-lg object-cover border border-slate-200" />
                   <button type="button" onClick={() => setPhotos(p => p.filter((_, j) => j !== i))}
-                    className="absolute -top-1 -right-1 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[8px]">✕</button>
+                    className="absolute -top-1 -right-1 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[8px]">âœ•</button>
                 </div>
               ))}
               {photos.length < 2 && (
@@ -346,7 +346,7 @@ function FailureModal({ stop, onClose, onConfirm }) {
   );
 }
 
-// ─── Route Detail View ────────────────────────────────────────────────────────
+// â”€â”€â”€ Route Detail View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
   const [deliveryModal, setDeliveryModal] = useState(null); // stop object
   const [failureModal, setFailureModal] = useState(null);
@@ -418,7 +418,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
   const completedCount = stops.filter(s => getStopStatus(s.id) === "entregado").length;
   const allDone = completedCount === stops.length;
 
-  // ── Full-screen GPS navigation mode ─────────────────────────────────────────
+  // â”€â”€ Full-screen GPS navigation mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (navigationMode) {
     return (
       <DriverNavigationMode
@@ -463,7 +463,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
         <div className="flex-1">
           <h3 className="font-bold text-slate-800">{route.name || route.id}</h3>
           <p className="text-xs text-slate-500">
-            {route.truckName} · {route.driverName} · {stops.length} paradas · {route.plannedDate}
+            {route.truckName} Â· {route.driverName} Â· {stops.length} paradas Â· {route.plannedDate}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -483,12 +483,12 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold text-slate-800">
-              {routeStarted ? "🚛 Ruta en progreso" : "¿Listo para salir?"}
+              {routeStarted ? "ðŸš› Ruta en progreso" : "Â¿Listo para salir?"}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
               {routeStarted
                 ? `${completedCount}/${stops.length} paradas completadas`
-                : `${stops.length} paradas · GPS en tiempo real`}
+                : `${stops.length} paradas Â· GPS en tiempo real`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -505,7 +505,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
               }}
               className="flex items-center gap-2 rounded-xl bg-dropit-accent px-5 py-2.5 text-sm font-bold text-white hover:bg-dropit-accent/90 shadow-md shadow-dropit-accent/30 transition-all">
               <Navigation size={15} />
-              {routeStarted ? "Abrir GPS" : "🚀 Iniciar ruta GPS"}
+              {routeStarted ? "Abrir GPS" : "ðŸš€ Iniciar ruta GPS"}
             </button>
           </div>
         </div>
@@ -532,7 +532,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
                 <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
                   isDone ? "bg-emerald-500" : isFailed ? "bg-red-400" : isActive ? "bg-dropit-accent animate-pulse" : "bg-slate-300"
                 }`}>
-                  {isDone ? "✓" : isFailed ? "✕" : idx + 1}
+                  {isDone ? "âœ“" : isFailed ? "âœ•" : idx + 1}
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -553,7 +553,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
                   </div>
 
                   <div className="mt-1.5 flex gap-3 text-[10px] text-slate-400">
-                    <span><Package size={9} className="inline mr-0.5" />{stop.packages} bultos · {stop.estimatedWeightKg} kg</span>
+                    <span><Package size={9} className="inline mr-0.5" />{stop.packages} bultos Â· {stop.estimatedWeightKg} kg</span>
                     {stop.cargoDescription && <span className="truncate max-w-[200px]">{stop.cargoDescription}</span>}
                   </div>
 
@@ -562,7 +562,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
                     <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
                       <CheckCircle2 size={12} />Entregado confirmado
                       {stopStatuses[stop.id]?.deliveryData?.recipientName && (
-                        <span className="text-emerald-500"> · Recibió: {stopStatuses[stop.id].deliveryData.recipientName}</span>
+                        <span className="text-emerald-500"> Â· RecibiÃ³: {stopStatuses[stop.id].deliveryData.recipientName}</span>
                       )}
                     </div>
                   )}
@@ -601,7 +601,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
       {allDone && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
           <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-500" />
-          <p className="font-bold text-emerald-800">¡Ruta completada!</p>
+          <p className="font-bold text-emerald-800">Â¡Ruta completada!</p>
           <p className="text-sm text-emerald-600">{completedCount} de {stops.length} entregas exitosas</p>
         </div>
       )}
@@ -609,7 +609,7 @@ function RouteDetailView({ route, requests, onBack, onUpdateStop }) {
   );
 }
 
-// ─── Route Card (list view) ───────────────────────────────────────────────────
+// â”€â”€â”€ Route Card (list view) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RouteCard({ route, requests, onOpen }) {
   const stops = (route.orderedRequestIds || route.requestIds || [])
     .map(id => requests.find(r => r.id === id)).filter(Boolean);
@@ -629,7 +629,7 @@ function RouteCard({ route, requests, onOpen }) {
           <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
           <div>
             <p className="font-bold text-slate-800">{route.name || route.id}</p>
-            <p className="text-xs text-slate-500">{route.plannedDate} · {route.driverName}</p>
+            <p className="text-xs text-slate-500">{route.plannedDate} Â· {route.driverName}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -650,18 +650,18 @@ function RouteCard({ route, requests, onOpen }) {
           {stops.slice(0, 3).map((stop, i) => (
             <div key={stop.id} className="flex items-center gap-2 text-xs text-slate-500">
               <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold">{i + 1}</span>
-              <span className="truncate">{stop.customerName} — {stop.deliveryAddress}</span>
+              <span className="truncate">{stop.customerName} â€” {stop.deliveryAddress}</span>
               {stop.status === "Entregado" && <CheckCircle2 size={10} className="flex-shrink-0 text-emerald-500" />}
             </div>
           ))}
-          {stops.length > 3 && <p className="text-[10px] text-slate-400">+{stops.length - 3} paradas más</p>}
+          {stops.length > 3 && <p className="text-[10px] text-slate-400">+{stops.length - 3} paradas mÃ¡s</p>}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function DriversRouteView({ currentUser, routes = [], requests = [], trucks = [] }) {
   const isSuperAdmin = ["super_admin", "admin"].includes(currentUser?.role);
   const [driverFilter, setDriverFilter] = useState("all");
@@ -711,7 +711,7 @@ export default function DriversRouteView({ currentUser, routes = [], requests = 
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-dropit-accent">Logística</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-dropit-accent">LogÃ­stica</p>
         <h2 className="text-2xl font-black text-slate-800">Rutas de conductores</h2>
       </div>
 
@@ -756,7 +756,7 @@ export default function DriversRouteView({ currentUser, routes = [], requests = 
         <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white">
           <Truck size={28} className="mb-3 text-slate-300" />
           <p className="text-sm font-bold text-slate-500">Sin rutas para los filtros seleccionados</p>
-          <p className="text-xs text-slate-400 mt-1">Las rutas aparecen aquí al planificarlas en el módulo de Rutas</p>
+          <p className="text-xs text-slate-400 mt-1">Las rutas aparecen aquÃ­ al planificarlas en el mÃ³dulo de Rutas</p>
         </div>
       ) : (
         <div className="space-y-3">
