@@ -151,6 +151,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
               <input
                 id="email"
                 type="email"
+                name="email"
                 className="input-base"
                 placeholder="tu@empresa.cl"
                 value={credentials.email}
@@ -175,6 +176,7 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
                 <input
                   id="password"
                   type={showPw ? "text" : "password"}
+                  name="password"
                   className="input-base pr-11"
                   placeholder="••••••••"
                   value={credentials.password}

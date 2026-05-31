@@ -1,8 +1,9 @@
-﻿import {
+import {
   AlertTriangle, Camera, CheckCircle2, Clock, Download, FileText,
   Mail, MessageSquare, Phone, Send, Truck, User, X, Zap,
   MapPin, Package, RefreshCw, Bell, ZoomIn, Eye, ThumbsUp, Trash2,
   ChevronLeft, ChevronRight, Lock, Pencil, Check, Inbox, Wrench,
+  Route as RouteIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "../lib/messageLog";
@@ -30,7 +31,7 @@ const RM_COMUNAS = new Set([
   "Curacaví","El Bosque","El Monte","Estación Central","Huechuraba","Independencia",
   "Isla de Maipo","La Cisterna","La Florida","La Granja","La Pintana","La Reina",
   "Lampa","Las Condes","Lo Barnechea","Lo Espejo","Lo Prado","Macul","Maipú",
-  "María Pinto","Melipilla","Ã‘uñoa","Padre Hurtado","Paine","Pedro Aguirre Cerda",
+  "María Pinto","Melipilla","Ñuñoa","Padre Hurtado","Paine","Pedro Aguirre Cerda",
   "Peñaflor","Peñalolén","Pirque","Providencia","Pudahuel","Puente Alto","Quilicura",
   "Quinta Normal","Recoleta","Renca","San Bernardo","San Joaquín","San José de Maipo",
   "San Miguel","San Pedro","Santiago","Talagante","Tiltil","Vitacura",
@@ -795,7 +796,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     {req.emailSent && <span className="flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-600"><Mail size={9} />Email</span>}
                     {req.whatsappSent && <span className="flex items-center gap-1 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[10px] font-bold text-green-600"><MessageSquare size={9} />WA</span>}
                     {req.urgent && <span className="flex items-center gap-1 rounded-full bg-red-50 border border-red-300 px-2 py-0.5 text-[10px] font-bold text-red-600 animate-pulse">âš¡ Urgente</span>}
-                    {(req.avionetaCount > 0 || req.avioneta) && <span className="flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-600">ðŸ§‘â€ðŸ­ {req.avionetaCount > 1 ? `${req.avionetaCount}Ã— ` : ""}Peoneta</span>}
+                    {(req.avionetaCount > 0 || req.avioneta) && <span className="flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-600">ðŸ§‘â€ðŸ­ {req.avionetaCount > 1 ? `${req.avionetaCount}× ` : ""}Peoneta</span>}
                     {req.distanceKm && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{req.distanceKm} km</span>}
                   </div>
                 </button>
@@ -997,6 +998,32 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                       />
                     );
                   })()}
+                  {/* Desglose por tramo — solo cuando hay múltiples destinos y el payload guardó legs */}
+                  {Array.isArray(selected.legs) && selected.legs.length > 1 && (
+                    <div className="sm:col-span-2">
+                      <div className="rounded-lg border border-dropit-200 bg-dropit-50 px-4 py-3">
+                        <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-dropit-600">
+                          <RouteIcon size={11} /> Desglose por tramo
+                        </p>
+                        <div className="space-y-1">
+                          {selected.legs.map((leg, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs text-dropit-700">
+                              <span className="flex items-center gap-1.5">
+                                <MapPin size={11} className="flex-shrink-0 text-dropit-accent" />
+                                <span>{leg.from} → {leg.to}</span>
+                              </span>
+                              <span className="font-bold tabular-nums">{leg.distanceKm} km</span>
+                            </div>
+                          ))}
+                          <div className="mt-1.5 flex items-center justify-between border-t border-dropit-200 pt-1.5 text-xs font-black text-dropit-950">
+                            <span>Total ruta</span>
+                            <span className="tabular-nums text-dropit-accent">{selected.distanceKm} km</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="sm:col-span-2">
                     <ReadOnlyCard icon={Package} label="Descripción" value={selected.cargoDescription} />
                   </div>
@@ -1102,7 +1129,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-orange-100">Tu trabajo</p>
                       <h4 className="font-black text-white text-base leading-tight">
-                        {updateMode ? "MODIFICAR COTIZACIÃ“N" : "CONSTRUYE Y ENVÃA LA COTIZACIÃ“N"}
+                        {updateMode ? "MODIFICAR COTIZACIÓN" : "CONSTRUYE Y ENVÍA LA COTIZACIÓN"}
                       </h4>
                     </div>
                   </div>
@@ -1327,7 +1354,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                           {peonetaCount > 0 && (
                             <div className="col-span-full flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white border-2 border-amber-200 px-3 py-2 shadow-sm">
                               <span className="text-xs font-semibold text-slate-600">Subtotal peonetas</span>
-                              <strong className="text-base font-black text-amber-700">{peonetaCount} Ã— ${peonetaUnit.toLocaleString("es-CL")} = ${peonetaSubtotal.toLocaleString("es-CL")}</strong>
+                              <strong className="text-base font-black text-amber-700">{peonetaCount} × ${peonetaUnit.toLocaleString("es-CL")} = ${peonetaSubtotal.toLocaleString("es-CL")}</strong>
                             </div>
                           )}
                         </div>
@@ -1421,7 +1448,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
                             </div>
                             {peonetaCount > 0 && (
                               <div className="flex justify-between">
-                                <span className="text-slate-600">ðŸ§‘â€ðŸ­ Peonetas ({peonetaCount} Ã— ${peonetaUnit.toLocaleString("es-CL")})</span>
+                                <span className="text-slate-600">ðŸ§‘â€ðŸ­ Peonetas ({peonetaCount} × ${peonetaUnit.toLocaleString("es-CL")})</span>
                                 <strong className="text-slate-900">+${peonetaSubtotal.toLocaleString("es-CL")}</strong>
                               </div>
                             )}

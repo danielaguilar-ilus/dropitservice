@@ -1408,7 +1408,7 @@ export default function PublicQuotePage() {
 
       // order[posiciónDeVisita] = índiceOriginal del waypoint (origen incluido en pos 0).
 
-      let distanceM = null, geometry = null, order = null, optimized = false;
+      let distanceM = null, geometry = null, order = null, optimized = false, legs = [];
 
 
 
@@ -1447,6 +1447,13 @@ export default function PublicQuotePage() {
               if (typeof wp.waypoint_index === "number") order[wp.waypoint_index] = originalIdx;
 
             });
+
+            // Construir desglose por tramo desde los legs de OSRM
+            legs = (tripData.trips[0].legs || []).map((leg, i) => ({
+              from: i === 0 ? "Retiro" : `Entrega ${i}`,
+              to: `Entrega ${i + 1}`,
+              distanceKm: Math.round((leg.distance / 1000) * 10) / 10,
+            }));
 
             optimized = true;
 
@@ -1496,7 +1503,7 @@ export default function PublicQuotePage() {
 
       const price = calcPrice(distanceKm, form.estimatedWeightKg, isRM, form.avionetaCount);
 
-      setRouteInfo({ distanceKm, price, isRM, geometry, order, optimized });
+      setRouteInfo({ distanceKm, price, isRM, geometry, order, optimized, legs });
 
     } catch {
 
@@ -1655,6 +1662,8 @@ export default function PublicQuotePage() {
         requiredTime: form.requiredTime,
 
         distanceKm: routeInfo?.distanceKm,
+
+        legs: routeInfo?.legs || [],
 
         avionetaCount: form.avionetaCount,
 
@@ -2833,6 +2842,28 @@ export default function PublicQuotePage() {
                         </div>
 
                       </div>
+
+                      {/* Desglose de tramos — solo cuando hay múltiples destinos y OSRM devolvió legs */}
+                      {routeInfo.legs && routeInfo.legs.length > 1 && (
+                        <div className="border-b border-dropit-200 bg-dropit-50 px-4 py-3">
+                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-dropit-600">Desglose por tramo</p>
+                          <div className="space-y-1">
+                            {routeInfo.legs.map((leg, i) => (
+                              <div key={i} className="flex items-center justify-between text-xs text-dropit-700">
+                                <span className="flex items-center gap-1.5">
+                                  <MapPin size={11} className="flex-shrink-0 text-dropit-accent" />
+                                  <span>{leg.from} → {leg.to}</span>
+                                </span>
+                                <span className="font-bold tabular-nums">{leg.distanceKm} km</span>
+                              </div>
+                            ))}
+                            <div className="mt-1.5 flex items-center justify-between border-t border-dropit-200 pt-1.5 text-xs font-black text-dropit-950">
+                              <span>Total</span>
+                              <span className="tabular-nums">{routeInfo.distanceKm} km</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Ayudantes de carga */}
 
