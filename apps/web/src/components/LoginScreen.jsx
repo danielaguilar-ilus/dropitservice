@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { MapPin, Clock, Zap, Shield, ChevronRight, Truck } from "lucide-react";
+import { MapPin, Clock, Zap, Shield, ChevronRight, Truck, Eye, EyeOff } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
@@ -31,6 +31,7 @@ function useCarousel() {
 
 export default function LoginScreen({ credentials, onChange, onSubmit, error, loading }) {
   const { images, index } = useCarousel();
+  const [showPw, setShowPw] = useState(false);
   const hasCarousel = images.length > 0;
 
   return (
@@ -170,16 +171,27 @@ export default function LoginScreen({ credentials, onChange, onSubmit, error, lo
                   Â¿Olvidaste tu contraseÃ±a?
                 </button>
               </div>
-              <input
-                id="password"
-                type="password"
-                className="input-base"
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
-                value={credentials.password}
-                onChange={(e) => onChange("password", e.target.value)}
-                required
-                autoComplete="current-password"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPw ? "text" : "password"}
+                  className="input-base pr-11"
+                  placeholder="••••••••"
+                  value={credentials.password}
+                  onChange={(e) => onChange("password", e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-dropit-500 hover:text-dropit-accent transition-colors"
+                  tabIndex={-1}
+                  aria-label={showPw ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
             </div>
 
             {error && (
