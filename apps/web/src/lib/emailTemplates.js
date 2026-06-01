@@ -327,6 +327,14 @@ export function tplCotizacionConfirmada({
             ✅ <strong>Para confirmar el servicio</strong>, responde este correo o escríbenos a <a href="mailto:${supportEmail || "soporte@dropit.cl"}" style="color:${BRAND.accent};font-weight:700;text-decoration:none;">${supportEmail || "soporte@dropit.cl"}</a>.
           </p>
         </div>
+
+        <div style="text-align:center;margin:24px 0">
+          <a href="${confirmUrl || `https://dropitapi-production.up.railway.app/tracking?code=${trackingCode}`}"
+             style="display:inline-block;background:#F97316;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:16px">
+            Ver mi cotización online →
+          </a>
+          <p style="margin-top:8px;font-size:12px;color:#6b7280;font-family:Arial,sans-serif">También puedes abrir el archivo adjunto para ver el detalle completo</p>
+        </div>
       </td></tr>
     `)}
     ${footer(`

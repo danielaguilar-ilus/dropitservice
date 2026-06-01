@@ -486,4 +486,23 @@ router.patch("/:requestId/accept-manual", async (req, res) => {
   }
 });
 
+// GET /api/quote-requests/:id/pdf-view
+// Sirve el HTML de la cotización como página web viewable desde cualquier dispositivo.
+// No requiere autenticación — el trackingCode actúa como token de acceso.
+router.get("/:id/pdf-view", async (req, res) => {
+  try {
+    const requestData = HAS_DB
+      ? await db.findRequest(req.params.id)
+      : store.requests?.find(r => r.id === req.params.id);
+
+    if (!requestData) return res.status(404).send("Cotización no encontrada");
+
+    const trackingCode = requestData.trackingCode || requestData.tracking_code || req.params.id;
+    res.redirect(302, `${getPublicUrl()}/tracking?code=${trackingCode}&view=quote`);
+  } catch (err) {
+    console.error("[pdf-view] error:", err);
+    res.status(500).send("Error al cargar la cotización");
+  }
+});
+
 export default router;
