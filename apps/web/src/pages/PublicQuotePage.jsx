@@ -1095,17 +1095,14 @@ export default function PublicQuotePage() {
       if (!routeMapInstanceRef.current) {
 
         routeMapInstanceRef.current = L.map(routeMapRef.current, {
-
           center: [pickupCoords.lat, pickupCoords.lng], zoom: 12,
-
-          zoomControl: true, scrollWheelZoom: false,
-
+          zoomControl: true, scrollWheelZoom: true,
+          // Sin minZoom ni maxBounds — cubre toda Chile sin restricción
         });
 
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-
+        // Voyager tiles: mejor detalle en zoom bajo (rutas nacionales)
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
           attribution: '© <a href="https://openstreetmap.org">OSM</a> © <a href="https://carto.com">CARTO</a>',
-
           maxZoom: 19,
 
         }).addTo(routeMapInstanceRef.current);
@@ -1196,9 +1193,9 @@ export default function PublicQuotePage() {
 
       routeLayersRef.current = layers;
 
-      // Fit to the full route geometry for best detail
-
-      map.fitBounds(routeGeo.getBounds(), { padding: [50, 50], maxZoom: 15 });
+      // Fit automático sin límite de zoom — funciona para RM (zoom ~11)
+      // y para rutas largas como Santiago→Punta Arenas (zoom ~5)
+      map.fitBounds(routeGeo.getBounds(), { padding: [40, 40] });
 
     });
 
@@ -2931,7 +2928,12 @@ export default function PublicQuotePage() {
 
                       {/* Route map */}
 
-                      <div ref={routeMapRef} className="w-full" style={{ height: "420px", background: "#e8e8e0" }} />
+                      <div ref={routeMapRef} className="w-full" style={{
+                        // Altura dinámica: más alta para rutas largas (>200km = nacional)
+                        height: routeInfo && routeInfo.distanceKm > 200 ? "560px" : "420px",
+                        background: "#e8e8e0",
+                        transition: "height 0.3s ease"
+                      }} />
 
                     </div>
 
