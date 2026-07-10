@@ -228,7 +228,7 @@ function newQuoteEmailHtml(req) {
     ${req.avionetaCount > 0 ? `<div class="row"><span>Peonetas</span><span>${req.avionetaCount} peoneta${req.avionetaCount > 1 ? "s" : ""} solicitada${req.avionetaCount > 1 ? "s" : ""}</span></div>` : ""}
     ${req.distanceKm ? `<div class="row"><span>Distancia</span><span><strong>${req.distanceKm} km</strong></span></div>` : ""}
     <div class="row"><span>Recibida</span><span>${now}</span></div>
-    <a href="https://dropitapi-production.up.railway.app" class="btn">${isUrgent ? "⚡ Ir al panel ahora" : "📋 Ver cotización en el panel"}</a>
+    <a href="${getPublicUrl()}" class="btn">${isUrgent ? "⚡ Ir al panel ahora" : "📋 Ver cotización en el panel"}</a>
   </div>
   <div class="footer">Dropit Service · Notificación automática · No responder</div>
 </div></body></html>`;

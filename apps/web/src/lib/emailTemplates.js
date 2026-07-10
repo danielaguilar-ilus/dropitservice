@@ -238,7 +238,7 @@ export function tplEmpresaNuevaCotizacion({ customerName, rut, contactPhone, con
     ${footer(`
       <tr><td align="center" style="padding-bottom:12px;">
         <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,0.6);font-family:Arial,sans-serif;">Gestiona esta solicitud desde el panel operativo:</p>
-        ${button("📊 Abrir panel DropIt", "http://localhost:5173")}
+        ${button("📊 Abrir panel DropIt", typeof window !== "undefined" ? window.location.origin : "https://dropit.cl")}
       </td></tr>
       ${estimatedPrice ? `
       <tr><td align="center" style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.1);">
@@ -329,7 +329,7 @@ export function tplCotizacionConfirmada({
         </div>
 
         <div style="text-align:center;margin:24px 0">
-          <a href="${confirmUrl || `https://dropitapi-production.up.railway.app/tracking?code=${trackingCode}`}"
+          <a href="${confirmUrl || `${typeof window !== "undefined" ? window.location.origin : ""}/tracking?code=${trackingCode}`}"
              style="display:inline-block;background:#F97316;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:16px">
             Ver mi cotización online →
           </a>

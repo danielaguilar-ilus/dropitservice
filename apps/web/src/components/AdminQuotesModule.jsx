@@ -159,9 +159,14 @@ function buildPDFHtml(request, finalAmount, photos = []) {
        </div>`
     : "";
 
-  // CTAs
-  const urlAceptar  = `https://dropitapi-production.up.railway.app/tracking?code=${request.trackingCode}`;
-  const urlWhatsapp = `https://wa.me/56900000000?text=Hola, quiero aceptar la cotizaci%C3%B3n ${request.trackingCode}`;
+  // CTAs — use window.location.origin so they point to the live deployment
+  const _origin = typeof window !== "undefined" ? window.location.origin : "";
+  const urlAceptar  = `${_origin}/confirmar?id=${request.id}&tracking=${request.trackingCode}`;
+  const _phoneDigits = (request.contactPhone || "").replace(/\D/g, "");
+  const _waPhone    = _phoneDigits.startsWith("56") ? _phoneDigits : `56${_phoneDigits.replace(/^0/, "")}`;
+  const urlWhatsapp = _waPhone.length >= 10
+    ? `https://wa.me/${_waPhone}?text=Hola%20${encodeURIComponent(request.customerName)}%2C%20te%20contactamos%20por%20tu%20cotizaci%C3%B3n%20${request.trackingCode}`
+    : `https://wa.me/?text=Cotizaci%C3%B3n%20${request.trackingCode}`;
   const ctaTracking = request.trackingCode
     ? `<a href="${urlAceptar}" class="cta-btn btn-tracking">📍 Ver seguimiento online</a>`
     : "";
@@ -444,10 +449,9 @@ function buildPDFHtml(request, finalAmount, photos = []) {
 
   <!-- FOOTER -->
   <div class="footer">
-    <strong>DropIt Service</strong>
-    Transporte · Fletes · Última milla
+    <strong>${companyName}</strong>
+    Transporte · Fletes · Última milla · Santiago, Chile
     <br>Cotización generada el ${now}
-    <br>¿Dudas? dropitcontacto@gmail.com
   </div>
 </div>
 

@@ -80,4 +80,4 @@ export function createApp() {
   return app;
 }
 
-// deploy-trigger-2: fix API_URL localhost fallback
+// deploy-trigger-12: fix hardcoded URLs + PDF redesign + Cloud Run ready
