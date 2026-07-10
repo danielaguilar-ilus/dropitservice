@@ -1,41 +1,64 @@
 import { Router } from "express";
-import { sendMail, testConnection, updateSmtpConfig, getSmtpConfig, getActiveProvider } from "../services/mail.service.js";
+import {
+  sendMail,
+  testConnection,
+  updateSmtpConfig,
+  getSmtpConfig,
+  getSmtpConfigPublic,
+  getActiveProvider,
+  isMailConfigured,
+} from "../services/mail.service.js";
 
 const router = Router();
 
-// ─── GET current config (without password) ───────────────────────────────────
+// ─── GET current config (masked — no secrets exposed) ────────────────────────
 router.get("/config", (req, res) => {
-  const cfg = getSmtpConfig();
-  res.json({ ok: true, config: { ...cfg, pass: cfg.pass ? "••••••••" : "" } });
+  res.json({ ok: true, config: getSmtpConfigPublic() });
 });
 
-// ─── GET health — does SMTP have all required fields? ────────────────────────
-router.get("/health", (req, res) => {
+// ─── GET full config — superadmin only ───────────────────────────────────────
+router.get("/config/full", (req, res) => {
+  const user = req.user;
+  if (!user || user.role !== "superadmin") {
+    return res.status(403).json({ ok: false, message: "Solo superadmin puede ver esta configuración." });
+  }
   const cfg = getSmtpConfig();
-  const configured = !!(cfg.host && cfg.user && cfg.pass);
-  const active = getActiveProvider();
   res.json({
     ok: true,
-    activeProvider: active.provider,            // "resend" or "smtp"
-    activeDetail: active,
-    smtpConfigured: configured,
-    host: cfg.host || null,
-    user: cfg.user ? `${cfg.user.split("@")[0]}@***` : null,
-    hasPassword: !!cfg.pass,
-    fromName: cfg.fromName || null,
-    source: cfg.pass ? "configured" : "missing",
-    note: active.provider === "smtp"
-      ? "Railway suele bloquear puerto 587 outbound → emails pueden timeout. Configura RESEND_API_KEY para HTTPS API."
-      : "Resend HTTPS API activo — confiable en Railway.",
+    config: {
+      gmailUser:    cfg.gmailUser    || "",
+      clientId:     cfg.clientId     || "",
+      clientSecret: cfg.clientSecret ? "••••••••" : "",
+      refreshToken: cfg.refreshToken ? "••••••••" : "",
+      fromName:     cfg.fromName     || "",
+      hasClientId:  !!cfg.clientId,
+      hasSecret:    !!cfg.clientSecret,
+      hasToken:     !!cfg.refreshToken,
+    },
   });
 });
 
-// ─── POST update config ───────────────────────────────────────────────────────
+// ─── GET health ───────────────────────────────────────────────────────────────
+router.get("/health", (req, res) => {
+  const active = getActiveProvider();
+  res.json({
+    ok: true,
+    activeProvider: active.provider,
+    configured: active.configured,
+    user: active.user ? `${active.user.split("@")[0]}@***` : null,
+  });
+});
+
+// ─── POST update config — superadmin only ────────────────────────────────────
 router.post("/config", async (req, res) => {
+  const user = req.user;
+  if (!user || user.role !== "superadmin") {
+    return res.status(403).json({ ok: false, message: "Solo superadmin puede modificar esta configuración." });
+  }
   try {
-    const { host, port, secure, user, pass, fromName } = req.body;
-    await updateSmtpConfig({ host, port, secure, user, pass, fromName });
-    res.json({ ok: true, message: "Configuración SMTP actualizada." });
+    const { gmailUser, clientId, clientSecret, refreshToken, fromName } = req.body;
+    await updateSmtpConfig({ gmailUser, clientId, clientSecret, refreshToken, fromName });
+    res.json({ ok: true, message: "Configuración Gmail API actualizada." });
   } catch (err) {
     console.error("[mail/config POST] error:", err);
     res.status(500).json({ ok: false, message: err.message });
@@ -44,16 +67,13 @@ router.post("/config", async (req, res) => {
 
 // ─── POST test connection ─────────────────────────────────────────────────────
 router.post("/test", async (req, res) => {
-  const TIMEOUT_MS = 10_000;
+  const TIMEOUT_MS = 12_000;
   const timeoutPromise = new Promise((_, rej) =>
-    setTimeout(
-      () => rej(new Error(`Sin respuesta del servidor SMTP en ${TIMEOUT_MS / 1000}s. Verifica host, puerto y credenciales.`)),
-      TIMEOUT_MS,
-    )
+    setTimeout(() => rej(new Error(`Sin respuesta de Gmail en ${TIMEOUT_MS / 1000}s.`)), TIMEOUT_MS)
   );
   try {
     await Promise.race([testConnection(), timeoutPromise]);
-    res.json({ ok: true, message: "Conexión SMTP verificada correctamente." });
+    res.json({ ok: true, message: "Conexión Gmail API verificada correctamente." });
   } catch (err) {
     res.status(400).json({ ok: false, message: err.message });
   }
@@ -73,78 +93,34 @@ router.post("/send", async (req, res) => {
   }
 });
 
-// ─── GET diagnostic test-send — full Nodemailer detail in JSON response ──────
-// Usage: /api/mail/test-send?to=your-email@gmail.com
-// Defaults to SMTP_USER if no `to` provided. Returns full error stack on failure.
+// ─── GET diagnostic test-send ─────────────────────────────────────────────────
 router.get("/test-send", async (req, res) => {
   const startedAt = Date.now();
-  const cfg = getSmtpConfig();
-  const to = (req.query.to && String(req.query.to)) || cfg.user;
-  const config = {
-    host: cfg.host || null,
-    port: cfg.port || null,
-    secure: !!cfg.secure,
-    user: cfg.user || null,
-    fromName: cfg.fromName || null,
-    hasPassword: !!cfg.pass,
-    passwordLen: cfg.pass ? cfg.pass.length : 0,
-  };
+  const cfg = getSmtpConfigPublic();
+  const to = (req.query.to && String(req.query.to)) || cfg.gmailUser;
   if (!to) {
-    return res.status(400).json({
-      ok: false,
-      duration_ms: Date.now() - startedAt,
-      config,
-      error: { message: "No 'to' destination provided and SMTP_USER is empty." },
-    });
+    return res.status(400).json({ ok: false, error: { message: "No 'to' provided and GMAIL_USER is empty." } });
   }
   const subject = `[Dropit Diagnostic] Test send · ${new Date().toISOString()}`;
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:24px auto;padding:24px;border:1px solid #eee;border-radius:10px">
-      <h2 style="color:#f97316;margin:0 0 12px">Dropit · diagnóstico SMTP</h2>
-      <p>Si recibes este correo, el envío SMTP desde Railway funciona correctamente.</p>
+      <h2 style="color:#f97316;margin:0 0 12px">Dropit · diagnóstico Gmail API</h2>
+      <p>Si recibes este correo, Gmail API OAuth2 está funcionando correctamente.</p>
       <ul style="font-size:13px;color:#555">
-        <li><b>Host:</b> ${config.host}</li>
-        <li><b>Puerto:</b> ${config.port}</li>
-        <li><b>User:</b> ${config.user}</li>
+        <li><b>Cuenta:</b> ${cfg.gmailUser}</li>
+        <li><b>Proveedor:</b> Gmail OAuth2</li>
         <li><b>Generado:</b> ${new Date().toLocaleString("es-CL")}</li>
       </ul>
     </div>`;
-  const text = `Dropit diagnostic test send · host=${config.host} port=${config.port} user=${config.user} · sent ${new Date().toISOString()}`;
-
   try {
-    const info = await sendMail({ to, subject, html, text });
-    return res.json({
-      ok: true,
-      duration_ms: Date.now() - startedAt,
-      config,
-      to,
-      subject,
-      messageId: info.messageId,
-      response: info.response,
-      accepted: info.accepted,
-      rejected: info.rejected,
-      pending: info.pending,
-      envelope: info.envelope,
-    });
+    const info = await sendMail({ to, subject, html, text: "Dropit diagnostic test via Gmail API." });
+    return res.json({ ok: true, duration_ms: Date.now() - startedAt, to, subject, messageId: info.messageId });
   } catch (err) {
     return res.status(500).json({
       ok: false,
       duration_ms: Date.now() - startedAt,
-      config,
       to,
-      subject,
-      error: {
-        message: err.message,
-        code: err.code || null,
-        command: err.command || null,
-        response: err.response || null,
-        responseCode: err.responseCode || null,
-        errno: err.errno || null,
-        syscall: err.syscall || null,
-        address: err.address || null,
-        port: err.port || null,
-        stack: err.stack || null,
-      },
+      error: { message: err.message, code: err.code || null, stack: err.stack || null },
     });
   }
 });

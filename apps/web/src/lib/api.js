@@ -104,7 +104,8 @@ export const api = {
   sendEmail: (payload) =>
     request("/mail/send", { method: "POST", body: JSON.stringify(payload), headers: withActor() }),
   getMailHealth: () => request("/mail/health", { headers: withActor() }),
-  testSmtp: () => request("/mail/test", { method: "POST", headers: withActor() }),
+  getMailConfig: () => request("/mail/config", { headers: withActor() }),
+  testSmtp: () => request("/mail/test", { method: "POST", body: JSON.stringify({}), headers: withActor() }),
   updateSmtpConfig: (payload) =>
     request("/mail/config", { method: "POST", body: JSON.stringify(payload), headers: withActor() }),
   sendWhatsApp: (payload) =>

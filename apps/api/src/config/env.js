@@ -17,10 +17,10 @@ export const env = {
   contactEmail: process.env.CONTACT_EMAIL || "",
   // WhatsApp number for CTAs (full Chilean format: 569XXXXXXXX)
   waNumber: process.env.WA_NUMBER || "",
-  smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
-  smtpPort: Number(process.env.SMTP_PORT || 587),
-  smtpSecure: process.env.SMTP_SECURE === "true",
-  smtpUser: process.env.SMTP_USER || "",
-  smtpPass: process.env.SMTP_PASS || "",
   smtpFrom: process.env.SMTP_FROM || "DropIt Service",
+  // Gmail API (OAuth2) — preferred email provider
+  gmailUser:          process.env.GMAIL_USER           || "",
+  gmailClientId:      process.env.GMAIL_CLIENT_ID      || "",
+  gmailClientSecret:  process.env.GMAIL_CLIENT_SECRET  || "",
+  gmailRefreshToken:  process.env.GMAIL_REFRESH_TOKEN  || "",
 };

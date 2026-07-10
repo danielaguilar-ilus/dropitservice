@@ -1,81 +1,53 @@
 import nodemailer from "nodemailer";
-import { Resend } from "resend";
 import { env } from "../config/env.js";
 import { saveStore, store } from "../data/store.js";
 import * as db from "../data/db.js";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 
-// ─── Resend (HTTPS API — bypasses port 587 blocked by Railway) ───────────────
-// Sign up free at https://resend.com — 3000 emails/mes + 100/día sin tarjeta.
-// Set RESEND_API_KEY in Railway. Optional: RESEND_FROM (default = SMTP_USER).
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const RESEND_FROM    = process.env.RESEND_FROM    || "";
-const _resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
-if (_resend) {
-  console.log("[mail] Resend habilitado — usando HTTPS API");
-} else {
-  console.log("[mail] Resend NO configurado — fallback a SMTP (puede fallar en Railway por puerto 587 bloqueado)");
-}
-
 // ─── In-memory config — priority: env vars > DB > db.json > defaults ─────────
-// In Railway: set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM as
-// environment variables for permanent persistence across deploys.
-
 function loadFromStore() {
-  return store.media?.smtpConfig || null;
+  return store.media?.gmailConfig || null;
 }
 
-// Bootstrap config sincrónicamente con env vars + store fallback.
-// Si HAS_DB, intentamos hidratar desde Postgres en background.
 const saved = loadFromStore();
 let _cfg = {
-  host:     env.smtpHost     || saved?.host     || "smtp.gmail.com",
-  port:     env.smtpPort     || saved?.port     || 587,
-  secure:   env.smtpSecure   ?? saved?.secure   ?? false,
-  user:     env.smtpUser     || saved?.user     || "",
-  pass:     env.smtpPass     || saved?.pass     || "",
-  fromName: env.smtpFrom     || saved?.fromName || "DropIt Service",
+  gmailUser:      env.gmailUser      || saved?.gmailUser      || "",
+  clientId:       env.gmailClientId  || saved?.clientId       || "",
+  clientSecret:   env.gmailClientSecret || saved?.clientSecret || "",
+  refreshToken:   env.gmailRefreshToken || saved?.refreshToken  || "",
+  fromName:       env.smtpFrom       || saved?.fromName       || "DropIt Service",
 };
 
-// Hidrata desde DB en background (no bloquea el module load).
-// Solo aplica los valores faltantes (env vars siguen ganando).
+// Hidrata desde DB en background
 if (HAS_DB) {
-  db.getSetting("smtp")
+  db.getSetting("gmail")
     .then((dbCfg) => {
       if (!dbCfg) return;
-      if (!env.smtpHost && dbCfg.host)         _cfg.host     = dbCfg.host;
-      if (!env.smtpPort && dbCfg.port)         _cfg.port     = dbCfg.port;
-      if (env.smtpSecure === undefined && dbCfg.secure !== undefined) _cfg.secure = dbCfg.secure;
-      if (!env.smtpUser && dbCfg.user)         _cfg.user     = dbCfg.user;
-      if (!env.smtpPass && dbCfg.pass)         _cfg.pass     = dbCfg.pass;
-      if (!env.smtpFrom && dbCfg.fromName)     _cfg.fromName = dbCfg.fromName;
-      console.log("[mail] config hidratada desde settings.smtp");
+      if (!env.gmailUser         && dbCfg.gmailUser)      _cfg.gmailUser      = dbCfg.gmailUser;
+      if (!env.gmailClientId     && dbCfg.clientId)       _cfg.clientId       = dbCfg.clientId;
+      if (!env.gmailClientSecret && dbCfg.clientSecret)   _cfg.clientSecret   = dbCfg.clientSecret;
+      if (!env.gmailRefreshToken && dbCfg.refreshToken)   _cfg.refreshToken   = dbCfg.refreshToken;
+      if (!env.smtpFrom          && dbCfg.fromName)       _cfg.fromName       = dbCfg.fromName;
+      console.log("[mail] config Gmail hidratada desde settings.gmail");
     })
-    .catch((err) => console.warn("[mail] no se pudo leer settings.smtp:", err.message));
+    .catch((err) => console.warn("[mail] no se pudo leer settings.gmail:", err.message));
 }
 
-export async function updateSmtpConfig({ host, port, secure, user, pass, fromName }) {
-  if (host !== undefined)     _cfg.host     = host;
-  if (port !== undefined)     _cfg.port     = Number(port);
-  if (secure !== undefined)   _cfg.secure   = secure;
-  if (user !== undefined)     _cfg.user     = user;
-  if (pass !== undefined)     _cfg.pass     = pass;
-  if (fromName !== undefined) _cfg.fromName = fromName;
+export async function updateSmtpConfig({ gmailUser, clientId, clientSecret, refreshToken, fromName }) {
+  if (gmailUser     !== undefined) _cfg.gmailUser    = gmailUser;
+  if (clientId      !== undefined) _cfg.clientId     = clientId;
+  if (clientSecret  !== undefined) _cfg.clientSecret = clientSecret;
+  if (refreshToken  !== undefined) _cfg.refreshToken = refreshToken;
+  if (fromName      !== undefined) _cfg.fromName     = fromName;
 
-  // Persist to DB if available
   if (HAS_DB) {
-    try {
-      await db.setSetting("smtp", { ..._cfg });
-    } catch (err) {
-      console.warn("[mail] no se pudo persistir settings.smtp:", err.message);
-    }
+    try { await db.setSetting("gmail", { ..._cfg }); }
+    catch (err) { console.warn("[mail] no se pudo persistir settings.gmail:", err.message); }
   }
 
-  // Always also persist to store/db.json para mantener compatibilidad
-  // durante la transición (y por si DATABASE_URL desaparece después)
   if (!store.media) store.media = {};
-  store.media.smtpConfig = { ..._cfg };
+  store.media.gmailConfig = { ..._cfg };
   saveStore();
 }
 
@@ -85,179 +57,83 @@ export function getSmtpConfig() {
 
 function createTransport() {
   return nodemailer.createTransport({
-    host: _cfg.host,
-    port: _cfg.port,
-    secure: _cfg.secure,
+    service: "gmail",
     auth: {
-      user: _cfg.user,
-      pass: _cfg.pass,
+      type: "OAuth2",
+      user: _cfg.gmailUser,
+      clientId: _cfg.clientId,
+      clientSecret: _cfg.clientSecret,
+      refreshToken: _cfg.refreshToken,
     },
-    // ─── Force IPv4 ────────────────────────────────────────────────────────────
-    // Railway's outbound IPv6 to Gmail times out with ENETUNREACH on
-    // 2607:f8b0:...:587. Forcing family=4 + tls.servername fixes it.
-    family: 4,
-    tls: { servername: _cfg.host, minVersion: "TLSv1.2" },
-    connectionTimeout: 10_000,
-    greetingTimeout:   10_000,
-    socketTimeout:     20_000,
   });
-}
-
-// ─── Resend HTTPS sender — preferred path when RESEND_API_KEY is set ─────────
-async function sendViaResend({ to, subject, html, text, attachments }) {
-  // Resend requires a verified sender domain OR onboarding@resend.dev for free
-  // tier testing. We default to onboarding@resend.dev if RESEND_FROM not set —
-  // this works immediately but emails arrive as "via resend.dev".
-  // For production: verify your domain in Resend dashboard + set RESEND_FROM.
-  const fromAddress = RESEND_FROM
-    || `${_cfg.fromName} <onboarding@resend.dev>`;
-
-  console.log("[mail/resend] → enviando a:", to, "· from:", fromAddress, "· asunto:", subject);
-  const payload = {
-    from: fromAddress,
-    to: Array.isArray(to) ? to : [to],
-    subject,
-    html,
-    text,
-  };
-  if (attachments && attachments.length > 0) {
-    payload.attachments = attachments.map(a => ({
-      filename: a.filename,
-      content: a.content,
-    }));
-  }
-  const { data, error } = await _resend.emails.send(payload);
-  if (error) {
-    console.error("[mail/resend] ✗ Resend API error:", error);
-    const err = new Error(error.message || "Resend API error");
-    err.code = error.name || "RESEND_ERROR";
-    err.statusCode = error.statusCode;
-    err.fullError = error;
-    throw err;
-  }
-  console.log("[mail/resend] ✓ enviado · id:", data?.id);
-  return {
-    messageId: data?.id || `resend-${Date.now()}`,
-    response: "250 OK via Resend",
-    accepted: [to],
-    rejected: [],
-    pending: [],
-    envelope: { from: fromAddress, to: [to] },
-    provider: "resend",
-  };
 }
 
 export async function sendMail({ to, subject, html, text, attachments = [] }) {
-  // ─── 1. Try Resend first if configured (preferred — works on Railway) ──────
-  if (_resend) {
-    try {
-      return await sendViaResend({ to, subject, html, text, attachments });
-    } catch (resendErr) {
-      console.warn("[mail] Resend falló, intentando fallback SMTP:", resendErr.message);
-      // Only fall through to SMTP if it's an API/quota error, not auth.
-      // If SMTP is also broken (Railway port 587 blocked), this will fail too.
-      if (resendErr.statusCode === 401 || resendErr.statusCode === 403) {
-        // Bad API key — don't waste time on SMTP either; surface clearly.
-        throw resendErr;
-      }
-      // Continue to SMTP fallback for transient API errors.
-    }
-  }
-
-  // ─── 2. Fallback to SMTP (legacy path) ─────────────────────────────────────
-  if (!_cfg.host || !_cfg.user || !_cfg.pass) {
+  if (!_cfg.gmailUser || !_cfg.clientId || !_cfg.clientSecret || !_cfg.refreshToken) {
     const missing = [
-      !_cfg.host && "SMTP_HOST",
-      !_cfg.user && "SMTP_USER",
-      !_cfg.pass && "SMTP_PASS",
+      !_cfg.gmailUser    && "GMAIL_USER",
+      !_cfg.clientId     && "GMAIL_CLIENT_ID",
+      !_cfg.clientSecret && "GMAIL_CLIENT_SECRET",
+      !_cfg.refreshToken && "GMAIL_REFRESH_TOKEN",
     ].filter(Boolean).join(", ");
-    const err = new Error(`Ni Resend ni SMTP están configurados · SMTP faltan: ${missing}. Configura RESEND_API_KEY en Railway (recomendado)`);
+    const err = new Error(`Gmail API no configurado — faltan: ${missing}`);
     console.error("[mail] cannot send to", to, "→", err.message);
     throw err;
   }
+
   const transporter = createTransport();
-  // Verbose logging — dump transporter config (without password) before send
-  console.log("[mail] → transporter.options:", {
-    host: _cfg.host,
-    port: _cfg.port,
-    secure: _cfg.secure,
-    user: _cfg.user,
-    passLen: _cfg.pass ? _cfg.pass.length : 0,
-    fromName: _cfg.fromName,
-  });
-  console.log("[mail] → enviando a:", to, "· asunto:", subject);
+  console.log("[mail] → enviando via Gmail API a:", to, "· asunto:", subject);
+
   try {
     const info = await transporter.sendMail({
-      from: `"${_cfg.fromName}" <${_cfg.user}>`,
+      from: `"${_cfg.fromName}" <${_cfg.gmailUser}>`,
       to,
       subject,
       html,
       text,
       attachments,
     });
-    console.log("[mail] ✓ sent to", to, "·", subject, "·", info.messageId);
-    console.log("[mail] ✓ Nodemailer response:", {
-      messageId: info.messageId,
-      response: info.response,
-      accepted: info.accepted,
-      rejected: info.rejected,
-      pending: info.pending,
-      envelope: info.envelope,
-    });
+    console.log("[mail] ✓ enviado a", to, "·", info.messageId);
     return info;
   } catch (err) {
-    console.error("[mail] ✗ failed to", to, "·", err.message);
-    console.error("[mail] ✗ Nodemailer error details:", {
-      message: err.message,
-      code: err.code,
-      command: err.command,
-      response: err.response,
-      responseCode: err.responseCode,
-      errno: err.errno,
-      syscall: err.syscall,
-      address: err.address,
-      port: err.port,
-      stack: err.stack,
-    });
+    console.error("[mail] ✗ Gmail error a", to, "·", err.message);
     throw err;
   }
 }
 
 export async function testConnection() {
-  // If Resend is configured, verify by listing API keys (lightest possible call)
-  if (_resend) {
-    try {
-      // Resend doesn't have a dedicated ping endpoint; we attempt a domains
-      // list which validates the API key without consuming the email quota.
-      await _resend.domains.list();
-      return { ok: true, provider: "resend" };
-    } catch (err) {
-      console.error("[mail/resend] testConnection falló:", err.message);
-      throw err;
-    }
-  }
-  // SMTP fallback
   const transporter = createTransport();
   await transporter.verify();
-  return { ok: true, provider: "smtp" };
+  return { ok: true, provider: "gmail-oauth2" };
 }
 
-// Public helper for the diagnostic UI — tells operator which provider is active
+export function getSmtpConfigPublic() {
+  return {
+    gmailUser:    _cfg.gmailUser    || null,
+    fromName:     _cfg.fromName     || null,
+    hasClientId:  !!_cfg.clientId,
+    hasSecret:    !!_cfg.clientSecret,
+    hasToken:     !!_cfg.refreshToken,
+  };
+}
+
 export function getActiveProvider() {
-  if (_resend) return { provider: "resend", apiKeyLen: RESEND_API_KEY.length, fromConfigured: !!RESEND_FROM };
-  return { provider: "smtp", host: _cfg.host, port: _cfg.port, user: _cfg.user };
+  return {
+    provider: "gmail-oauth2",
+    user: _cfg.gmailUser || null,
+    configured: isMailConfigured(),
+  };
 }
 
-// True si HAY algún proveedor de correo capaz de enviar (Resend O SMTP completo).
-// Los handlers deben usar esto en lugar de chequear sólo SMTP — así Resend
-// funciona aunque no exista configuración SMTP.
 export function isMailConfigured() {
-  if (_resend) return true;
-  return !!(_cfg.host && _cfg.user && _cfg.pass);
+  return !!(
+    _cfg.gmailUser &&
+    _cfg.clientId &&
+    _cfg.clientSecret &&
+    _cfg.refreshToken
+  );
 }
 
-// Dirección "from" efectiva — usada como destino por defecto de notificaciones
-// internas al operador cuando no hay una bandeja de operador explícita.
 export function getOperatorInbox() {
-  return process.env.OPERATOR_EMAIL || _cfg.user || RESEND_FROM || "";
+  return process.env.OPERATOR_EMAIL || _cfg.gmailUser || "";
 }

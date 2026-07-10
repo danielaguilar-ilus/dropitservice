@@ -80,4 +80,4 @@ export function createApp() {
   return app;
 }
 
-// deploy-trigger-12: fix hardcoded URLs + PDF redesign + Cloud Run ready
+// deploy-trigger-13: gmail-api replaces resend + superadmin mail config

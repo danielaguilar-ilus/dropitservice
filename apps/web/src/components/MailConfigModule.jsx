@@ -1,16 +1,18 @@
 import {
   CheckCircle2,
-  ExternalLink,
   Eye,
   EyeOff,
   Globe,
   Info,
+  Key,
+  Lock,
   Mail,
   Phone,
+  RefreshCw,
   Save,
   Send,
-  Server,
   Settings,
+  ShieldCheck,
   Upload,
   User,
   X,
@@ -19,22 +21,12 @@ import { useState, useEffect } from "react";
 import { api } from "../lib/api";
 import { tplPrueba, getLogoUrl, getCompanyName } from "../lib/emailTemplates";
 
-const SMTP_KEY = "dropit-smtp-config";
 const CLIENT_KEY = "dropit-client-config";
 
 function loadStorage(key, defaults) {
   try { return { ...defaults, ...JSON.parse(localStorage.getItem(key) || "{}") }; }
   catch { return { ...defaults }; }
 }
-
-const SMTP_DEFAULTS = {
-  host: "smtp.gmail.com",
-  port: "587",
-  encryption: "TLS",
-  email: "",
-  password: "",
-  senderName: "DropIt Service",
-};
 
 const CLIENT_DEFAULTS = {
   companyName: "DropIt Service",
@@ -49,27 +41,8 @@ const CLIENT_DEFAULTS = {
   logoUrl: "/dropit-logo.jpeg",
 };
 
-// ─── Translate raw SMTP/Gmail errors to friendly Spanish messages ─────────────
-function friendlySmtpError(raw = "") {
-  if (!raw) return "Error al enviar. Verifica la configuración SMTP.";
-  const msg = raw.toLowerCase();
-  if (msg.includes("badcredentials") || msg.includes("username and password") || msg.includes("invalid login") || msg.includes("535")) {
-    return "Contraseña de aplicación inválida o expirada.\n\nSolución: Ve a myaccount.google.com → Seguridad → Contraseñas de aplicaciones, genera una nueva clave de 16 caracteres y pégala aquí en el campo Contraseña.";
-  }
-  if (msg.includes("smtp no configurado") || msg.includes("smtp_user") || msg.includes("smtp_pass")) {
-    return "SMTP incompleto. Ingresa tu correo y contraseña de aplicación arriba.";
-  }
-  if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("timeout") || msg.includes("sin respuesta")) {
-    return "⏱️ El test de conexión no obtuvo respuesta en el tiempo esperado.\n\nEsto es normal en entornos de producción donde el proveedor (Railway/Heroku) limita conexiones SMTP salientes.\n\n✅ Usa \"Enviar correo de prueba\" para verificar si el correo realmente funciona — el envío real puede funcionar aunque el test de conexión falle.";
-  }
-  if (msg.includes("certificate") || msg.includes("ssl") || msg.includes("tls")) {
-    return "Error de SSL/TLS. Cambia el cifrado a TLS y el puerto a 587.";
-  }
-  return raw;
-}
-
 // ─── Test Email Modal ──────────────────────────────────────────────────────────
-function TestEmailModal({ onClose, smtpConfig }) {
+function TestEmailModal({ onClose, fromName }) {
   const [to, setTo] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
@@ -81,15 +54,20 @@ function TestEmailModal({ onClose, smtpConfig }) {
       await api.sendEmail({
         to,
         subject: "Correo de prueba — DropIt Service",
-        html: tplPrueba({ templateSubject: "Verificación de configuración SMTP", senderName: smtpConfig.senderName, logoUrl: getLogoUrl(), companyName: getCompanyName() }),
-        text: "Correo de prueba — DropIt Service. La configuración SMTP está funcionando correctamente.",
+        html: tplPrueba({
+          templateSubject: "Verificación Gmail API",
+          senderName: fromName || "DropIt Service",
+          logoUrl: getLogoUrl(),
+          companyName: getCompanyName(),
+        }),
+        text: "Correo de prueba — DropIt Service. Gmail API funcionando correctamente.",
       });
       setSending(false);
       setResult({ ok: true, msg: `✅ Correo enviado a ${to} correctamente.` });
       setTimeout(() => onClose(), 3000);
     } catch (err) {
       setSending(false);
-      setResult({ ok: false, msg: friendlySmtpError(err.message) });
+      setResult({ ok: false, msg: err.message || "Error al enviar." });
     }
   }
 
@@ -113,10 +91,6 @@ function TestEmailModal({ onClose, smtpConfig }) {
               autoFocus
             />
           </div>
-          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">
-            <p><span className="font-semibold">Desde:</span> {smtpConfig.senderName || "DropIt Service"} &lt;{smtpConfig.email || "—"}&gt;</p>
-            <p className="mt-0.5"><span className="font-semibold">Servidor:</span> {smtpConfig.host || "—"}:{smtpConfig.port || "—"} ({smtpConfig.encryption || "—"})</p>
-          </div>
           {result && (
             <div className={`rounded-lg border px-3 py-2.5 text-sm ${
               result.ok ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
@@ -125,12 +99,6 @@ function TestEmailModal({ onClose, smtpConfig }) {
                 <CheckCircle2 size={15} className="mt-0.5 flex-shrink-0" />
                 <p className="whitespace-pre-line leading-relaxed">{result.msg}</p>
               </div>
-              {!result.ok && (
-                <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer"
-                  className="mt-2 flex items-center gap-1 text-xs font-bold text-dropit-accent hover:underline">
-                  <ExternalLink size={11} /> Generar App Password en Google →
-                </a>
-              )}
             </div>
           )}
           <div className="flex gap-2">
@@ -139,7 +107,9 @@ function TestEmailModal({ onClose, smtpConfig }) {
             </button>
             <button onClick={send} disabled={sending || !to.includes("@")}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-dropit-accent py-2.5 text-sm font-bold text-white hover:bg-dropit-accent/90 disabled:opacity-50">
-              {sending ? <><div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />Enviando...</> : <><Send size={14} />Enviar</>}
+              {sending
+                ? <><div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />Enviando...</>
+                : <><Send size={14} />Enviar</>}
             </button>
           </div>
         </div>
@@ -148,119 +118,179 @@ function TestEmailModal({ onClose, smtpConfig }) {
   );
 }
 
-// ─── SMTP Tab ──────────────────────────────────────────────────────────────────
-function SmtpTab() {
-  const [cfg, setCfg] = useState(() => loadStorage(SMTP_KEY, SMTP_DEFAULTS));
-  const [showPass, setShowPass] = useState(false);
+// ─── Gmail API Tab (superadmin only) ─────────────────────────────────────────
+function GmailApiTab() {
+  const [cfg, setCfg] = useState({
+    gmailUser: "",
+    clientId: "",
+    clientSecret: "",
+    refreshToken: "",
+    fromName: "DropIt Service",
+  });
+  const [show, setShow] = useState({ clientId: false, clientSecret: false, refreshToken: false });
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [showTestModal, setShowTestModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // On mount: push saved localStorage config to backend (covers server restarts)
   useEffect(() => {
-    const stored = loadStorage(SMTP_KEY, SMTP_DEFAULTS);
-    if (stored.email && stored.password) {
-      api.updateSmtpConfig({
-        host: stored.host,
-        port: stored.port,
-        secure: stored.encryption === "SSL",
-        user: stored.email,
-        pass: stored.password,
-        fromName: stored.senderName,
-      }).catch(() => {});
-    }
+    api.getMailConfig()
+      .then((d) => {
+        if (d?.config) {
+          setCfg((c) => ({
+            ...c,
+            gmailUser: d.config.gmailUser || "",
+            fromName:  d.config.fromName  || "DropIt Service",
+          }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   function update(k, v) { setCfg((c) => ({ ...c, [k]: v })); setSaved(false); setTestResult(null); }
+  function toggleShow(k) { setShow((s) => ({ ...s, [k]: !s[k] })); }
 
   async function save() {
-    localStorage.setItem(SMTP_KEY, JSON.stringify(cfg));
-    // Sync to backend so all subsequent emails use the new credentials
     try {
-      await api.updateSmtpConfig({
-        host: cfg.host,
-        port: cfg.port,
-        secure: cfg.encryption === "SSL",
-        user: cfg.email,
-        pass: cfg.password,
-        fromName: cfg.senderName,
-      });
-    } catch { /* backend may be down — localStorage still updated */ }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+      await api.updateSmtpConfig(cfg);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setTestResult({ ok: false, msg: err.message });
+    }
   }
 
   async function testConn() {
-    setTesting(true); setTestResult(null);
-    // 15-second client-side safety net (backend already has 10s timeout)
-    const clientTimeout = new Promise((_, rej) =>
-      setTimeout(() => rej(new Error("Sin respuesta en 15s. Revisa conexión y servidor SMTP.")), 15_000)
+    setTesting(true);
+    setTestResult(null);
+    const timeout = new Promise((_, rej) =>
+      setTimeout(() => rej(new Error("Sin respuesta en 15s.")), 15_000)
     );
     try {
-      const result = await Promise.race([api.testSmtp(), clientTimeout]);
+      const result = await Promise.race([api.testSmtp(), timeout]);
       setTesting(false);
-      setTestResult({ ok: true, msg: result.message || `Conexión exitosa con ${cfg.host}:${cfg.port}` });
+      setTestResult({ ok: true, msg: result.message || "Conexión Gmail API verificada." });
     } catch (err) {
       setTesting(false);
-      setTestResult({ ok: false, msg: friendlySmtpError(err.message) });
+      setTestResult({ ok: false, msg: err.message });
     }
+  }
+
+  if (loading) {
+    return <div className="flex items-center gap-2 py-8 text-sm text-slate-400"><div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-slate-400" />Cargando configuración...</div>;
   }
 
   return (
     <>
-      {showTestModal && <TestEmailModal onClose={() => setShowTestModal(false)} smtpConfig={cfg} />}
+      {showTestModal && <TestEmailModal onClose={() => setShowTestModal(false)} fromName={cfg.fromName} />}
+
       <div className="space-y-5">
+        {/* Info */}
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700">
+            <Info size={13} />Cómo obtener estas credenciales
+          </div>
+          <ol className="list-decimal list-inside space-y-1 text-[11px] text-blue-600 leading-relaxed">
+            <li>Entra a <strong>console.cloud.google.com</strong> → proyecto <strong>dropit-service</strong></li>
+            <li><strong>APIs y servicios → Credenciales → Crear credencial → ID de cliente OAuth 2.0</strong></li>
+            <li>Tipo: <strong>Aplicación web</strong> · URI de redireccionamiento: <code className="bg-blue-100 px-1 rounded">https://developers.google.com/oauthplayground</code></li>
+            <li>Copia Client ID y Client Secret, pégalos abajo</li>
+            <li>Ve a <strong>developers.google.com/oauthplayground</strong> → ⚙ → "Use your own OAuth credentials" → pega Client ID y Secret</li>
+            <li>Paso 1: selecciona <strong>Gmail API v1 → .../auth/gmail.send</strong> → Authorize</li>
+            <li>Paso 2: Exchange authorization code for tokens → copia el <strong>Refresh Token</strong></li>
+          </ol>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Servidor SMTP</label>
-            <input className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
-              placeholder="smtp.gmail.com" value={cfg.host} onChange={(e) => update("host", e.target.value)} />
+          {/* Gmail User */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <Mail size={11} className="inline mr-1" />Correo Gmail emisor
+            </label>
+            <input
+              type="email"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
+              placeholder="dropitcontacto@gmail.com"
+              value={cfg.gmailUser}
+              onChange={(e) => update("gmailUser", e.target.value)}
+            />
+            <p className="mt-1 text-[11px] text-slate-400">La cuenta de Gmail que envía todos los correos del sistema</p>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Puerto y cifrado</label>
-            <div className="flex gap-2">
-              <input className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
-                placeholder="587" value={cfg.port} onChange={(e) => update("port", e.target.value)} />
-              <select className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none"
-                value={cfg.encryption} onChange={(e) => update("encryption", e.target.value)}>
-                <option>TLS</option><option>SSL</option><option>STARTTLS</option><option>Sin cifrado</option>
-              </select>
-            </div>
+
+          {/* From Name */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <User size={11} className="inline mr-1" />Nombre del remitente
+            </label>
+            <input
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
+              placeholder="DropIt Service"
+              value={cfg.fromName}
+              onChange={(e) => update("fromName", e.target.value)}
+            />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Correo emisor</label>
-            <input type="email" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
-              placeholder="notificaciones@tuempresa.cl" value={cfg.email} onChange={(e) => update("email", e.target.value)} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Contraseña / App Password</label>
+
+          {/* Client ID */}
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <Key size={11} className="inline mr-1" />Client ID (OAuth 2.0)
+            </label>
             <div className="relative">
-              <input type={showPass ? "text" : "password"}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
-                placeholder="••••••••••••" value={cfg.password} onChange={(e) => update("password", e.target.value)} />
-              <button type="button" onClick={() => setShowPass((s) => !s)}
+              <input
+                type={show.clientId ? "text" : "password"}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-9 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
+                placeholder="xxxxx.apps.googleusercontent.com"
+                value={cfg.clientId}
+                onChange={(e) => update("clientId", e.target.value)}
+              />
+              <button type="button" onClick={() => toggleShow("clientId")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                {show.clientId ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
           </div>
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Nombre del remitente</label>
-            <input className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
-              placeholder="DropIt Service" value={cfg.senderName} onChange={(e) => update("senderName", e.target.value)} />
-          </div>
-        </div>
 
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700"><Info size={13} />Instrucciones para Gmail</div>
-          <ol className="list-decimal list-inside space-y-1 text-[11px] text-blue-600 leading-relaxed">
-            <li>Ve a <strong>myaccount.google.com → Seguridad</strong></li>
-            <li>Activa la <strong>verificación en dos pasos</strong></li>
-            <li>En "Contraseñas de aplicaciones", genera una nueva para "Correo"</li>
-            <li>Pega esa clave de 16 caracteres en el campo "Contraseña" de arriba</li>
-            <li>Usa <strong>smtp.gmail.com</strong>, puerto <strong>587</strong>, cifrado <strong>TLS</strong></li>
-          </ol>
+          {/* Client Secret */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <Lock size={11} className="inline mr-1" />Client Secret
+            </label>
+            <div className="relative">
+              <input
+                type={show.clientSecret ? "text" : "password"}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-9 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
+                placeholder="GOCSPX-…"
+                value={cfg.clientSecret}
+                onChange={(e) => update("clientSecret", e.target.value)}
+              />
+              <button type="button" onClick={() => toggleShow("clientSecret")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {show.clientSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Refresh Token */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <RefreshCw size={11} className="inline mr-1" />Refresh Token
+            </label>
+            <div className="relative">
+              <input
+                type={show.refreshToken ? "text" : "password"}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-9 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-dropit-accent/30"
+                placeholder="1//0gxxx…"
+                value={cfg.refreshToken}
+                onChange={(e) => update("refreshToken", e.target.value)}
+              />
+              <button type="button" onClick={() => toggleShow("refreshToken")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {show.refreshToken ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
         </div>
 
         {testResult && (
@@ -271,19 +301,15 @@ function SmtpTab() {
               <CheckCircle2 size={15} className="mt-0.5 flex-shrink-0" />
               <p className="whitespace-pre-line leading-relaxed">{testResult.msg}</p>
             </div>
-            {!testResult.ok && (
-              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer"
-                className="mt-2 flex items-center gap-1 text-xs font-bold text-dropit-accent hover:underline">
-                <ExternalLink size={11} /> Generar nuevo App Password en Google
-              </a>
-            )}
           </div>
         )}
 
         <div className="flex flex-wrap gap-2 pt-1">
           <button onClick={testConn} disabled={testing}
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60">
-            {testing ? <><div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />Probando...</> : <><Server size={13} />Probar conexión</>}
+            {testing
+              ? <><div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />Probando...</>
+              : <><ShieldCheck size={13} />Probar conexión Gmail</>}
           </button>
           <button onClick={() => setShowTestModal(true)}
             className="flex items-center gap-1.5 rounded-lg border border-dropit-accent/40 px-4 py-2 text-sm font-medium text-dropit-accent hover:bg-dropit-accent/5">
@@ -317,7 +343,7 @@ function ClientTab() {
   return (
     <div className="space-y-5">
       <p className="text-xs text-slate-500">
-        Configura cómo se envían y presentan los correos a los clientes finales.
+        Configura cómo se presentan los correos a los clientes finales.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -380,11 +406,8 @@ function ClientTab() {
             {cfg.logoUrl ? (
               <div className="relative flex-shrink-0">
                 <img src={cfg.logoUrl} alt="Logo" className="h-14 w-14 rounded-lg border border-slate-200 object-contain bg-slate-50 p-1" />
-                <button
-                  type="button"
-                  onClick={() => update("logoUrl", "")}
-                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold shadow hover:bg-red-600"
-                >✕</button>
+                <button type="button" onClick={() => update("logoUrl", "")}
+                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold shadow hover:bg-red-600">✕</button>
               </div>
             ) : (
               <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-2xl text-slate-300">🖼</div>
@@ -393,18 +416,14 @@ function ClientTab() {
               <Upload size={15} className="text-slate-400" />
               <span className="text-xs font-semibold text-slate-600">{cfg.logoUrl ? "Cambiar logo" : "Cargar logo"}</span>
               <span className="text-[11px] text-slate-400">PNG, JPG · 200×200px recomendado</span>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                className="hidden"
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   const reader = new FileReader();
                   reader.onload = (ev) => update("logoUrl", ev.target.result);
                   reader.readAsDataURL(file);
-                }}
-              />
+                }} />
             </label>
           </div>
         </div>
@@ -448,24 +467,30 @@ function ClientTab() {
 
 // ─── Main Export ───────────────────────────────────────────────────────────────
 export default function MailConfigModule({ currentUser }) {
+  const isSuperAdmin = currentUser?.role === "superadmin";
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-dropit-accent">Comunicaciones</p>
         <h2 className="text-2xl font-black text-slate-800">Configuración de correo</h2>
-        <p className="mt-1 text-sm text-slate-500">Servidor SMTP, identidad de la empresa y parámetros de notificación</p>
+        <p className="mt-1 text-sm text-slate-500">Gmail API, identidad de la empresa y parámetros de notificación</p>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 pb-1">
-          <Server size={16} className="text-dropit-accent" />
-          <h3 className="text-base font-bold text-slate-700">Servidor SMTP</h3>
+      {/* Gmail API — solo superadmin */}
+      {isSuperAdmin && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-1">
+            <ShieldCheck size={16} className="text-dropit-accent" />
+            <h3 className="text-base font-bold text-slate-700">Gmail API <span className="ml-2 rounded-full bg-dropit-accent/10 px-2 py-0.5 text-[11px] font-bold text-dropit-accent">SUPERADMIN</span></h3>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <GmailApiTab />
+          </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <SmtpTab />
-        </div>
-      </div>
+      )}
 
+      {/* Identidad y preferencias — todos los admins */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 pb-1">
           <User size={16} className="text-dropit-accent" />

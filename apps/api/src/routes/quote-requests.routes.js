@@ -293,8 +293,7 @@ router.post("/", async (req, res) => {
           .catch(err => console.error("[new-quote-mail/client] FALLO", err.message, err.code));
       }
     } else {
-      console.warn("[new-quote-mail] OMITIDO — no hay proveedor de correo (ni Resend ni SMTP). " +
-        "Configura RESEND_API_KEY (recomendado) o SMTP_* en Railway.");
+      console.warn("[new-quote-mail] OMITIDO — Gmail API no configurado. Configura GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN en Cloud Run.");
     }
 
     res.status(201).json({ request, ...(await buildDashboardPayload()) });
