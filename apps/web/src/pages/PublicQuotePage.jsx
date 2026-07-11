@@ -1842,13 +1842,13 @@ export default function PublicQuotePage() {
 
           <div className="flex items-center gap-3">
 
-            <div className="h-9 w-9 overflow-hidden rounded-lg bg-white border border-black shadow-sm">
+            <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg bg-white border border-black shadow-sm">
 
-              <img src="/dropit-logo.jpeg" alt="DropIt Service" className="h-full w-full object-cover" />
+              <img src="/dropit-logo.jpeg" alt="DropIt Service" className="h-full w-full object-contain" />
 
             </div>
 
-            <span className="text-lg font-black text-dropit-950">
+            <span className="text-lg font-black text-dropit-950 whitespace-nowrap">
 
               Drop<span className="text-dropit-accent">It</span> Service
 
@@ -3519,13 +3519,13 @@ export default function PublicQuotePage() {
 
               <div className="flex items-center gap-3">
 
-                <div className="h-9 w-9 overflow-hidden rounded-lg bg-white border border-black shadow-sm">
+                <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg bg-white border border-black shadow-sm">
 
-                  <img src="/dropit-logo.jpeg" alt="DropIt Service" className="h-full w-full object-cover" />
+                  <img src="/dropit-logo.jpeg" alt="DropIt Service" className="h-full w-full object-contain" />
 
                 </div>
 
-                <span className="text-lg font-black text-white">
+                <span className="text-lg font-black text-white whitespace-nowrap">
 
                   Drop<span className="text-dropit-accent">It</span> Service
 

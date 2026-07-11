@@ -467,7 +467,7 @@ function ClientTab() {
 
 // ─── Main Export ───────────────────────────────────────────────────────────────
 export default function MailConfigModule({ currentUser }) {
-  const isSuperAdmin = currentUser?.role === "superadmin";
+  const isSuperAdmin = currentUser?.role === "super_admin";
 
   return (
     <div className="space-y-6">

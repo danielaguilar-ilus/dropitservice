@@ -16,10 +16,15 @@ router.get("/config", (req, res) => {
   res.json({ ok: true, config: getSmtpConfigPublic() });
 });
 
-// ─── GET full config — superadmin only ───────────────────────────────────────
+// Autoriza solo a super_admin (o al ADMIN_TOKEN). El middleware requireAuthorized
+// deja al usuario en req.actor y marca req.authVia="admin_token" si vino por token.
+function isSuperAdmin(req) {
+  return req.authVia === "admin_token" || req.actor?.role === "super_admin";
+}
+
+// ─── GET full config — super_admin only ──────────────────────────────────────
 router.get("/config/full", (req, res) => {
-  const user = req.user;
-  if (!user || user.role !== "superadmin") {
+  if (!isSuperAdmin(req)) {
     return res.status(403).json({ ok: false, message: "Solo superadmin puede ver esta configuración." });
   }
   const cfg = getSmtpConfig();
@@ -49,10 +54,9 @@ router.get("/health", (req, res) => {
   });
 });
 
-// ─── POST update config — superadmin only ────────────────────────────────────
+// ─── POST update config — super_admin only ───────────────────────────────────
 router.post("/config", async (req, res) => {
-  const user = req.user;
-  if (!user || user.role !== "superadmin") {
+  if (!isSuperAdmin(req)) {
     return res.status(403).json({ ok: false, message: "Solo superadmin puede modificar esta configuración." });
   }
   try {
