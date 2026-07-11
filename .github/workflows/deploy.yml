@@ -37,7 +37,7 @@ jobs:
             --cpu 1 \
             --min-instances 0 \
             --max-instances 3 \
-            --build-env-vars "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" \
+            --set-build-env-vars "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" \
             --set-env-vars "\
           NODE_ENV=production,\
           PORT=8080,\
