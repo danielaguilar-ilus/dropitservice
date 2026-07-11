@@ -15,34 +15,58 @@
 
 import { useEffect, useRef, useState } from "react";
 
+// Key de build (si Vite lo horneó). En Cloud Run el build no recibe el build-arg,
+// así que casi siempre estará vacío y lo resolvemos en runtime desde el backend.
 const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
 let _loadPromise = null;
+let _runtimeKey  = null;
+
+// Resuelve la API key: primero la de build; si no hay, la pide al backend
+// (GET /api/public-config), que la sirve desde la env var GOOGLE_MAPS_API_KEY.
+async function resolveKey() {
+  if (GMAPS_KEY) return GMAPS_KEY;
+  if (_runtimeKey !== null) return _runtimeKey;
+  try {
+    const base = import.meta.env.VITE_API_URL || "/api";
+    const res = await fetch(`${base}/public-config`);
+    const data = await res.json();
+    _runtimeKey = data.googleMapsApiKey || "";
+  } catch {
+    _runtimeKey = "";
+  }
+  return _runtimeKey;
+}
 
 export function loadGoogleMaps() {
   if (typeof window === "undefined") return Promise.reject("SSR");
   if (window.google?.maps?.Map) return Promise.resolve(window.google.maps);
   if (_loadPromise) return _loadPromise;
 
-  _loadPromise = new Promise((resolve, reject) => {
-    if (!GMAPS_KEY) {
-      reject(new Error("Configura VITE_GOOGLE_MAPS_API_KEY en apps/web/.env"));
-      return;
+  _loadPromise = (async () => {
+    const key = await resolveKey();
+    if (!key) {
+      _loadPromise = null; // permite reintentar más tarde
+      throw new Error("Google Maps API key no disponible");
     }
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places,geometry&language=es&region=CL&loading=async&callback=__gmapsLoaded`;
-    script.async = true;
-    script.defer = true;
-    window.__gmapsLoaded = () => { resolve(window.google.maps); };
-    script.onerror = () => reject(new Error("Error cargando Google Maps"));
-    document.head.appendChild(script);
-  });
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places,geometry&language=es&region=CL&loading=async&callback=__gmapsLoaded`;
+      script.async = true;
+      script.defer = true;
+      window.__gmapsLoaded = () => { resolve(window.google.maps); };
+      script.onerror = () => { _loadPromise = null; reject(new Error("Error cargando Google Maps")); };
+      document.head.appendChild(script);
+    });
+  })();
 
   return _loadPromise;
 }
 
+// Optimista: el key puede venir en runtime desde el backend, así que no
+// bloqueamos el render de mapas solo porque el build no traiga la clave.
 export function isGoogleMapsConfigured() {
-  return Boolean(GMAPS_KEY);
+  return true;
 }
 
 // Colores para marcadores numerados

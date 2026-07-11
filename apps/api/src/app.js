@@ -64,6 +64,16 @@ export function createApp() {
     streamFile(req.params[0] || "", res);
   });
 
+  // Config publica entregada al frontend en runtime. La API key de Google Maps
+  // es una clave de navegador (siempre visible en el cliente), asi que la
+  // servimos desde la env var en lugar de hornearla en el build de Vite —
+  // evita depender de build-args que no propagan en 'gcloud run deploy --source'.
+  app.get("/api/public-config", (_req, res) => {
+    res.json({
+      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    });
+  });
+
   app.use("/api", apiRoutes);
 
   // In production, serve the built Vite frontend
