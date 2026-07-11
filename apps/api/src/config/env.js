@@ -18,8 +18,8 @@ export const env = {
   // WhatsApp number for CTAs (full Chilean format: 569XXXXXXXX)
   waNumber: process.env.WA_NUMBER || "",
   smtpFrom: process.env.SMTP_FROM || "DropIt Service",
-  // Gmail API (OAuth2) — preferred email provider
-  gmailUser:          process.env.GMAIL_USER           || "",
+  // Gmail OAuth2 (preferred) — set GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET + GMAIL_REFRESH_TOKEN
+  gmailUser:          process.env.GMAIL_USER           || process.env.SMTP_USER || "",
   gmailClientId:      process.env.GMAIL_CLIENT_ID      || "",
   gmailClientSecret:  process.env.GMAIL_CLIENT_SECRET  || "",
   gmailRefreshToken:  process.env.GMAIL_REFRESH_TOKEN  || "",
