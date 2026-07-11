@@ -40,7 +40,6 @@ jobs:
             --set-build-env-vars "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" \
             --set-env-vars "\
           NODE_ENV=production,\
-          PORT=8080,\
           DATA_DIR=/tmp,\
           DATABASE_URL=${{ secrets.DATABASE_URL }},\
           ADMIN_TOKEN=${{ secrets.ADMIN_TOKEN }},\
