@@ -274,67 +274,89 @@ router.post("/migrate-from-json", requireAdmin, async (_req, res) => {
   }
 });
 
+// Emails de los super_admins iniciales. Los NOMBRES no son secretos; las
+// CONTRASEÑAS nunca van en el código — se toman de process.env.RESET_ADMIN_PW.
+const SUPERADMIN_SEED = [
+  { email: "juandaniel.aguilar17@gmail.com", name: "Juandaniel Aguilar", id: "usr-juandaniel" },
+  { email: "dropitcontacto@gmail.com",       name: "Dropit Contacto",    id: "usr-dropitcontacto" },
+];
+
 // ─── POST /api/_admin/seed-users ──────────────────────────────────────────────
-// Crea o actualiza los super_admins iniciales con passwords conocidas.
-// Idempotente — si el user ya existe (por email), actualiza password + role.
-// Uso típico tras un deploy fresh con DB vacía o tras reset de password.
+// Crea o actualiza los super_admins iniciales usando la contraseña de la env var
+// RESET_ADMIN_PW (NUNCA hardcodeada). Idempotente. Uso: tras deploy fresh o para
+// recuperar acceso. Requiere ADMIN_TOKEN.
 router.post("/seed-users", requireAdmin, async (_req, res) => {
   if (!process.env.DATABASE_URL) {
     return res.status(400).json({ ok: false, message: "DATABASE_URL no set" });
   }
+  const pw = process.env.RESET_ADMIN_PW;
+  if (!pw) {
+    return res.status(400).json({ ok: false, message: "RESET_ADMIN_PW no está configurado en el servidor." });
+  }
   try {
     const dbMod = await import("../data/db.js");
     const results = [];
-
-    // 1. Juandaniel super_admin (acepta variante con capital J en el legacy)
-    const existing1 =
-      (await dbMod.findUserByEmail("juandaniel.aguilar17@gmail.com")) ||
-      (await dbMod.findUserByEmail("Juandaniel.aguilar17@gmail.com"));
-    if (existing1) {
-      await dbMod.updateUser(existing1.id, {
-        email: "juandaniel.aguilar17@gmail.com",
-        password: "123456789",
-        role: "super_admin",
-        isActive: true,
-      });
-      results.push({ email: "juandaniel.aguilar17@gmail.com", action: "updated", id: existing1.id });
-    } else {
-      const created = await dbMod.createUser({
-        id: "usr-juandaniel",
-        email: "juandaniel.aguilar17@gmail.com",
-        name: "Juandaniel Aguilar",
-        password: "123456789",
-        role: "super_admin",
-      });
-      results.push({ email: "juandaniel.aguilar17@gmail.com", action: "created", id: created.id });
+    for (const admin of SUPERADMIN_SEED) {
+      const existing = await dbMod.findUserByEmail(admin.email);
+      if (existing) {
+        await dbMod.updateUser(existing.id, {
+          email: admin.email,
+          password: pw,
+          role: "super_admin",
+          isActive: true,
+        });
+        results.push({ email: admin.email, action: "updated", id: existing.id });
+      } else {
+        const created = await dbMod.createUser({
+          id: admin.id,
+          email: admin.email,
+          name: admin.name,
+          password: pw,
+          role: "super_admin",
+        });
+        results.push({ email: admin.email, action: "created", id: created.id });
+      }
     }
-
-    // 2. Dropit Contacto super_admin
-    const existing2 = await dbMod.findUserByEmail("dropitcontacto@gmail.com");
-    if (existing2) {
-      await dbMod.updateUser(existing2.id, {
-        password: "123456789Saud",
-        role: "super_admin",
-        isActive: true,
-      });
-      results.push({ email: "dropitcontacto@gmail.com", action: "updated", id: existing2.id });
-    } else {
-      const created = await dbMod.createUser({
-        id: "usr-dropitcontacto",
-        email: "dropitcontacto@gmail.com",
-        name: "Dropit Contacto",
-        password: "123456789Saud",
-        role: "super_admin",
-      });
-      results.push({ email: "dropitcontacto@gmail.com", action: "created", id: created.id });
-    }
-
-    return res.json({ ok: true, users: results });
+    return res.json({ ok: true, users: results, note: "Password = RESET_ADMIN_PW" });
   } catch (err) {
     return res.status(500).json({
       ok: false,
-      error: { message: err.message, code: err.code, stack: err.stack },
+      error: { message: err.message, code: err.code },
     });
+  }
+});
+
+// ─── POST /api/_admin/reset-password ──────────────────────────────────────────
+// Resetea la contraseña de un usuario. La NUEVA contraseña viene en el body (nunca
+// en el código). Requiere ADMIN_TOKEN. Body: { email, newPassword, role? }.
+router.post("/reset-password", requireAdmin, async (req, res) => {
+  if (!process.env.DATABASE_URL) {
+    return res.status(400).json({ ok: false, message: "DATABASE_URL no set" });
+  }
+  const { email, newPassword, role } = req.body || {};
+  if (!email || !newPassword) {
+    return res.status(400).json({ ok: false, message: "Faltan 'email' y 'newPassword'." });
+  }
+  try {
+    const dbMod = await import("../data/db.js");
+    const existing = await dbMod.findUserByEmail(String(email).toLowerCase().trim());
+    if (existing) {
+      await dbMod.updateUser(existing.id, {
+        password: newPassword,
+        isActive: true,
+        ...(role ? { role } : {}),
+      });
+      return res.json({ ok: true, action: "updated", email: existing.email });
+    }
+    const created = await dbMod.createUser({
+      email: String(email).toLowerCase().trim(),
+      name: email.split("@")[0],
+      password: newPassword,
+      role: role || "super_admin",
+    });
+    return res.json({ ok: true, action: "created", email: created.email });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: { message: err.message, code: err.code } });
   }
 });
 
