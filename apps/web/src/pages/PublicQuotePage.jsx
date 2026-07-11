@@ -1906,7 +1906,7 @@ export default function PublicQuotePage() {
 
             <a
 
-              href="/"
+              href="/panel"
 
               className="inline-flex rounded-lg border border-dropit-300 px-2.5 py-1.5 text-xs font-semibold text-dropit-950 hover:bg-dropit-100 transition-colors sm:px-4 sm:py-2 sm:text-sm"
 
