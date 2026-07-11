@@ -4,6 +4,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { existsSync, mkdirSync } from "fs";
 import apiRoutes from "./routes/index.js";
+import { streamFile } from "./services/storage.service.js";
 
 const IS_PROD = process.env.NODE_ENV === "production";
 
@@ -55,6 +56,12 @@ export function createApp() {
       ok: true,
       service: "dropit-api",
     });
+  });
+
+  // Proxy de fotos: /f/<key> se sirve directo desde GCS (bucket privado).
+  // Si GCS_BUCKET no esta configurado, responde 404.
+  app.get("/f/*", (req, res) => {
+    streamFile(req.params[0] || "", res);
   });
 
   app.use("/api", apiRoutes);

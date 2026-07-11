@@ -1,5 +1,5 @@
 /**
- * Media routes — Cloudinary upload + persistent carousel/branding storage
+ * Media routes — image upload (GCS/local) + persistent carousel/branding storage
  * ────────────────────────────────────────────────────────────────────────
  * POST   /api/media/upload       — Upload single image → returns { url, publicId }
  * POST   /api/media/upload-batch — Upload multiple images → returns { urls: [...] }
@@ -9,7 +9,7 @@
  * PUT    /api/media/branding     — Save branding
  */
 import { Router } from "express";
-import { uploadImage, uploadImages, isCloudinaryConfigured } from "../services/cloudinary.service.js";
+import { uploadImage, uploadImages, isStorageConfigured } from "../services/storage.service.js";
 import { saveStore, store } from "../data/store.js";
 import * as db from "../data/db.js";
 
@@ -44,7 +44,7 @@ router.post("/upload", async (req, res) => {
     const { image, folder } = req.body;
     if (!image) return res.status(400).json({ message: "No image provided" });
     const result = await uploadImage(image, { folder: folder || "dropit" });
-    res.json({ ok: true, ...result, cloudinary: isCloudinaryConfigured() });
+    res.json({ ok: true, ...result, cloudinary: isStorageConfigured() });
   } catch (err) {
     res.status(500).json({ message: err.message || "Upload failed" });
   }
@@ -58,7 +58,7 @@ router.post("/upload-batch", async (req, res) => {
       return res.status(400).json({ message: "No images provided" });
     }
     const results = await uploadImages(images, { folder: folder || "dropit" });
-    res.json({ ok: true, urls: results.map(r => r.url), results, cloudinary: isCloudinaryConfigured() });
+    res.json({ ok: true, urls: results.map(r => r.url), results, cloudinary: isStorageConfigured() });
   } catch (err) {
     res.status(500).json({ message: err.message || "Batch upload failed" });
   }
@@ -122,7 +122,7 @@ router.put("/branding", async (req, res) => {
 
 // ─── Status ───────────────────────────────────────────────────────────────────
 router.get("/status", (_req, res) => {
-  res.json({ cloudinary: isCloudinaryConfigured() });
+  res.json({ cloudinary: isStorageConfigured() });
 });
 
 export default router;

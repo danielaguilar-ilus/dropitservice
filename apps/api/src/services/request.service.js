@@ -12,14 +12,14 @@ import {
 } from "../data/store.js";
 import * as db from "../data/db.js";
 import { notify } from "./notification.service.js";
-import { uploadImage, isCloudinaryConfigured } from "./cloudinary.service.js";
+import { uploadImage } from "./storage.service.js";
 
 // ─── Dual-path guard ─────────────────────────────────────────────────────────
 // Cuando DATABASE_URL está set, usamos Postgres; si no, fallback a store.js + db.json.
 const HAS_DB = !!process.env.DATABASE_URL;
 
 // ─── Photo persistence helpers ────────────────────────────────────────────────
-// Uploads photos to Cloudinary if configured, otherwise saves locally.
+// Uploads photos to Google Cloud Storage if configured, otherwise saves locally.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 // DATA_DIR keeps uploads co-located with db.json on the Railway Volume.
@@ -79,7 +79,7 @@ export async function createQuoteRequest(payload) {
   const now = new Date().toISOString();
   const requestId    = HAS_DB ? await db.nextRequestId()    : nextReference();
   const trackingCode = HAS_DB ? await db.nextTrackingCode() : nextTrackingCode();
-  // Upload photos to Cloudinary (or local fallback) before storing
+  // Upload photos to GCS (or local fallback) before storing
   const photoUrls = await persistPhotos(payload.photos, requestId);
   const request = {
     id: requestId,

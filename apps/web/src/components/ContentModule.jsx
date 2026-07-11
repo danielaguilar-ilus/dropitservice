@@ -36,7 +36,7 @@ function CarouselSection({ title, desc, carouselKey, max, images, setImages, onS
     try {
       // Compress all files
       const compressed = await Promise.all(toAdd.map(f => compressForUpload(f)));
-      // Upload batch to API â†’ Cloudinary
+      // Upload batch to API â†’ GCS
       const res = await fetch(`${API_URL}/media/upload-batch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -232,30 +232,27 @@ export default function ContentModule() {
             cloudStatus ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
           }`}>
             <Cloud size={12} />
-            {cloudStatus ? "â˜ï¸ Cloudinary activo" : "âš ï¸ Almacenamiento local"}
+            {cloudStatus ? "â˜ï¸ Google Cloud Storage activo" : "âš ï¸ Almacenamiento local"}
           </span>
         )}
       </div>
 
-      {/* Banner de advertencia si Cloudinary no está configurado */}
+      {/* Banner de advertencia si GCS no está configurado */}
       {cloudStatus === false && (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl flex-shrink-0">âš ï¸</span>
             <div>
-              <p className="font-bold text-amber-900">Cloudinary no configurado â€” las fotos se perderán al redesplegar</p>
+              <p className="font-bold text-amber-900">Google Cloud Storage no configurado â€” las fotos se perderán al redesplegar</p>
               <p className="mt-1 text-sm text-amber-700">
-                Las imágenes se guardan localmente en el servidor. En Railway, <strong>se borran con cada deploy</strong>.
-                Para persistencia permanente, configura estas variables de entorno en Railway:
+                Las imágenes se guardan localmente en el servidor. En el servidor, <strong>se borran con cada deploy</strong>.
+                Para persistencia permanente, configura esta variable de entorno en Cloud Run:
               </p>
               <div className="mt-3 rounded-lg bg-white border border-amber-200 p-3 font-mono text-xs space-y-1">
-                <p className="text-slate-700"><span className="text-amber-600 font-bold">CLOUDINARY_CLOUD_NAME</span>=tu_cloud_name</p>
-                <p className="text-slate-700"><span className="text-amber-600 font-bold">CLOUDINARY_API_KEY</span>=tu_api_key</p>
-                <p className="text-slate-700"><span className="text-amber-600 font-bold">CLOUDINARY_API_SECRET</span>=tu_api_secret</p>
+                <p className="text-slate-700"><span className="text-amber-600 font-bold">GCS_BUCKET</span>=dropit-fotos</p>
               </div>
               <p className="mt-2 text-xs text-amber-600">
-                Crea tu cuenta gratis en <strong>cloudinary.com</strong> â†’ Dashboard â†’ copia los valores
-              </p>
+                El bucket debe existir en el proyecto GCP y Cloud Run necesita el rol <strong>Storage Object Admin</strong></p>
             </div>
           </div>
         </div>

@@ -79,6 +79,7 @@ function useTick(intervalMs = 15000) {
 // â”€â”€â”€ PDF Generator â€” returns HTML string (no side effects) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildPDFHtml(request, finalAmount, photos = []) {
   const companyName = getCompanyName();
+  const logoUrl = getLogoUrl();
   const now = new Date().toLocaleDateString("es-CL", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
   const price = finalAmount || request.estimatedPrice || 0;
 
@@ -88,74 +89,49 @@ function buildPDFHtml(request, finalAmount, photos = []) {
   // Status label
   const statusLabel = (() => {
     const s = request.status || "";
-    if (s === "Pendiente de cotizacion") return "⏳ Pendiente de cotización";
-    if (s === "Cotizado")                return "💰 Cotización enviada";
-    if (s === "Aceptado")                return "✅ Aceptado";
-    return `📋 ${s}`;
+    if (s === "Pendiente de cotizacion") return "Pendiente de cotización";
+    if (s === "Cotizado")                return "Cotización enviada";
+    if (s === "Aceptado")                return "Aceptada";
+    return s || "—";
   })();
 
   // Price breakdown (neto + IVA)
-  const precioDesglose = (() => {
-    if (!price) return "";
-    const neto = Math.round(price / 1.19);
-    const iva  = price - neto;
-    return `
-      <div class="price-row"><span class="price-label">Valor neto</span><span>${clp(neto)}</span></div>
-      <div class="price-row"><span class="price-label">IVA (19%)</span><span>${clp(iva)}</span></div>`;
-  })();
+  const neto = price ? Math.round(price / 1.19) : 0;
+  const iva  = price ? price - neto : 0;
 
-  // Stops HTML
-  const stopsHtml = (() => {
+  // Route stops (retiro + 1..N entregas) rendered as a vertical timeline
+  const routeHtml = (() => {
     const stops = Array.isArray(request.deliveryStops) ? request.deliveryStops : [];
-    if (stops.length > 1) {
-      const items = stops.map((s, i) => `
-        <div class="address-block">
-          <div class="address-pin pin-orange">🏁</div>
-          <div>
-            <div class="address-label">Entrega ${i + 1}</div>
-            <div class="address-text">${s.address}${s.commune ? `, ${s.commune}` : ""}</div>
-          </div>
-        </div>`).join("");
+    const entregas = stops.length > 1
+      ? stops.map((s, i) => ({ label: `Entrega ${i + 1}`, text: `${s.address}${s.commune ? `, ${s.commune}` : ""}` }))
+      : [{ label: "Entrega", text: request.deliveryAddress || "—" }];
+    const all = [{ label: "Retiro", text: request.pickupAddress || "—", solid: true }, ...entregas];
+    return all.map((p, i) => {
+      const last = i === all.length - 1;
       return `
-        <div class="address-block">
-          <div class="address-pin pin-green">📦</div>
-          <div>
-            <div class="address-label">Retiro</div>
-            <div class="address-text">${request.pickupAddress || "—"}</div>
+        <div class="route-stop">
+          <div class="route-rail">
+            <span class="dot ${p.solid ? "dot-solid" : "dot-open"}"></span>
+            ${last ? "" : '<span class="rail-line"></span>'}
           </div>
-        </div>
-        ${items}`;
-    }
-    return `
-      <div class="address-block">
-        <div class="address-pin pin-green">📦</div>
-        <div>
-          <div class="address-label">Retiro</div>
-          <div class="address-text">${request.pickupAddress || "—"}</div>
-        </div>
-      </div>
-      <div class="address-block">
-        <div class="address-pin pin-orange">🏁</div>
-        <div>
-          <div class="address-label">Entrega</div>
-          <div class="address-text">${request.deliveryAddress || "—"}</div>
-        </div>
-      </div>`;
+          <div class="route-body" style="${last ? "padding-bottom:0" : ""}">
+            <div class="route-label">${p.label}</div>
+            <div class="route-text">${p.text}</div>
+          </div>
+        </div>`;
+    }).join("");
   })();
 
-  // Peonetas field
-  const peonetasField = (request.avionetaCount > 0 || request.avioneta)
-    ? `<div class="field">
-         <div class="field-label">Peonetas</div>
-         <div class="field-value big">${request.avionetaCount > 0 ? request.avionetaCount : 1}</div>
-       </div>`
+  // Peonetas (personal de apoyo)
+  const peonetas = (request.avionetaCount > 0 || request.avioneta)
+    ? String(request.avionetaCount > 0 ? request.avionetaCount : 1)
     : "";
 
   // Observations
   const obsHtml = request.observations
-    ? `<div class="field-full" style="margin-top:10px">
-         <div class="field-label">Observaciones</div>
-         <div class="field-value" style="background:#f9fafb;padding:10px;border-radius:8px;margin-top:4px">${request.observations}</div>
+    ? `<div class="note-block">
+         <div class="f-label">Observaciones</div>
+         <div class="f-value">${request.observations}</div>
        </div>`
     : "";
 
@@ -168,7 +144,7 @@ function buildPDFHtml(request, finalAmount, photos = []) {
     ? `https://wa.me/${_waPhone}?text=Hola%20${encodeURIComponent(request.customerName)}%2C%20te%20contactamos%20por%20tu%20cotizaci%C3%B3n%20${request.trackingCode}`
     : `https://wa.me/?text=Cotizaci%C3%B3n%20${request.trackingCode}`;
   const ctaTracking = request.trackingCode
-    ? `<a href="${urlAceptar}" class="cta-btn btn-tracking">📍 Ver seguimiento online</a>`
+    ? `<div class="cta-tracking"><a href="${urlAceptar}">Ver seguimiento online de la cotización ${request.trackingCode}</a></div>`
     : "";
 
   // RUT
@@ -185,265 +161,283 @@ function buildPDFHtml(request, finalAmount, photos = []) {
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      font-size: 14px;
+      font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
       line-height: 1.5;
-      color: #111827;
-      background: #f9fafb;
+      color: #1e293b;
+      background: #ffffff;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     @page { size: A4 portrait; margin: 10mm 12mm; }
     @media print {
       body { background: white; }
-      .no-print { display: none !important; }
-      .card { break-inside: avoid; page-break-inside: avoid; }
+      .card, .price-box, .cta-section, .route-card, table { break-inside: avoid; page-break-inside: avoid; }
     }
-    .doc { max-width: 600px; margin: 0 auto; padding: 0 12px 32px; }
+    a { color: #F97316; }
+    .doc { max-width: 800px; margin: 0 auto; padding: 0 16px 28px; }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .topbar { height: 6px; background: #F97316; border-radius: 0 0 3px 3px; }
     .header {
-      background: #0a0a0a;
-      color: white;
-      padding: 20px 24px;
-      border-radius: 12px 12px 0 0;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-    }
-    .header-logo { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
-    .header-logo span { color: #F97316; }
-    .header-meta { text-align: right; font-size: 12px; color: #9ca3af; }
-    .header-meta .code { font-size: 16px; font-weight: 800; color: #F97316; }
-    .hero {
-      background: linear-gradient(135deg, #F97316 0%, #ea580c 100%);
-      color: white;
-      padding: 24px;
-      margin-bottom: 16px;
-    }
-    .hero-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
-    .hero-client { font-size: 22px; font-weight: 900; margin: 4px 0 16px; }
-    .hero-total-label { font-size: 12px; opacity: 0.85; font-weight: 600; }
-    .hero-total { font-size: 38px; font-weight: 900; letter-spacing: -1px; }
-    .hero-status {
-      display: inline-block;
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.4);
-      border-radius: 50px;
-      padding: 4px 14px;
-      font-size: 12px;
-      font-weight: 700;
-      margin-top: 12px;
-    }
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 12px;
-      border: 1px solid #e5e7eb;
-    }
-    .card-title {
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #F97316;
-      margin-bottom: 14px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #fff7ed;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .card-title::before { content: ''; display: block; width: 4px; height: 14px; background: #F97316; border-radius: 2px; }
-    .row { display: flex; gap: 16px; margin-bottom: 10px; }
-    .row:last-child { margin-bottom: 0; }
-    .field { flex: 1; min-width: 0; }
-    .field-label { font-size: 11px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-    .field-value { font-size: 14px; color: #111827; font-weight: 600; word-break: break-word; }
-    .field-value.big { font-size: 16px; font-weight: 700; }
-    .field-full { width: 100%; margin-bottom: 10px; }
-    .address-block {
-      display: flex;
-      gap: 12px;
       align-items: flex-start;
-      padding: 12px;
-      background: #f9fafb;
-      border-radius: 8px;
-      margin-bottom: 10px;
+      padding: 22px 0 18px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 20px;
     }
-    .address-block:last-of-type { margin-bottom: 0; }
-    .address-pin {
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-      flex-shrink: 0;
-      margin-top: 2px;
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand img { height: 46px; width: 46px; object-fit: cover; border-radius: 10px; display: block; }
+    .brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; color: #1e293b; }
+    .brand-tag  { font-size: 11px; color: #64748b; margin-top: 1px; }
+    .doc-id { text-align: right; }
+    .doc-id .kind { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: #F97316; }
+    .doc-id .code { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; color: #1e293b; margin: 2px 0; }
+    .doc-id .date { font-size: 11px; color: #64748b; }
+    .doc-id .status {
+      display: inline-block; margin-top: 6px;
+      background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;
+      border-radius: 50px; padding: 2px 12px;
+      font-size: 11px; font-weight: 700;
     }
-    .pin-green { background: #dcfce7; }
-    .pin-orange { background: #fff7ed; }
-    .address-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
-    .address-text { font-size: 13px; font-weight: 600; color: #111827; margin-top: 2px; }
-    .price-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #f3f4f6;
-      font-size: 14px;
+
+    /* ── Section titles ─────────────────────────────────── */
+    .sec-title {
+      font-size: 11px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: #64748b; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 7px;
     }
-    .price-row:last-child { border-bottom: none; }
-    .price-row.total {
-      padding: 14px 16px;
-      background: #f0fdf4;
+    .sec-title::before { content: ''; display: block; width: 4px; height: 12px; background: #F97316; border-radius: 2px; }
+
+    /* ── Data cards (Cliente / Servicio) ────────────────── */
+    .grid-2 { display: flex; gap: 14px; margin-bottom: 18px; }
+    .grid-2 > div { flex: 1; min-width: 0; }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-radius: 10px;
-      margin-top: 8px;
-      border: 2px solid #16a34a;
+      padding: 14px 16px;
     }
-    .price-row.total .price-label { font-size: 15px; font-weight: 800; color: #166534; }
-    .price-row.total .price-value { font-size: 26px; font-weight: 900; color: #16a34a; }
-    .condition-item { display: flex; gap: 10px; margin-bottom: 8px; font-size: 13px; color: #374151; }
-    .condition-icon { flex-shrink: 0; margin-top: 1px; }
-    .cta-section {
-      background: #0a0a0a;
+    .f-row { display: flex; gap: 14px; }
+    .f-row + .f-row, .f-row + .f-item, .f-item + .f-item, .f-item + .f-row { margin-top: 9px; }
+    .f-item { flex: 1; min-width: 0; }
+    .f-label { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 1px; }
+    .f-value { font-size: 13px; color: #0f172a; font-weight: 600; word-break: break-word; }
+    .f-value.big { font-size: 15px; font-weight: 800; }
+
+    /* ── Route timeline ─────────────────────────────────── */
+    .route-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+    .route-stop { display: flex; gap: 12px; }
+    .route-rail { display: flex; flex-direction: column; align-items: center; width: 14px; flex-shrink: 0; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+    .dot-solid { background: #F97316; box-shadow: 0 0 0 3px #ffedd5; }
+    .dot-open  { background: #ffffff; border: 3px solid #1e293b; }
+    .rail-line { flex: 1; width: 2px; background: #cbd5e1; min-height: 14px; margin: 3px 0; }
+    .route-body { flex: 1; min-width: 0; padding-bottom: 14px; }
+    .route-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; }
+    .route-text  { font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 1px; }
+    .route-meta { display: flex; gap: 14px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1; }
+
+    /* ── Cargo table ────────────────────────────────────── */
+    table.cargo { width: 100%; border-collapse: collapse; margin-bottom: 10px; border-radius: 10px; overflow: hidden; }
+    table.cargo th {
+      background: #1e293b; color: #ffffff;
+      font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 9px 12px; text-align: left;
+    }
+    table.cargo th:first-child { border-radius: 8px 0 0 0; }
+    table.cargo th:last-child  { border-radius: 0 8px 0 0; }
+    table.cargo td {
+      padding: 10px 12px;
+      font-size: 13px; font-weight: 600; color: #0f172a;
+      background: #ffffff;
+      border: 1px solid #e2e8f0; border-top: none;
+    }
+    .note-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-top: 10px; }
+    .note-block .f-value { font-weight: 500; white-space: pre-line; }
+
+    /* ── Price box ──────────────────────────────────────── */
+    .price-box {
+      border: 2px solid #F97316;
+      background: #fff7ed;
       border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 12px;
-      text-align: center;
+      padding: 16px 20px;
+      margin: 18px 0;
     }
-    .cta-title { color: #9ca3af; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+    .price-line { display: flex; justify-content: space-between; font-size: 13px; color: #475569; padding: 4px 0; }
+    .price-total {
+      display: flex; justify-content: space-between; align-items: baseline;
+      border-top: 1px solid #fed7aa; margin-top: 8px; padding-top: 10px;
+    }
+    .price-total .lbl { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #9a3412; }
+    .price-total .amount { font-size: 30px; font-weight: 900; letter-spacing: -1px; color: #ea580c; }
+    .price-iva { font-size: 11px; color: #9a3412; font-weight: 600; text-align: right; margin-top: 2px; }
+
+    /* ── Condiciones ────────────────────────────────────── */
+    .conditions { margin-bottom: 18px; }
+    .cond-item { display: flex; gap: 8px; font-size: 12px; color: #475569; margin-bottom: 5px; }
+    .cond-item::before { content: '·'; font-weight: 900; color: #F97316; }
+
+    /* ── CTAs ───────────────────────────────────────────── */
+    .cta-section { text-align: center; margin: 22px 0 6px; }
     .cta-btn {
-      display: block;
-      padding: 14px 20px;
+      display: inline-block;
+      padding: 13px 26px;
       border-radius: 10px;
       text-decoration: none;
       font-weight: 800;
       font-size: 14px;
-      margin-bottom: 10px;
-      text-align: center;
+      margin: 0 6px 10px;
     }
-    .cta-btn:last-child { margin-bottom: 0; }
-    .btn-accept { background: #16a34a; color: white; }
-    .btn-whatsapp { background: #25D366; color: white; }
-    .btn-tracking { background: #2563eb; color: white; }
-    .footer { text-align: center; padding: 20px; color: #9ca3af; font-size: 11px; line-height: 1.8; }
-    .footer strong { color: #F97316; font-size: 13px; display: block; margin-bottom: 4px; }
+    .btn-accept { background: #F97316; color: #ffffff; border: 2px solid #F97316; }
+    .btn-whatsapp { background: #ffffff; color: #1da851; border: 2px solid #25D366; }
+    .cta-tracking { font-size: 12px; margin-top: 2px; }
+    .cta-tracking a { color: #64748b; text-decoration: underline; }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    .footer { text-align: center; border-top: 1px solid #e2e8f0; margin-top: 20px; padding-top: 14px; color: #94a3b8; font-size: 11px; line-height: 1.8; }
+    .footer strong { color: #F97316; font-size: 13px; display: block; margin-bottom: 2px; }
   </style>
 </head>
 <body>
+<div class="topbar"></div>
 <div class="doc">
 
   <!-- HEADER -->
   <div class="header">
-    <div class="header-logo">Drop<span>It</span> Service</div>
-    <div class="header-meta">
-      <div>Propuesta de servicio</div>
+    <div class="brand">
+      <img src="${logoUrl}" alt="${companyName}" onerror="this.style.display='none'">
+      <div>
+        <div class="brand-name">${companyName}</div>
+        <div class="brand-tag">Transporte · Fletes · Última milla</div>
+      </div>
+    </div>
+    <div class="doc-id">
+      <div class="kind">Cotización</div>
       <div class="code">${request.trackingCode}</div>
-      <div>${now}</div>
+      <div class="date">${now}</div>
+      <div class="status">${statusLabel}</div>
     </div>
   </div>
 
-  <!-- HERO -->
-  <div class="hero">
-    <div class="hero-label">Cotización para</div>
-    <div class="hero-client">${request.customerName}</div>
-    <div class="hero-total-label">Valor estimado del servicio</div>
-    <div class="hero-total">${price ? clp(price) : "Por confirmar"}</div>
-    <div class="hero-status">${statusLabel}</div>
+  <!-- CLIENTE + SERVICIO -->
+  <div class="grid-2">
+    <div>
+      <div class="sec-title">Cliente</div>
+      <div class="card">
+        <div class="f-item">
+          <div class="f-label">Empresa / Persona</div>
+          <div class="f-value big">${request.customerName}</div>
+        </div>
+        <div class="f-row">
+          <div class="f-item">
+            <div class="f-label">RUT</div>
+            <div class="f-value">${rut}</div>
+          </div>
+          <div class="f-item">
+            <div class="f-label">Contacto</div>
+            <div class="f-value">${request.contactPerson || request.customerName}</div>
+          </div>
+        </div>
+        <div class="f-row">
+          <div class="f-item">
+            <div class="f-label">Teléfono</div>
+            <div class="f-value">${request.contactPhone || "—"}</div>
+          </div>
+          <div class="f-item">
+            <div class="f-label">Correo electrónico</div>
+            <div class="f-value">${request.contactEmail || "—"}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Servicio</div>
+      <div class="card">
+        <div class="f-row">
+          <div class="f-item">
+            <div class="f-label">Tipo de servicio</div>
+            <div class="f-value big">${request.serviceType || "Flete / Transporte"}</div>
+          </div>
+        </div>
+        <div class="f-row">
+          <div class="f-item">
+            <div class="f-label">Fecha requerida</div>
+            <div class="f-value">${request.requiredDate ? `${request.requiredDate}${request.requiredTime ? ` · ${request.requiredTime}` : ""}` : "—"}</div>
+          </div>
+          <div class="f-item">
+            <div class="f-label">Distancia calculada</div>
+            <div class="f-value">${request.distanceKm ? `${request.distanceKm} km` : "—"}</div>
+          </div>
+        </div>
+        ${peonetas ? `
+        <div class="f-row">
+          <div class="f-item">
+            <div class="f-label">Peonetas (personal de apoyo)</div>
+            <div class="f-value">${peonetas}</div>
+          </div>
+        </div>` : ""}
+      </div>
+    </div>
   </div>
 
-  <!-- DATOS DEL CLIENTE -->
-  <div class="card">
-    <div class="card-title">Datos del cliente</div>
-    <div class="row">
-      <div class="field">
-        <div class="field-label">Empresa / Persona</div>
-        <div class="field-value big">${request.customerName}</div>
-      </div>
-      <div class="field">
-        <div class="field-label">RUT</div>
-        <div class="field-value">${rut}</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <div class="field-label">Contacto</div>
-        <div class="field-value">${request.contactPerson || request.customerName}</div>
-      </div>
-      <div class="field">
-        <div class="field-label">Teléfono</div>
-        <div class="field-value">${request.contactPhone || "—"}</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="field field-full">
-        <div class="field-label">Correo electrónico</div>
-        <div class="field-value">${request.contactEmail || "—"}</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- RUTA DE SERVICIO -->
-  <div class="card">
-    <div class="card-title">Ruta de servicio</div>
-    ${stopsHtml}
-    <div class="row" style="margin-top: 12px">
-      <div class="field">
-        <div class="field-label">Fecha requerida</div>
-        <div class="field-value">${request.requiredDate ? `${request.requiredDate}${request.requiredTime ? ` · ${request.requiredTime}` : ""}` : "—"}</div>
-      </div>
-      <div class="field">
-        <div class="field-label">Distancia calculada</div>
-        <div class="field-value">${request.distanceKm ? `${request.distanceKm} km` : "—"}</div>
-      </div>
-    </div>
+  <!-- RUTA -->
+  <div class="sec-title">Ruta del servicio</div>
+  <div class="route-card">
+    ${routeHtml}
   </div>
 
   <!-- DETALLE DE CARGA -->
-  <div class="card">
-    <div class="card-title">Detalle de carga</div>
-    <div class="row">
-      <div class="field">
-        <div class="field-label">Bultos</div>
-        <div class="field-value big">${request.packages || "—"}</div>
-      </div>
-      <div class="field">
-        <div class="field-label">Peso estimado</div>
-        <div class="field-value big">${request.estimatedWeightKg || "—"} kg</div>
-      </div>
-      ${peonetasField}
+  <div class="sec-title">Detalle de carga</div>
+  <table class="cargo">
+    <thead>
+      <tr>
+        <th style="width:15%">Bultos</th>
+        <th style="width:20%">Peso estimado</th>
+        <th>Descripción de la carga</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${request.packages || "—"}</td>
+        <td>${request.estimatedWeightKg ? `${request.estimatedWeightKg} kg` : "—"}</td>
+        <td>${request.cargoDescription || "—"}</td>
+      </tr>
+    </tbody>
+  </table>
+  ${obsHtml}
+
+  <!-- PRECIO -->
+  <div class="price-box">
+    ${price ? `
+    <div class="price-line"><span>Valor neto</span><span>${clp(neto)}</span></div>
+    <div class="price-line"><span>IVA (19%)</span><span>${clp(iva)}</span></div>
+    <div class="price-total">
+      <span class="lbl">Total del servicio</span>
+      <span class="amount">${clp(price)}</span>
     </div>
-    <div class="field-full" style="margin-top: 10px">
-      <div class="field-label">Descripción de la carga</div>
-      <div class="field-value" style="background:#f9fafb;padding:10px;border-radius:8px;margin-top:4px">${request.cargoDescription || "—"}</div>
-    </div>
-    ${obsHtml}
+    <div class="price-iva">Precio incluye IVA</div>` : `
+    <div class="price-total" style="border-top:none;margin-top:0;padding-top:0">
+      <span class="lbl">Total del servicio</span>
+      <span class="amount" style="font-size:22px">Por confirmar</span>
+    </div>`}
   </div>
 
-  <!-- PROPUESTA ECONÓMICA -->
-  ${price ? `
-  <div class="card">
-    <div class="card-title">Propuesta económica</div>
-    ${precioDesglose}
-    <div class="price-row total">
-      <span class="price-label">✅ TOTAL A PAGAR</span>
-      <span class="price-value">${clp(price)}</span>
-    </div>
-  </div>` : ""}
-
-  <!-- CONDICIONES COMERCIALES -->
-  <div class="card">
-    <div class="card-title">Condiciones del servicio</div>
-    <div class="condition-item"><span class="condition-icon">✅</span><span><strong>Incluye:</strong> Traslado puerta a puerta, seguimiento en tiempo real, confirmación de entrega.</span></div>
-    <div class="condition-item"><span class="condition-icon">❌</span><span><strong>No incluye:</strong> Embalaje de mercancía, seguro adicional de carga, almacenaje.</span></div>
-    <div class="condition-item"><span class="condition-icon">⏱️</span><span><strong>Validez:</strong> Esta cotización es válida por 72 horas desde su emisión.</span></div>
-    <div class="condition-item"><span class="condition-icon">📋</span><span><strong>Pago:</strong> Se coordina con el operador al aceptar la cotización.</span></div>
+  <!-- CONDICIONES -->
+  <div class="conditions">
+    <div class="sec-title">Condiciones del servicio</div>
+    <div class="cond-item"><span><strong>Incluye:</strong> Traslado puerta a puerta, seguimiento en tiempo real, confirmación de entrega.</span></div>
+    <div class="cond-item"><span><strong>No incluye:</strong> Embalaje de mercancía, seguro adicional de carga, almacenaje.</span></div>
+    <div class="cond-item"><span><strong>Validez:</strong> Esta cotización es válida por 72 horas desde su emisión.</span></div>
+    <div class="cond-item"><span><strong>Pago:</strong> Se coordina con el operador al aceptar la cotización.</span></div>
   </div>
 
   <!-- CTAs -->
-  <div class="cta-section no-print">
-    <div class="cta-title">Próximos pasos</div>
-    <a href="${urlAceptar}" class="cta-btn btn-accept">✅ Aceptar esta cotización</a>
-    <a href="${urlWhatsapp}" class="cta-btn btn-whatsapp">💬 Contactar por WhatsApp</a>
+  <div class="cta-section">
+    <a href="${urlAceptar}" class="cta-btn btn-accept">Aceptar cotización</a>
+    <a href="${urlWhatsapp}" class="cta-btn btn-whatsapp">Contactar por WhatsApp</a>
     ${ctaTracking}
   </div>
 
@@ -451,7 +445,7 @@ function buildPDFHtml(request, finalAmount, photos = []) {
   <div class="footer">
     <strong>${companyName}</strong>
     Transporte · Fletes · Última milla · Santiago, Chile
-    <br>Cotización generada el ${now}
+    <br>Cotización generada el ${now} · Válida por 72 horas
   </div>
 </div>
 
