@@ -53,22 +53,20 @@ function _hasSmtp() {
   );
 }
 
-function createTransport() {
-  if (_hasOAuth2()) {
-    console.log("[mail] usando Gmail OAuth2");
-    return nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: _cfg.gmailUser || _cfg.smtpUser,
-        clientId: _cfg.clientId,
-        clientSecret: _cfg.clientSecret,
-        refreshToken: _cfg.refreshToken,
-      },
-    });
-  }
-  // Fallback: Gmail App Password via SMTP
-  console.log("[mail] usando Gmail SMTP (App Password)");
+function createOAuth2Transport() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      type: "OAuth2",
+      user: _cfg.gmailUser || _cfg.smtpUser,
+      clientId: _cfg.clientId,
+      clientSecret: _cfg.clientSecret,
+      refreshToken: _cfg.refreshToken,
+    },
+  });
+}
+
+function createSmtpTransport() {
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
@@ -85,12 +83,23 @@ function createTransport() {
   });
 }
 
+// Lista ordenada de transportes disponibles. OAuth2 primero (si está completo),
+// SMTP App Password como respaldo. sendMail() los prueba en orden: si OAuth2
+// falla en runtime (ej. refresh token inválido), cae automáticamente a SMTP.
+function availableTransports() {
+  const list = [];
+  if (_hasOAuth2()) list.push({ name: "gmail-oauth2", make: createOAuth2Transport });
+  if (_hasSmtp())   list.push({ name: "gmail-smtp",   make: createSmtpTransport });
+  return list;
+}
+
 export function isMailConfigured() {
   return _hasOAuth2() || _hasSmtp();
 }
 
 export async function sendMail({ to, subject, html, text, attachments = [] }) {
-  if (!isMailConfigured()) {
+  const transports = availableTransports();
+  if (transports.length === 0) {
     const err = new Error(
       "Correo no configurado. Agrega GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET + GMAIL_REFRESH_TOKEN (OAuth2) " +
       "o SMTP_USER + SMTP_PASS (App Password) en las variables de entorno."
@@ -99,29 +108,37 @@ export async function sendMail({ to, subject, html, text, attachments = [] }) {
     throw err;
   }
   const fromEmail = _cfg.gmailUser || _cfg.smtpUser;
-  const transporter = createTransport();
-  console.log("[mail] → enviando a:", to, "· asunto:", subject);
-  try {
-    const info = await transporter.sendMail({
-      from: `"${_cfg.fromName}" <${fromEmail}>`,
-      to,
-      subject,
-      html,
-      text,
-      attachments,
-    });
-    console.log("[mail] ✓ enviado a", to, "·", info.messageId);
-    return info;
-  } catch (err) {
-    console.error("[mail] ✗ error enviando a", to, "·", err.message);
-    throw err;
+  const mailOptions = { from: `"${_cfg.fromName}" <${fromEmail}>`, to, subject, html, text, attachments };
+
+  let lastErr;
+  for (const tr of transports) {
+    console.log(`[mail] → intentando ${tr.name} · a:`, to, "· asunto:", subject);
+    try {
+      const info = await tr.make().sendMail(mailOptions);
+      console.log(`[mail] ✓ enviado via ${tr.name} a`, to, "·", info.messageId);
+      return info;
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[mail] ✗ ${tr.name} falló:`, err.message, "— probando siguiente transporte si existe");
+    }
   }
+  console.error("[mail] ✗ todos los transportes fallaron para", to, "·", lastErr?.message);
+  throw lastErr;
 }
 
 export async function testConnection() {
-  const transporter = createTransport();
-  await transporter.verify();
-  return { ok: true, provider: _hasOAuth2() ? "gmail-oauth2" : "gmail-smtp" };
+  const transports = availableTransports();
+  let lastErr;
+  for (const tr of transports) {
+    try {
+      await tr.make().verify();
+      return { ok: true, provider: tr.name };
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[mail] testConnection ${tr.name} falló:`, err.message);
+    }
+  }
+  throw lastErr || new Error("No hay transporte de correo configurado");
 }
 
 export async function updateSmtpConfig({ gmailUser, clientId, clientSecret, refreshToken, fromName }) {
