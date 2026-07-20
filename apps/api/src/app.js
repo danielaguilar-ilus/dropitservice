@@ -21,8 +21,22 @@ if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 function buildCorsOptions() {
   if (!IS_PROD) return {}; // dev: abierto
   const allowed = new Set();
-  if (process.env.PUBLIC_URL) allowed.add(process.env.PUBLIC_URL.replace(/\/$/, ""));
+  if (process.env.PUBLIC_URL) {
+    const url = process.env.PUBLIC_URL.replace(/\/$/, "");
+    allowed.add(url);
+    // Si PUBLIC_URL es un dominio propio (no *.run.app), también permite el
+    // subdominio www — el sitio puede quedar accesible por ambos.
+    const withoutProtocol = url.replace(/^https?:\/\//, "");
+    if (!withoutProtocol.includes(".run.app") && !withoutProtocol.startsWith("www.")) {
+      allowed.add(url.replace("://", "://www."));
+    }
+  }
   if (process.env.RAILWAY_PUBLIC_DOMAIN) allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+  // La URL nativa de Cloud Run siempre debe seguir funcionando (health checks,
+  // acceso directo antes de que el dominio propague, etc.)
+  if (process.env.K_SERVICE) {
+    allowed.add(`https://${process.env.K_SERVICE}-1021431499027.southamerica-west1.run.app`);
+  }
   // Sin allowlist configurada â†’ reflejar el origen (no romper), pero avisar.
   if (allowed.size === 0) {
     console.warn("[cors] PUBLIC_URL no configurado en producciÃ³n â€” CORS abierto. ConfigÃºralo para restringir.");

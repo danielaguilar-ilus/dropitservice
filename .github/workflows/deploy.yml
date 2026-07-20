@@ -41,6 +41,7 @@ jobs:
             --set-env-vars "\
           NODE_ENV=production,\
           DATA_DIR=/tmp,\
+          PUBLIC_URL=https://dropitservice.cl,\
           DATABASE_URL=${{ secrets.DATABASE_URL }},\
           ADMIN_TOKEN=${{ secrets.ADMIN_TOKEN }},\
           RESET_ADMIN_PW=${{ secrets.RESET_ADMIN_PW }},\
