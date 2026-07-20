@@ -13,6 +13,7 @@ import {
 import * as db from "../data/db.js";
 import { notify } from "./notification.service.js";
 import { uploadImage } from "./storage.service.js";
+import { getOperatorInbox } from "./mail.service.js";
 
 // ─── Dual-path guard ─────────────────────────────────────────────────────────
 // Cuando DATABASE_URL está set, usamos Postgres; si no, fallback a store.js + db.json.
@@ -138,7 +139,7 @@ export async function createQuoteRequest(payload) {
     saved = request;
   }
   await notify({ type: "quote_received", to: saved.contactEmail, requestId: saved.id });
-  await notify({ type: "quote_internal", to: "admin@dropit.local", requestId: saved.id });
+  await notify({ type: "quote_internal", to: getOperatorInbox() || "admin@dropit.local", requestId: saved.id });
   return saved;
 }
 
