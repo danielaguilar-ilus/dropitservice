@@ -502,8 +502,8 @@ function RoutesListView({ routes, requests, onBack }) {
           <p className="text-sm font-bold text-slate-400">No hay rutas creadas</p>
         </div>
       ) : (
-        <div className="flex flex-1 min-h-0 gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="w-[300px] flex-shrink-0 overflow-y-auto border-r border-slate-100 p-3 space-y-2">
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="w-full lg:w-[300px] max-h-72 lg:max-h-none flex-shrink-0 overflow-y-auto border-r border-slate-100 p-3 space-y-2">
             {routesWithMeta.map((route) => {
               const expanded = expandedId === route.id;
               const statusColor = route.status === "En ruta" ? "bg-orange-100 text-orange-700" : "bg-sky-100 text-sky-700";

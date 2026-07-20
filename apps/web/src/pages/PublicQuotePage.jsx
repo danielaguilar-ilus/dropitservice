@@ -2070,7 +2070,7 @@ export default function PublicQuotePage() {
 
       {/* ─── HERO ─── */}
 
-      <section className="relative overflow-hidden bg-dropit-950 px-4 py-24 text-white">
+      <section className="relative overflow-hidden bg-dropit-950 px-4 py-16 text-white sm:py-20 md:py-24">
 
         {/* Marketing carousel — smart fit: blurred fill + contained main image */}
 
@@ -2080,7 +2080,7 @@ export default function PublicQuotePage() {
 
             key={i}
 
-            className="pointer-events-none absolute inset-0 transition-opacity duration-1000"
+            className="pointer-events-none absolute inset-0 max-h-[440px] transition-opacity duration-1000 sm:max-h-none"
 
             style={{ opacity: i === carouselIndex ? 1 : 0 }}
 
@@ -2928,9 +2928,7 @@ export default function PublicQuotePage() {
 
                       {/* Route map */}
 
-                      <div ref={routeMapRef} className="w-full" style={{
-                        // Altura dinámica: más alta para rutas largas (>200km = nacional)
-                        height: routeInfo && routeInfo.distanceKm > 200 ? "560px" : "420px",
+                      <div ref={routeMapRef} className={`w-full ${routeInfo && routeInfo.distanceKm > 200 ? "h-[360px] sm:h-[560px]" : "h-[280px] sm:h-[420px]"}`} style={{
                         background: "#e8e8e0",
                         transition: "height 0.3s ease"
                       }} />

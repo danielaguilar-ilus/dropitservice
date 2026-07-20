@@ -468,9 +468,9 @@ export default function SeguimientoModule({ initialTab = "vehiculos", requests =
   ];
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-120px)] gap-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Left Panel */}
-      <div className="flex w-80 flex-shrink-0 flex-col border-r border-slate-200">
+      <div className="flex w-full md:w-80 flex-shrink-0 max-h-64 md:max-h-none overflow-y-auto flex-col border-r border-slate-200">
         {/* Progress Bar Header */}
         <div className="border-b border-slate-100 px-4 py-3">
           <div className="flex items-center justify-between mb-1.5">

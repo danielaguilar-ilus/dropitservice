@@ -174,6 +174,10 @@ function buildPDFHtml(request, finalAmount, photos = []) {
       body { background: white; }
       .card, .price-box, .cta-section, .route-card, table { break-inside: avoid; page-break-inside: avoid; }
     }
+    @media (max-width: 480px) {
+      .header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .doc-id { text-align: left; }
+    }
     a { color: #F97316; }
     .doc { max-width: 800px; margin: 0 auto; padding: 0 16px 28px; }
 
@@ -188,10 +192,10 @@ function buildPDFHtml(request, finalAmount, photos = []) {
       margin-bottom: 20px;
     }
     .brand { display: flex; align-items: center; gap: 12px; }
-    .brand img { height: 46px; width: 46px; object-fit: cover; border-radius: 10px; display: block; }
+    .brand img { height: 46px; width: 46px; object-fit: cover; border-radius: 10px; display: block; flex-shrink: 0; }
     .brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; color: #1e293b; }
     .brand-tag  { font-size: 11px; color: #64748b; margin-top: 1px; }
-    .doc-id { text-align: right; }
+    .doc-id { text-align: right; flex-shrink: 0; }
     .doc-id .kind { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: #F97316; }
     .doc-id .code { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; color: #1e293b; margin: 2px 0; }
     .doc-id .date { font-size: 11px; color: #64748b; }

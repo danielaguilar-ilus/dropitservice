@@ -168,7 +168,7 @@ function DeliveryModal({ stop, onClose, onConfirm }) {
             <div className="flex flex-wrap gap-3">
               {photos.map((src, idx) => (
                 <div key={idx} className="relative group">
-                  <img src={src} alt="" className="h-24 w-24 rounded-xl object-cover border border-slate-200 shadow-sm" />
+                  <img src={src} alt="" className="h-16 w-16 sm:h-24 sm:w-24 rounded-xl object-cover border border-slate-200 shadow-sm" />
                   <button type="button" onClick={() => setPhotos(p => p.filter((_, i) => i !== idx))}
                     className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow text-[10px] font-bold">
                     âœ•
@@ -177,7 +177,7 @@ function DeliveryModal({ stop, onClose, onConfirm }) {
               ))}
               {photos.length < 3 && (
                 <button type="button" onClick={() => photoInputRef.current?.click()}
-                  className={`flex h-24 w-24 flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
+                  className={`flex h-16 w-16 sm:h-24 sm:w-24 flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
                     errors.photos ? "border-red-300 bg-red-50" : "border-slate-200 hover:border-dropit-accent/40"
                   }`}>
                   <Camera size={20} className="mb-1 text-slate-300" />
