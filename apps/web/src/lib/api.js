@@ -49,7 +49,7 @@ async function request(path, options = {}) {
 }
 
 // â”€â”€â”€ Helper: añade X-User-Email cuando hay sesión â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function withActor(headers = {}) {
+export function withActor(headers = {}) {
   const email = getCurrentUserEmail();
   if (email) return { ...headers, "X-User-Email": email };
   return headers;
@@ -71,6 +71,7 @@ export const api = {
     request(`/quote-requests/${requestId}/quote`, {
       method: "PATCH",
       body: JSON.stringify(payload),
+      headers: withActor(),
     }),
   importOrders: (rows) =>
     request("/imports/orders", {
@@ -95,7 +96,7 @@ export const api = {
   getTracking: (code) => request(`/tracking/${code}`),
   // â”€â”€â”€ Quote acceptance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   acceptQuoteManual: (requestId) =>
-    request(`/quote-requests/${requestId}/accept-manual`, { method: "PATCH", body: JSON.stringify({}) }),
+    request(`/quote-requests/${requestId}/accept-manual`, { method: "PATCH", body: JSON.stringify({}), headers: withActor() }),
   getPublicQuote: (requestId, token) =>
     request(`/quote-requests/${requestId}/public?token=${encodeURIComponent(token || "")}`),
   acceptQuote: (requestId, token) =>

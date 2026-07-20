@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { addToLog } from "../lib/messageLog";
-import { api } from "../lib/api";
+import { api, withActor } from "../lib/api";
 import { getCompanyName, getLogoUrl, tplEmpresaNuevaCotizacion, tplCotizacionConfirmada } from "../lib/emailTemplates";
 import { serviceTypes } from "../lib/constants";
 import StatusBadge from "./StatusBadge";
@@ -503,7 +503,7 @@ export async function sendWAReminder(request, type, waConfig) {
       }),
       fetch(`${API_URL}/quote-requests/${request.id}/reminder`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: withActor({ "Content-Type": "application/json" }),
         body: JSON.stringify({ type }),
       }),
     ]);
@@ -887,7 +887,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
     try {
       await fetch(`${API_URL}/quote-requests/${selected.id}/accept-manual`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: withActor({ "Content-Type": "application/json" }),
         body: JSON.stringify({}),
       });
       setMessage({ ok: true, text: `âœ… Cotización marcada como aceptada â€” emails enviados a ${selected.contactEmail} y al equipo` });
@@ -907,7 +907,7 @@ export default function AdminQuotesModule({ requests, onSendQuote, onRefresh }) 
     try {
       const res = await fetch(`${API_URL}/quote-requests/${selected.id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: withActor({ "Content-Type": "application/json" }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

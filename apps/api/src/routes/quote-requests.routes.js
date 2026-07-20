@@ -4,6 +4,7 @@ import * as db from "../data/db.js";
 import { buildDashboardPayload } from "../services/dashboard.service.js";
 import { createQuoteRequest, quoteRequest, acceptQuoteRequest } from "../services/request.service.js";
 import { sendMail, isMailConfigured, getOperatorInbox } from "../services/mail.service.js";
+import { requireAuthorized } from "../middleware/auth.js";
 
 const router = Router();
 const HAS_DB = !!process.env.DATABASE_URL;
@@ -234,7 +235,7 @@ function newQuoteEmailHtml(req) {
 </div></body></html>`;
 }
 
-router.get("/", async (_req, res) => {
+router.get("/", requireAuthorized, async (_req, res) => {
   try {
     const requests = HAS_DB ? await db.listRequests() : store.requests;
     res.json({ requests });
@@ -328,7 +329,7 @@ router.patch("/:requestId/photos", async (req, res) => {
 });
 
 // Mark WhatsApp reminder sent
-router.patch("/:requestId/reminder", async (req, res) => {
+router.patch("/:requestId/reminder", requireAuthorized, async (req, res) => {
   try {
     if (HAS_DB) {
       const request = await db.findRequest(req.params.requestId);
@@ -355,7 +356,7 @@ router.patch("/:requestId/reminder", async (req, res) => {
   }
 });
 
-router.patch("/:requestId/quote", async (req, res) => {
+router.patch("/:requestId/quote", requireAuthorized, async (req, res) => {
   try {
     const updated = await quoteRequest(req.params.requestId, req.body);
 
@@ -435,7 +436,7 @@ router.patch("/:requestId/accept", async (req, res) => {
 });
 
 // ─── DELETE /:requestId — permanently remove a quote request ─────────────────
-router.delete("/:requestId", async (req, res) => {
+router.delete("/:requestId", requireAuthorized, async (req, res) => {
   try {
     if (HAS_DB) {
       const request = await db.findRequest(req.params.requestId);
@@ -456,7 +457,7 @@ router.delete("/:requestId", async (req, res) => {
 });
 
 // ─── PATCH /:requestId/accept-manual — admin marks as accepted manually ───────
-router.patch("/:requestId/accept-manual", async (req, res) => {
+router.patch("/:requestId/accept-manual", requireAuthorized, async (req, res) => {
   try {
     const updated = await acceptQuoteRequest(req.params.requestId, null); // no token check
 
