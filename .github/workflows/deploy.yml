@@ -26,6 +26,10 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
+          CLOUDSQL_FLAG=""
+          if [ -n "${{ secrets.GCP_SQL_INSTANCE }}" ]; then
+            CLOUDSQL_FLAG="--add-cloudsql-instances=${{ secrets.GCP_SQL_INSTANCE }}"
+          fi
           gcloud run deploy $SERVICE_NAME \
             --source . \
             --region $REGION \
@@ -37,12 +41,14 @@ jobs:
             --cpu 1 \
             --min-instances 0 \
             --max-instances 3 \
+            $CLOUDSQL_FLAG \
             --set-build-env-vars "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" \
             --set-env-vars "\
           NODE_ENV=production,\
           DATA_DIR=/tmp,\
           PUBLIC_URL=https://dropitservice.cl,\
           DATABASE_URL=${{ secrets.DATABASE_URL }},\
+          CLOUDSQL_DATABASE_URL=${{ secrets.CLOUDSQL_DATABASE_URL }},\
           ADMIN_TOKEN=${{ secrets.ADMIN_TOKEN }},\
           RESET_ADMIN_PW=${{ secrets.RESET_ADMIN_PW }},\
           GMAIL_USER=${{ secrets.GMAIL_USER }},\

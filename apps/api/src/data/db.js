@@ -29,9 +29,14 @@ function getPool() {
     );
   }
 
+  // Cloud SQL vía socket Unix (Cloud Run --add-cloudsql-instances) no usa SSL
+  // — es una conexión local, no TCP. Railway sí requiere SSL. Detectamos el
+  // socket por el patrón "?host=/cloudsql/" en la connection string.
+  const isCloudSqlSocket = DATABASE_URL.includes("/cloudsql/");
+
   _pool = new Pool({
     connectionString: DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    ssl: isCloudSqlSocket ? false : { rejectUnauthorized: false },
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,

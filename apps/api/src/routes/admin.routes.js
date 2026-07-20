@@ -3,9 +3,64 @@ import { readFileSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
+import pg from "pg";
 import { requireAdminToken } from "../middleware/auth.js";
 
+const { Pool } = pg;
 const router = Router();
+
+// ─── Migración Railway → Cloud SQL (temporal, se retira tras el corte) ────────
+function makePool(connectionString) {
+  const isSocket = connectionString.includes("/cloudsql/");
+  return new Pool({
+    connectionString,
+    ssl: isSocket ? false : { rejectUnauthorized: false },
+    max: 5,
+  });
+}
+
+// Copia una tabla completa de sourcePool a targetPool, idempotente
+// (ON CONFLICT DO NOTHING sobre la primary key). JSONB se serializa a texto
+// porque `pg` no lo hace solo al reinsertar objetos ya parseados; los arrays
+// (TEXT[]) se dejan tal cual para que el driver los serialice como array PG.
+async function copyTable(sourcePool, targetPool, table, pkCol) {
+  const { rows } = await sourcePool.query(`SELECT * FROM ${table}`);
+  if (rows.length === 0) return { table, total: 0, copied: 0 };
+  const columns = Object.keys(rows[0]);
+  const colList = columns.map((c) => `"${c}"`).join(", ");
+  let copied = 0;
+  const CHUNK = 50;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const values = [];
+    const rowsSql = chunk
+      .map((row) => {
+        const placeholders = columns.map((c) => {
+          let v = row[c];
+          if (v !== null && typeof v === "object" && !Array.isArray(v) && !(v instanceof Date)) {
+            v = JSON.stringify(v);
+          }
+          values.push(v);
+          return `$${values.length}`;
+        });
+        return `(${placeholders.join(", ")})`;
+      })
+      .join(", ");
+    const sql = `INSERT INTO ${table} (${colList}) VALUES ${rowsSql} ON CONFLICT ("${pkCol}") DO NOTHING`;
+    const result = await targetPool.query(sql, values);
+    copied += result.rowCount;
+  }
+  return { table, total: rows.length, copied };
+}
+
+const MIGRATION_ORDER = [
+  ["users", "id"],
+  ["trucks", "id"],
+  ["settings", "key"],
+  ["quote_requests", "id"],
+  ["routes", "id"],
+  ["notifications", "id"],
+];
 
 // Todos los endpoints /_admin/* requieren ADMIN_TOKEN (sin default inseguro:
 // si ADMIN_TOKEN no está configurado en el server, devuelve 503).
@@ -271,6 +326,71 @@ router.post("/migrate-from-json", requireAdmin, async (_req, res) => {
       ok: false,
       error: { message: err.message, code: err.code, stack: err.stack },
     });
+  }
+});
+
+// ─── POST /api/_admin/migrate-to-cloudsql ─────────────────────────────────────
+// Copia el contenido de DATABASE_URL (origen, Railway) a CLOUDSQL_DATABASE_URL
+// (destino). Idempotente (ON CONFLICT DO NOTHING) — se puede reintentar sin
+// duplicar filas. NO borra ni toca el origen. Requiere ADMIN_TOKEN.
+router.post("/migrate-to-cloudsql", requireAdmin, async (_req, res) => {
+  const targetUrl = process.env.CLOUDSQL_DATABASE_URL;
+  if (!targetUrl) {
+    return res.status(400).json({ ok: false, message: "CLOUDSQL_DATABASE_URL no está configurado." });
+  }
+  if (!process.env.DATABASE_URL) {
+    return res.status(400).json({ ok: false, message: "DATABASE_URL (origen) no está set." });
+  }
+  const targetPool = makePool(targetUrl);
+  try {
+    const dbMod = await import("../data/db.js");
+    const sourcePool = dbMod.getPoolInstance();
+
+    const existing = await targetPool.query(`
+      SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
+    `);
+    if (existing.rows.length === 0) {
+      const schemaPath = join(dirname(fileURLToPath(import.meta.url)), "../../db/schema.sql");
+      const schemaSql = readFileSync(schemaPath, "utf8");
+      await targetPool.query(schemaSql);
+    }
+
+    const results = [];
+    for (const [table, pk] of MIGRATION_ORDER) {
+      results.push(await copyTable(sourcePool, targetPool, table, pk));
+    }
+
+    return res.json({ ok: true, results });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: { message: err.message, code: err.code, position: err.position, stack: err.stack },
+    });
+  } finally {
+    await targetPool.end().catch(() => {});
+  }
+});
+
+// ─── GET /api/_admin/cloudsql-status ───────────────────────────────────────────
+// Cuenta filas en el destino (Cloud SQL) por tabla, para comparar contra el
+// origen antes del corte final. Requiere ADMIN_TOKEN.
+router.get("/cloudsql-status", requireAdmin, async (_req, res) => {
+  const targetUrl = process.env.CLOUDSQL_DATABASE_URL;
+  if (!targetUrl) {
+    return res.status(400).json({ ok: false, message: "CLOUDSQL_DATABASE_URL no está configurado." });
+  }
+  const targetPool = makePool(targetUrl);
+  try {
+    const counts = {};
+    for (const [table] of MIGRATION_ORDER) {
+      const r = await targetPool.query(`SELECT COUNT(*)::int AS n FROM ${table}`).catch(() => ({ rows: [{ n: null }] }));
+      counts[table] = r.rows[0].n;
+    }
+    return res.json({ ok: true, counts });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: { message: err.message, code: err.code } });
+  } finally {
+    await targetPool.end().catch(() => {});
   }
 });
 
