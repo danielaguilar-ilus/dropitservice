@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /panel
+Disallow: /confirmar
+
+Sitemap: https://dropitservice.cl/sitemap.xml
